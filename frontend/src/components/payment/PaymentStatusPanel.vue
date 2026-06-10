@@ -191,8 +191,8 @@ const qrBorderClass = computed(() => {
 })
 
 const qrLogoBgClass = computed(() => {
-  if (isAlipay.value) return 'bg-[#00AEEF]'
-  if (isWxpay.value) return 'bg-[#2BB741]'
+  if (isAlipay.value) return 'bg-primary-600'
+  if (isWxpay.value) return 'bg-emerald-600'
   return 'bg-gray-400'
 })
 

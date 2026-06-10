@@ -525,16 +525,16 @@ function setDailyUsageDays(days: 7 | 30 | 90) {
 
 const CIRCUMFERENCE = 2 * Math.PI * 68
 const RING_GRADIENTS = [
-  { from: '#14b8a6', to: '#5eead4' },
-  { from: '#6366F1', to: '#A5B4FC' },
-  { from: '#10B981', to: '#6EE7B7' },
-  { from: '#F59E0B', to: '#FCD34D' },
+  { from: '#236b66', to: '#88c6c1' },
+  { from: '#2d4055', to: '#7890a6' },
+  { from: '#2d6a4f', to: '#8bd9ad' },
+  { from: '#9a6700', to: '#ffd166' },
 ]
 
 const ringAnimated = ref(false)
 const displayPcts = ref<number[]>([])
 
-const ringTrackColor = computed(() => isDark.value ? '#222222' : '#F0F0EE')
+const ringTrackColor = computed(() => isDark.value ? '#304540' : '#cfd8d5')
 
 interface RingItem {
   title: string
@@ -943,8 +943,8 @@ onUnmounted(() => {
   transition: box-shadow 0.2s ease, border-color 0.2s ease;
 }
 .input-ring:focus {
-  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.2);
-  border-color: #14b8a6;
+  box-shadow: 0 0 0 3px rgba(35, 107, 102, 0.18);
+  border-color: #236b66;
   outline: none;
 }
 

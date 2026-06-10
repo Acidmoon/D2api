@@ -209,18 +209,18 @@ const toggleBreakdown = async (endpoint: string) => {
 }
 
 const chartColors = [
-  '#3b82f6',
-  '#10b981',
-  '#f59e0b',
-  '#ef4444',
-  '#8b5cf6',
-  '#ec4899',
-  '#14b8a6',
-  '#f97316',
-  '#6366f1',
-  '#84cc16',
-  '#06b6d4',
-  '#a855f7'
+  '#236b66',
+  '#2d4055',
+  '#9a6700',
+  '#b4232a',
+  '#52616f',
+  '#6d5c7a',
+  '#2d6a4f',
+  '#8c5a3c',
+  '#7890a6',
+  '#6b7a40',
+  '#4f6a86',
+  '#9fb2ad'
 ]
 
 const displayEndpointStats = computed(() => {
