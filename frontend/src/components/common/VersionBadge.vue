@@ -286,22 +286,22 @@
                 </div>
               </div>
 
-              <!-- Priority 4: Update available for release build - show update button -->
-              <div v-else-if="hasUpdate && isReleaseBuild" class="space-y-2">
+              <!-- Priority 4: Update available for Docker/release build - show deployment guide -->
+              <div v-else-if="hasUpdate && isReleaseBuild" class="space-y-3">
                 <!-- Update info card -->
                 <div
                   class="flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-800/50 dark:bg-amber-900/20"
                 >
-                <div
-                  class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/50"
-                >
-                  <Icon
-                    name="download"
-                    size="sm"
-                    :stroke-width="2"
-                    class="text-amber-600 dark:text-amber-400"
-                  />
-                </div>
+                  <div
+                    class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/50"
+                  >
+                    <Icon
+                      name="download"
+                      size="sm"
+                      :stroke-width="2"
+                      class="text-amber-600 dark:text-amber-400"
+                    />
+                  </div>
                   <div class="min-w-0 flex-1">
                     <p class="text-sm font-medium text-amber-700 dark:text-amber-300">
                       {{ t('version.updateAvailable') }}
@@ -312,30 +312,22 @@
                   </div>
                 </div>
 
-                <!-- Update button -->
-                <button
-                  @click="handleUpdate"
-                  :disabled="updating"
-                  class="flex w-full items-center justify-center gap-2 rounded-lg bg-primary-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-600 disabled:cursor-not-allowed disabled:opacity-50"
+                <!-- Docker deployment guide -->
+                <div
+                  class="rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-800/50 dark:bg-blue-900/20"
                 >
-                  <svg v-if="updating" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                    <circle
-                      class="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      stroke-width="4"
-                    ></circle>
-                    <path
-                      class="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
-                  </svg>
-                  <Icon v-else name="download" size="sm" :stroke-width="2" />
-                  {{ updating ? t('version.updating') : t('version.updateNow') }}
-                </button>
+                  <p class="mb-2 text-xs font-medium text-blue-700 dark:text-blue-300">
+                    {{ t('version.dockerUpdateGuideTitle') }}
+                  </p>
+                  <p class="mb-2 text-xs text-blue-600 dark:text-blue-400">
+                    {{ t('version.dockerUpdateGuide') }}
+                  </p>
+                  <div class="space-y-1 rounded bg-white/60 p-2 font-mono text-xs text-blue-800 dark:bg-dark-900/50 dark:text-blue-300">
+                    <p>$ {{ t('version.dockerUpdateCmd1') }}</p>
+                    <p>$ {{ t('version.dockerUpdateCmd2') }}</p>
+                    <p>$ {{ t('version.dockerUpdateCmd3') }}</p>
+                  </div>
+                </div>
 
                 <!-- View release link -->
                 <a
