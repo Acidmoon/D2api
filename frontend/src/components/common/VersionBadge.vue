@@ -325,7 +325,6 @@
                   <div class="space-y-1 rounded bg-white/60 p-2 font-mono text-xs text-blue-800 dark:bg-dark-900/50 dark:text-blue-300">
                     <p>$ {{ t('version.dockerUpdateCmd1') }}</p>
                     <p>$ {{ t('version.dockerUpdateCmd2') }}</p>
-                    <p>$ {{ t('version.dockerUpdateCmd3') }}</p>
                   </div>
                 </div>
 
