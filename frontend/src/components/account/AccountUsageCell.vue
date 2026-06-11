@@ -11,33 +11,33 @@
       <div v-if="loading" class="space-y-1.5">
         <!-- OAuth: 3 rows, Setup Token: 1 row -->
         <div class="flex items-center gap-1">
-          <div class="h-3 w-[32px] animate-pulse rounded bg-gray-200 dark:bg-gray-700"></div>
-          <div class="h-1.5 w-8 animate-pulse rounded-full bg-gray-200 dark:bg-gray-700"></div>
-          <div class="h-3 w-[32px] animate-pulse rounded bg-gray-200 dark:bg-gray-700"></div>
+          <div class="usage-skeleton h-3 w-[32px] animate-pulse"></div>
+          <div class="usage-skeleton-track h-1.5 w-8 animate-pulse"></div>
+          <div class="usage-skeleton h-3 w-[32px] animate-pulse"></div>
         </div>
         <template v-if="account.type === 'oauth'">
           <div class="flex items-center gap-1">
-            <div class="h-3 w-[32px] animate-pulse rounded bg-gray-200 dark:bg-gray-700"></div>
-            <div class="h-1.5 w-8 animate-pulse rounded-full bg-gray-200 dark:bg-gray-700"></div>
-            <div class="h-3 w-[32px] animate-pulse rounded bg-gray-200 dark:bg-gray-700"></div>
+            <div class="usage-skeleton h-3 w-[32px] animate-pulse"></div>
+            <div class="usage-skeleton-track h-1.5 w-8 animate-pulse"></div>
+            <div class="usage-skeleton h-3 w-[32px] animate-pulse"></div>
           </div>
           <div class="flex items-center gap-1">
-            <div class="h-3 w-[32px] animate-pulse rounded bg-gray-200 dark:bg-gray-700"></div>
-            <div class="h-1.5 w-8 animate-pulse rounded-full bg-gray-200 dark:bg-gray-700"></div>
-            <div class="h-3 w-[32px] animate-pulse rounded bg-gray-200 dark:bg-gray-700"></div>
+            <div class="usage-skeleton h-3 w-[32px] animate-pulse"></div>
+            <div class="usage-skeleton-track h-1.5 w-8 animate-pulse"></div>
+            <div class="usage-skeleton h-3 w-[32px] animate-pulse"></div>
           </div>
         </template>
       </div>
 
       <!-- Error state -->
-      <div v-else-if="error" class="text-xs text-red-500">
+      <div v-else-if="error" class="usage-error text-xs">
         {{ error }}
       </div>
 
       <!-- Usage data -->
       <div v-else-if="usageInfo" class="space-y-1">
         <!-- API error (degraded response) -->
-        <div v-if="usageInfo.error" class="text-xs text-amber-600 dark:text-amber-400 truncate max-w-[200px]" :title="usageInfo.error">
+        <div v-if="usageInfo.error" class="usage-warning truncate max-w-[200px] text-xs" :title="usageInfo.error">
           {{ usageInfo.error }}
         </div>
         <!-- 5h Window -->
@@ -72,13 +72,13 @@
         <div class="flex items-center gap-1.5 mt-0.5">
           <span
             v-if="usageInfo.source === 'passive'"
-            class="text-[9px] text-gray-400 dark:text-gray-500 italic"
+            class="usage-subtle text-[9px] italic"
           >
             {{ t('admin.accounts.usageWindow.passiveSampled') }}
           </span>
           <button
             type="button"
-            class="inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[9px] font-medium text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/30 transition-colors"
+            class="usage-link-button inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[9px] font-medium transition-colors"
             :disabled="activeQueryLoading"
             @click="loadActiveUsage"
           >
@@ -102,7 +102,7 @@
       </div>
 
       <!-- No data yet -->
-      <div v-else class="text-xs text-gray-400">-</div>
+      <div v-else class="usage-empty text-xs">-</div>
     </template>
 
     <!-- OpenAI OAuth accounts: single source from /usage API -->
@@ -129,7 +129,7 @@
         <div class="flex items-center gap-1.5 mt-0.5">
           <button
             type="button"
-            class="inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[9px] font-medium text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/30 transition-colors"
+            class="usage-link-button inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[9px] font-medium transition-colors"
             :disabled="activeQueryLoading"
             @click="loadActiveUsage"
           >
@@ -153,17 +153,17 @@
       </div>
       <div v-else-if="loading" class="space-y-1.5">
         <div class="flex items-center gap-1">
-          <div class="h-3 w-[32px] animate-pulse rounded bg-gray-200 dark:bg-gray-700"></div>
-          <div class="h-1.5 w-8 animate-pulse rounded-full bg-gray-200 dark:bg-gray-700"></div>
-          <div class="h-3 w-[32px] animate-pulse rounded bg-gray-200 dark:bg-gray-700"></div>
+          <div class="usage-skeleton h-3 w-[32px] animate-pulse"></div>
+          <div class="usage-skeleton-track h-1.5 w-8 animate-pulse"></div>
+          <div class="usage-skeleton h-3 w-[32px] animate-pulse"></div>
         </div>
         <div class="flex items-center gap-1">
-          <div class="h-3 w-[32px] animate-pulse rounded bg-gray-200 dark:bg-gray-700"></div>
-          <div class="h-1.5 w-8 animate-pulse rounded-full bg-gray-200 dark:bg-gray-700"></div>
-          <div class="h-3 w-[32px] animate-pulse rounded bg-gray-200 dark:bg-gray-700"></div>
+          <div class="usage-skeleton h-3 w-[32px] animate-pulse"></div>
+          <div class="usage-skeleton-track h-1.5 w-8 animate-pulse"></div>
+          <div class="usage-skeleton h-3 w-[32px] animate-pulse"></div>
         </div>
       </div>
-      <div v-else class="text-xs text-gray-400">-</div>
+      <div v-else class="usage-empty text-xs">-</div>
     </template>
 
     <!-- Antigravity OAuth accounts: fetch usage from API -->
@@ -172,7 +172,7 @@
       <div v-if="antigravityTierLabel" class="mb-1 flex items-center gap-1">
         <span
           :class="[
-            'inline-block rounded px-1.5 py-0.5 text-[10px] font-medium',
+            'usage-badge inline-block px-1.5 py-0.5 text-[10px] font-medium',
             antigravityTierClass
           ]"
         >
@@ -184,7 +184,7 @@
           class="group relative cursor-help"
         >
           <svg
-            class="h-3.5 w-3.5 text-red-500"
+            class="usage-danger-icon h-3.5 w-3.5"
             fill="currentColor"
             viewBox="0 0 20 20"
           >
@@ -195,7 +195,7 @@
             />
           </svg>
           <span
-            class="pointer-events-none absolute left-0 top-full z-50 mt-1 w-80 whitespace-normal break-words rounded bg-gray-900 px-3 py-2 text-xs leading-relaxed text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100 dark:bg-gray-700"
+            class="usage-tooltip pointer-events-none absolute left-0 top-full z-50 mt-1 w-80 whitespace-normal break-words px-3 py-2 text-xs leading-relaxed opacity-0 transition-opacity group-hover:opacity-100"
           >
             {{ t('admin.accounts.ineligibleWarning') }}
           </span>
@@ -206,7 +206,7 @@
       <div v-if="isForbidden" class="space-y-1">
         <span
           :class="[
-            'inline-block rounded px-1.5 py-0.5 text-[10px] font-medium',
+            'usage-badge inline-block px-1.5 py-0.5 text-[10px] font-medium',
             forbiddenBadgeClass
           ]"
         >
@@ -217,14 +217,14 @@
             :href="validationURL"
             target="_blank"
             rel="noopener noreferrer"
-            class="text-[10px] text-blue-600 hover:text-blue-800 hover:underline dark:text-blue-400 dark:hover:text-blue-300"
+            class="usage-inline-link text-[10px] hover:underline"
             :title="t('admin.accounts.openVerification')"
           >
             {{ t('admin.accounts.openVerification') }}
           </a>
           <button
             type="button"
-            class="text-[10px] text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+            class="usage-ghost-link text-[10px]"
             :title="t('admin.accounts.copyLink')"
             @click="copyValidationURL"
           >
@@ -235,14 +235,14 @@
 
       <!-- Needs reauth (401) -->
       <div v-else-if="needsReauth" class="space-y-1">
-        <span class="inline-block rounded px-1.5 py-0.5 text-[10px] font-medium bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300">
+        <span class="usage-badge usage-tier-warning inline-block px-1.5 py-0.5 text-[10px] font-medium">
           {{ t('admin.accounts.needsReauth') }}
         </span>
       </div>
 
       <!-- Degraded error (non-403, non-401) -->
       <div v-else-if="usageInfo?.error" class="space-y-1">
-        <span class="inline-block rounded px-1.5 py-0.5 text-[10px] font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
+        <span class="usage-badge usage-tier-warning inline-block px-1.5 py-0.5 text-[10px] font-medium">
           {{ usageErrorLabel }}
         </span>
       </div>
@@ -250,14 +250,14 @@
       <!-- Loading state -->
       <div v-else-if="loading" class="space-y-1.5">
         <div class="flex items-center gap-1">
-          <div class="h-3 w-[32px] animate-pulse rounded bg-gray-200 dark:bg-gray-700"></div>
-          <div class="h-1.5 w-8 animate-pulse rounded-full bg-gray-200 dark:bg-gray-700"></div>
-          <div class="h-3 w-[32px] animate-pulse rounded bg-gray-200 dark:bg-gray-700"></div>
+          <div class="usage-skeleton h-3 w-[32px] animate-pulse"></div>
+          <div class="usage-skeleton-track h-1.5 w-8 animate-pulse"></div>
+          <div class="usage-skeleton h-3 w-[32px] animate-pulse"></div>
         </div>
       </div>
 
       <!-- Error state -->
-      <div v-else-if="error" class="text-xs text-red-500">
+      <div v-else-if="error" class="usage-error text-xs">
         {{ error }}
       </div>
 
@@ -299,14 +299,14 @@
           color="amber"
         />
 
-        <div v-if="aiCreditsDisplay" class="mt-1 text-[10px] text-gray-500 dark:text-gray-400">
-          💳 {{ t('admin.accounts.aiCreditsBalance') }}: {{ aiCreditsDisplay }}
+        <div v-if="aiCreditsDisplay" class="usage-muted mt-1 text-[10px]">
+          AI {{ t('admin.accounts.aiCreditsBalance') }}: {{ aiCreditsDisplay }}
         </div>
       </div>
-      <div v-else-if="aiCreditsDisplay" class="text-[10px] text-gray-500 dark:text-gray-400">
-        💳 {{ t('admin.accounts.aiCreditsBalance') }}: {{ aiCreditsDisplay }}
+      <div v-else-if="aiCreditsDisplay" class="usage-muted text-[10px]">
+        AI {{ t('admin.accounts.aiCreditsBalance') }}: {{ aiCreditsDisplay }}
       </div>
-      <div v-else class="text-xs text-gray-400">-</div>
+      <div v-else class="usage-empty text-xs">-</div>
     </template>
 
     <!-- Gemini platform: show quota + local usage window -->
@@ -315,7 +315,7 @@
       <div v-if="geminiAuthTypeLabel" class="mb-1 flex items-center gap-1">
         <span
           :class="[
-            'inline-block rounded px-1.5 py-0.5 text-[10px] font-medium',
+            'usage-badge inline-block px-1.5 py-0.5 text-[10px] font-medium',
             geminiTierClass
           ]"
         >
@@ -326,7 +326,7 @@
           class="group relative cursor-help"
         >
           <svg
-            class="h-3.5 w-3.5 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
+            class="usage-help-icon h-3.5 w-3.5"
             fill="currentColor"
             viewBox="0 0 20 20"
           >
@@ -337,15 +337,15 @@
             />
           </svg>
           <span
-            class="pointer-events-none absolute left-0 top-full z-50 mt-1 w-80 whitespace-normal break-words rounded bg-gray-900 px-3 py-2 text-xs leading-relaxed text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100 dark:bg-gray-700"
+            class="usage-tooltip pointer-events-none absolute left-0 top-full z-50 mt-1 w-80 whitespace-normal break-words px-3 py-2 text-xs leading-relaxed opacity-0 transition-opacity group-hover:opacity-100"
           >
             <div class="font-semibold mb-1">{{ t('admin.accounts.gemini.quotaPolicy.title') }}</div>
-            <div class="mb-2 text-gray-300">{{ t('admin.accounts.gemini.quotaPolicy.note') }}</div>
+            <div class="usage-tooltip-muted mb-2">{{ t('admin.accounts.gemini.quotaPolicy.note') }}</div>
             <div class="space-y-1">
               <div><strong>{{ geminiQuotaPolicyChannel }}:</strong></div>
               <div class="pl-2">• {{ geminiQuotaPolicyLimits }}</div>
               <div class="mt-2">
-                <a :href="geminiQuotaPolicyDocsUrl" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:text-blue-300 underline">
+                <a :href="geminiQuotaPolicyDocsUrl" target="_blank" rel="noopener noreferrer" class="usage-tooltip-link underline">
                   {{ t('admin.accounts.gemini.quotaPolicy.columns.docs') }} →
                 </a>
               </div>
@@ -360,19 +360,19 @@
           v-if="showGeminiTodayStats && todayStats"
           class="mb-0.5 flex items-center"
         >
-          <div class="flex items-center gap-1.5 text-[9px] text-gray-500 dark:text-gray-400">
-            <span class="rounded bg-gray-100 px-1.5 py-0.5 dark:bg-gray-800">
+          <div class="usage-metrics-row flex items-center gap-1.5 text-[9px]">
+            <span class="usage-metric-chip px-1.5 py-0.5">
               {{ formatKeyRequests }} req
             </span>
-            <span class="rounded bg-gray-100 px-1.5 py-0.5 dark:bg-gray-800">
+            <span class="usage-metric-chip px-1.5 py-0.5">
               {{ formatKeyTokens }}
             </span>
-            <span class="rounded bg-gray-100 px-1.5 py-0.5 dark:bg-gray-800" :title="t('usage.accountBilled')">
+            <span class="usage-metric-chip px-1.5 py-0.5" :title="t('usage.accountBilled')">
               A ${{ formatKeyCost }}
             </span>
             <span
               v-if="todayStats.user_cost != null"
-              class="rounded bg-gray-100 px-1.5 py-0.5 dark:bg-gray-800"
+              class="usage-metric-chip px-1.5 py-0.5"
               :title="t('usage.userBilled')"
             >
               U ${{ formatKeyUserCost }}
@@ -383,18 +383,18 @@
           v-else-if="showGeminiTodayStats && todayStatsLoading"
           class="mb-0.5 flex items-center gap-1"
         >
-          <div class="h-3 w-10 animate-pulse rounded bg-gray-200 dark:bg-gray-700"></div>
-          <div class="h-3 w-8 animate-pulse rounded bg-gray-200 dark:bg-gray-700"></div>
-          <div class="h-3 w-12 animate-pulse rounded bg-gray-200 dark:bg-gray-700"></div>
+          <div class="usage-skeleton h-3 w-10 animate-pulse"></div>
+          <div class="usage-skeleton h-3 w-8 animate-pulse"></div>
+          <div class="usage-skeleton h-3 w-12 animate-pulse"></div>
         </div>
         <div v-if="loading" class="space-y-1">
           <div class="flex items-center gap-1">
-            <div class="h-3 w-[32px] animate-pulse rounded bg-gray-200 dark:bg-gray-700"></div>
-            <div class="h-1.5 w-8 animate-pulse rounded-full bg-gray-200 dark:bg-gray-700"></div>
-            <div class="h-3 w-[32px] animate-pulse rounded bg-gray-200 dark:bg-gray-700"></div>
+            <div class="usage-skeleton h-3 w-[32px] animate-pulse"></div>
+            <div class="usage-skeleton-track h-1.5 w-8 animate-pulse"></div>
+            <div class="usage-skeleton h-3 w-[32px] animate-pulse"></div>
           </div>
         </div>
-        <div v-else-if="error" class="text-xs text-red-500">
+        <div v-else-if="error" class="usage-error text-xs">
           {{ error }}
         </div>
         <!-- Gemini: show daily usage bars when available -->
@@ -408,12 +408,12 @@
             :window-stats="bar.windowStats"
             :color="bar.color"
           />
-          <p class="mt-1 text-[9px] leading-tight text-gray-400 dark:text-gray-500 italic">
+          <p class="usage-subtle mt-1 text-[9px] leading-tight italic">
             * {{ t('admin.accounts.gemini.quotaPolicy.simulatedNote') || 'Simulated quota' }}
           </p>
         </div>
         <!-- AI Studio Client OAuth: show unlimited flow (no usage tracking) -->
-        <div v-else class="text-xs text-gray-400">
+        <div v-else class="usage-empty text-xs">
           {{ t('admin.accounts.gemini.rateLimit.unlimited') }}
         </div>
       </div>
@@ -421,7 +421,7 @@
 
     <!-- Other accounts: no usage window -->
     <template v-else>
-      <div class="text-xs text-gray-400">-</div>
+      <div class="usage-empty text-xs">-</div>
     </template>
   </div>
 
@@ -436,19 +436,19 @@
         v-if="todayStats"
         class="mb-0.5 flex items-center"
       >
-        <div class="flex items-center gap-1.5 text-[9px] text-gray-500 dark:text-gray-400">
-          <span class="rounded bg-gray-100 px-1.5 py-0.5 dark:bg-gray-800">
+        <div class="usage-metrics-row flex items-center gap-1.5 text-[9px]">
+          <span class="usage-metric-chip px-1.5 py-0.5">
             {{ formatKeyRequests }} req
           </span>
-          <span class="rounded bg-gray-100 px-1.5 py-0.5 dark:bg-gray-800">
+          <span class="usage-metric-chip px-1.5 py-0.5">
             {{ formatKeyTokens }}
           </span>
-          <span class="rounded bg-gray-100 px-1.5 py-0.5 dark:bg-gray-800" :title="t('usage.accountBilled')">
+          <span class="usage-metric-chip px-1.5 py-0.5" :title="t('usage.accountBilled')">
             A ${{ formatKeyCost }}
           </span>
           <span
             v-if="todayStats.user_cost != null"
-            class="rounded bg-gray-100 px-1.5 py-0.5 dark:bg-gray-800"
+            class="usage-metric-chip px-1.5 py-0.5"
             :title="t('usage.userBilled')"
           >
             U ${{ formatKeyUserCost }}
@@ -460,9 +460,9 @@
         v-else-if="todayStatsLoading"
         class="mb-0.5 flex items-center gap-1"
       >
-        <div class="h-3 w-10 animate-pulse rounded bg-gray-200 dark:bg-gray-700"></div>
-        <div class="h-3 w-8 animate-pulse rounded bg-gray-200 dark:bg-gray-700"></div>
-        <div class="h-3 w-12 animate-pulse rounded bg-gray-200 dark:bg-gray-700"></div>
+        <div class="usage-skeleton h-3 w-10 animate-pulse"></div>
+        <div class="usage-skeleton h-3 w-8 animate-pulse"></div>
+        <div class="usage-skeleton h-3 w-12 animate-pulse"></div>
       </div>
 
       <!-- API Key accounts with quota limits: show progress bars -->
@@ -488,7 +488,7 @@
       />
 
       <!-- No data at all -->
-      <div v-if="!todayStats && !todayStatsLoading && !hasApiKeyQuota" class="text-xs text-gray-400">-</div>
+      <div v-if="!todayStats && !todayStatsLoading && !hasApiKeyQuota" class="usage-empty text-xs">-</div>
     </div>
   </div>
 </template>
@@ -793,18 +793,18 @@ const geminiTierClass = computed(() => {
   const level = geminiUserLevel.value
 
   if (channel === 'client' || channel === 'ai studio') {
-    return 'bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-300'
+    return 'usage-tier-info'
   }
 
   if (channel === 'google one') {
-    if (level === 'ultra') return 'bg-purple-100 text-purple-600 dark:bg-purple-900/40 dark:text-purple-300'
-    if (level === 'pro') return 'bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-300'
-    return 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
+    if (level === 'ultra') return 'usage-tier-accent'
+    if (level === 'pro') return 'usage-tier-info'
+    return 'usage-tier-neutral'
   }
 
   if (channel === 'gcp') {
-    if (level === 'enterprise') return 'bg-purple-100 text-purple-600 dark:bg-purple-900/40 dark:text-purple-300'
-    return 'bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-300'
+    if (level === 'enterprise') return 'usage-tier-accent'
+    return 'usage-tier-info'
   }
 
   return ''
@@ -939,11 +939,11 @@ const antigravityTierLabel = computed(() => {
 const antigravityTierClass = computed(() => {
   switch (antigravityTier.value) {
     case 'free-tier':
-      return 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
+      return 'usage-tier-neutral'
     case 'g1-pro-tier':
-      return 'bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-300'
+      return 'usage-tier-info'
     case 'g1-ultra-tier':
-      return 'bg-purple-100 text-purple-600 dark:bg-purple-900/40 dark:text-purple-300'
+      return 'usage-tier-accent'
     default:
       return ''
   }
@@ -989,9 +989,9 @@ const forbiddenLabel = computed(() => {
 
 const forbiddenBadgeClass = computed(() => {
   if (forbiddenType.value === 'validation') {
-    return 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300'
+    return 'usage-tier-warning'
   }
-  return 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300'
+  return 'usage-tier-danger'
 })
 
 const linkCopied = ref(false)
@@ -1267,3 +1267,139 @@ onUnmounted(() => {
   desktopViewportMediaQuery = null
 })
 </script>
+
+<style scoped>
+.usage-skeleton,
+.usage-skeleton-track,
+.usage-badge,
+.usage-link-button,
+.usage-metric-chip {
+  border-radius: var(--nm-radius-sm);
+}
+
+.usage-skeleton,
+.usage-skeleton-track {
+  background: var(--nm-surface-soft);
+}
+
+.usage-skeleton-track {
+  border-radius: var(--nm-radius-sm);
+}
+
+.usage-error,
+.usage-danger-icon {
+  color: var(--nm-danger-text);
+}
+
+.usage-warning {
+  color: var(--nm-warning-text);
+}
+
+.usage-muted {
+  color: var(--nm-ink-muted);
+}
+
+.usage-subtle,
+.usage-empty {
+  color: var(--nm-ink-faint);
+}
+
+.usage-link-button,
+.usage-inline-link {
+  color: var(--nm-info-text);
+}
+
+.usage-link-button {
+  border: 1px solid transparent;
+  background: transparent;
+  cursor: pointer;
+}
+
+.usage-link-button:hover {
+  border-color: var(--nm-border-light);
+  background: var(--nm-info-soft);
+}
+
+.usage-link-button:disabled {
+  color: var(--nm-ink-faint);
+  cursor: not-allowed;
+}
+
+.usage-ghost-link {
+  border: 0;
+  background: transparent;
+  color: var(--nm-ink-muted);
+  cursor: pointer;
+  padding: 0;
+}
+
+.usage-ghost-link:hover {
+  color: var(--nm-ink);
+}
+
+.usage-help-icon {
+  color: var(--nm-ink-faint);
+}
+
+.usage-help-icon:hover {
+  color: var(--nm-ink-muted);
+}
+
+.usage-tooltip {
+  border: 1px solid color-mix(in srgb, var(--nm-bg) 20%, transparent);
+  border-radius: var(--nm-radius-sm);
+  background: color-mix(in srgb, var(--nm-ink) 88%, transparent);
+  color: var(--nm-bg);
+}
+
+.usage-tooltip-muted {
+  color: color-mix(in srgb, var(--nm-bg) 72%, transparent);
+}
+
+.usage-tooltip-link {
+  color: color-mix(in srgb, var(--nm-info-soft) 70%, var(--nm-bg));
+}
+
+.usage-badge,
+.usage-metric-chip {
+  border: 1px solid var(--nm-border-light);
+}
+
+.usage-metrics-row {
+  color: var(--nm-ink-faint);
+}
+
+.usage-metric-chip {
+  background: var(--nm-surface-soft);
+  color: var(--nm-ink-muted);
+}
+
+.usage-tier-neutral {
+  background: var(--nm-surface-soft);
+  color: var(--nm-ink-muted);
+}
+
+.usage-tier-info {
+  border-color: color-mix(in srgb, var(--nm-info-text) 22%, var(--nm-border-light));
+  background: var(--nm-info-soft);
+  color: var(--nm-info-text);
+}
+
+.usage-tier-accent {
+  border-color: color-mix(in srgb, var(--nm-accent-text) 22%, var(--nm-border-light));
+  background: var(--nm-accent-soft);
+  color: var(--nm-accent-text);
+}
+
+.usage-tier-warning {
+  border-color: color-mix(in srgb, var(--nm-warning-text) 22%, var(--nm-border-light));
+  background: var(--nm-warning-soft);
+  color: var(--nm-warning-text);
+}
+
+.usage-tier-danger {
+  border-color: color-mix(in srgb, var(--nm-danger-text) 22%, var(--nm-border-light));
+  background: var(--nm-danger-soft);
+  color: var(--nm-danger-text);
+}
+</style>
