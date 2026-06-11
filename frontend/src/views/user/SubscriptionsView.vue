@@ -220,15 +220,16 @@
                 !subscription.group?.weekly_limit_usd &&
                 !subscription.group?.monthly_limit_usd
               "
-              class="flex items-center justify-center rounded-xl bg-gradient-to-r from-emerald-50 to-teal-50 py-6 dark:from-emerald-900/20 dark:to-teal-900/20"
+              class="flex items-center justify-center rounded-xl py-6"
+              style="background: var(--nm-success-soft)"
             >
               <div class="flex items-center gap-3">
-                <span class="text-4xl text-emerald-600 dark:text-emerald-400">∞</span>
+                <span class="text-4xl" style="color: var(--nm-success-text)">∞</span>
                 <div>
-                  <p class="text-sm font-medium text-emerald-700 dark:text-emerald-300">
+                  <p class="text-sm font-medium" style="color: var(--nm-success-text)">
                     {{ t('userSubscriptions.unlimited') }}
                   </p>
-                  <p class="text-xs text-emerald-600/70 dark:text-emerald-400/70">
+                  <p class="text-xs" style="color: var(--nm-success-text); opacity: 0.75">
                     {{ t('userSubscriptions.unlimitedDesc') }}
                   </p>
                 </div>

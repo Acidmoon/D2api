@@ -2,9 +2,9 @@
   <BaseDialog :show="show" :title="t('admin.users.groupConfig')" width="wide" @close="$emit('close')">
     <div v-if="user" class="space-y-6">
       <!-- 用户信息头部 -->
-      <div class="flex items-center gap-4 rounded-2xl bg-gradient-to-r from-primary-50 to-primary-100 p-5 dark:from-primary-900/30 dark:to-primary-800/20">
-        <div class="flex h-14 w-14 items-center justify-center rounded-full bg-white shadow-sm dark:bg-dark-700">
-          <span class="text-2xl font-semibold text-primary-600 dark:text-primary-400">{{ user.email.charAt(0).toUpperCase() }}</span>
+      <div class="flex items-center gap-4 rounded-2xl p-5" style="background: var(--nm-surface-soft); box-shadow: var(--nm-shadow-inset)">
+        <div class="flex h-14 w-14 items-center justify-center rounded-full" style="background: var(--nm-surface); box-shadow: var(--nm-shadow-raised-sm)">
+          <span class="text-2xl font-semibold" style="color: var(--nm-accent-text)">{{ user.email.charAt(0).toUpperCase() }}</span>
         </div>
         <div class="flex-1">
           <p class="text-lg font-semibold text-gray-900 dark:text-white">{{ user.email }}</p>

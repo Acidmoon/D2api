@@ -65,20 +65,18 @@ export default {
         mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace']
       },
       boxShadow: {
-        // Neumorphic raised (light top-left / dark bottom-right)
-        'nm-sm': '6px 6px 12px rgba(166, 173, 189, 0.45), -4px -4px 8px rgba(255, 255, 255, 0.85)',
-        nm: '8px 8px 16px rgba(166, 173, 189, 0.50), -6px -6px 12px rgba(255, 255, 255, 0.90)',
-        'nm-lg': '12px 12px 24px rgba(166, 173, 189, 0.55), -8px -8px 16px rgba(255, 255, 255, 0.95)',
-        // Neumorphic inset (pressed / sunken)
-        'nm-inset-sm': 'inset 3px 3px 6px rgba(166, 173, 189, 0.40), inset -2px -2px 4px rgba(255, 255, 255, 0.80)',
-        'nm-inset': 'inset 5px 5px 10px rgba(166, 173, 189, 0.45), inset -3px -3px 6px rgba(255, 255, 255, 0.85)',
-        'nm-inset-lg': 'inset 8px 8px 16px rgba(166, 173, 189, 0.50), inset -4px -4px 8px rgba(255, 255, 255, 0.90)',
-        // Neumorphic dark mode
-        'nm-dark-sm': '6px 6px 12px rgba(15, 16, 20, 0.65), -4px -4px 8px rgba(55, 58, 68, 0.35)',
-        'nm-dark': '8px 8px 16px rgba(15, 16, 20, 0.70), -6px -6px 12px rgba(55, 58, 68, 0.40)',
-        'nm-dark-lg': '12px 12px 24px rgba(15, 16, 20, 0.75), -8px -8px 16px rgba(55, 58, 68, 0.45)',
-        'nm-dark-inset': 'inset 5px 5px 10px rgba(15, 16, 20, 0.55), inset -3px -3px 6px rgba(55, 58, 68, 0.25)',
-        'nm-dark-inset-lg': 'inset 8px 8px 16px rgba(15, 16, 20, 0.60), inset -4px -4px 8px rgba(55, 58, 68, 0.30)'
+        // Neumorphic shadows are driven by CSS variables (defined in style.css),
+        // so light/dark switch automatically — no separate -dark variants needed.
+        'nm-sm': 'var(--nm-shadow-raised-sm)',
+        nm: 'var(--nm-shadow-raised)',
+        'nm-lg': 'var(--nm-shadow-raised-lg)',
+        'nm-inset': 'var(--nm-shadow-inset)',
+        'nm-pressed': 'var(--nm-shadow-pressed)',
+        // Semantic aliases consumed by .card / .glass-card / .card-hover and
+        // any inline `shadow-card`/`shadow-glass` usages.
+        card: 'var(--nm-shadow-raised-sm)',
+        'card-hover': 'var(--nm-shadow-raised-lg)',
+        glass: 'var(--nm-shadow-raised)'
       },
       borderRadius: {
         '4xl': '1.5rem',

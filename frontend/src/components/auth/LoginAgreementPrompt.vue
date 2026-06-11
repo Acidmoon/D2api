@@ -61,7 +61,8 @@
     <Transition name="agreement-fade">
       <div
         v-if="dialogVisible"
-        class="fixed inset-0 z-[140] flex items-center justify-center overflow-y-auto bg-gray-950/60 p-4 backdrop-blur-sm"
+        class="fixed inset-0 z-[140] flex items-center justify-center overflow-y-auto p-4"
+        style="background-color: rgba(28, 31, 38, 0.45)"
       >
         <div class="w-full max-w-[600px] overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-black/10 dark:bg-dark-900 dark:ring-white/10">
           <div class="border-b border-gray-100 bg-white px-6 py-6 dark:border-dark-800 dark:bg-dark-900">

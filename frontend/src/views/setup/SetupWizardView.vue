@@ -1,14 +1,16 @@
 <template>
   <div
-    class="flex min-h-screen items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 p-4 dark:from-dark-900 dark:to-dark-800"
+    class="flex min-h-screen items-center justify-center p-4"
+    style="background-color: var(--nm-bg)"
   >
     <div class="w-full max-w-2xl">
       <!-- Logo & Title -->
       <div class="mb-8 text-center">
         <div
-          class="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-primary-500 to-primary-600 shadow-lg"
+          class="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-2xl"
+          style="background: var(--nm-accent); box-shadow: var(--nm-shadow-raised-sm)"
         >
-          <Icon name="cog" size="xl" class="text-white" />
+          <Icon name="cog" size="xl" style="color: var(--nm-on-accent)" />
         </div>
         <h1 class="text-3xl font-bold text-gray-900 dark:text-white">{{ t('setup.title') }}</h1>
         <p class="mt-2 text-gray-500 dark:text-dark-400">{{ t('setup.description') }}</p>
