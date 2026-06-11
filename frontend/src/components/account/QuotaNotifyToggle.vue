@@ -20,13 +20,13 @@ const emit = defineEmits<{
       type="button"
       @click="emit('update:enabled', !enabled)"
       :class="[
-        'relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none',
-        enabled ? 'bg-primary-600' : 'bg-gray-200 dark:bg-dark-600'
+        'quota-notify-switch',
+        enabled ? 'quota-notify-switch-on' : 'quota-notify-switch-off'
       ]"
     >
       <span
         :class="[
-          'pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out',
+          'quota-notify-thumb',
           enabled ? 'translate-x-4' : 'translate-x-0'
         ]"
       />
@@ -52,3 +52,43 @@ const emit = defineEmits<{
     </template>
   </div>
 </template>
+
+<style scoped>
+.quota-notify-switch {
+  position: relative;
+  display: inline-flex;
+  height: 1.25rem;
+  width: 2.25rem;
+  flex-shrink: 0;
+  cursor: pointer;
+  align-items: center;
+  border: 1px solid var(--nm-border);
+  border-radius: 999px;
+  transition: background-color 160ms ease, border-color 160ms ease;
+}
+
+.quota-notify-switch:focus {
+  outline: 3px solid color-mix(in srgb, var(--nm-accent) 28%, transparent);
+  outline-offset: 2px;
+}
+
+.quota-notify-switch-on {
+  border-color: var(--nm-accent);
+  background: var(--nm-accent);
+}
+
+.quota-notify-switch-off {
+  background: var(--nm-surface-soft);
+}
+
+.quota-notify-thumb {
+  pointer-events: none;
+  display: inline-block;
+  height: 0.875rem;
+  width: 0.875rem;
+  border: 1px solid var(--nm-border);
+  border-radius: 999px;
+  background: var(--nm-surface);
+  transition: transform 160ms ease;
+}
+</style>
