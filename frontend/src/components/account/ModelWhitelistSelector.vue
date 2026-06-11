@@ -4,13 +4,13 @@
     <div class="relative mb-3">
       <div
         @click="toggleDropdown"
-        class="cursor-pointer rounded-lg border border-gray-300 bg-white px-3 py-2 dark:border-dark-500 dark:bg-dark-700"
+        class="model-selector-trigger"
       >
         <div class="grid grid-cols-2 gap-1.5">
           <span
             v-for="model in modelValue"
             :key="model"
-            class="inline-flex items-center justify-between gap-1 rounded bg-gray-100 px-2 py-1 text-xs text-gray-700 dark:bg-dark-600 dark:text-gray-300"
+            class="model-chip"
           >
             <span class="flex items-center gap-1 truncate">
               <ModelIcon :model="model" size="14px" />
@@ -19,15 +19,15 @@
             <button
               type="button"
               @click.stop="removeModel(model)"
-              class="shrink-0 rounded-full hover:bg-gray-200 dark:hover:bg-dark-500"
+              class="model-chip-remove"
             >
               <Icon name="x" size="xs" class="h-3.5 w-3.5" :stroke-width="2" />
             </button>
           </span>
         </div>
-        <div class="mt-2 flex items-center justify-between border-t border-gray-200 pt-2 dark:border-dark-600">
-          <span class="text-xs text-gray-400">{{ t('admin.accounts.modelCount', { count: modelValue.length }) }}</span>
-          <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div class="model-selector-footer">
+          <span class="model-count">{{ t('admin.accounts.modelCount', { count: modelValue.length }) }}</span>
+          <svg class="model-chevron h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
           </svg>
         </div>
@@ -35,9 +35,9 @@
       <!-- Dropdown List -->
       <div
         v-if="showDropdown"
-        class="absolute left-0 right-0 top-full z-50 mt-1 rounded-lg border border-gray-200 bg-white shadow-lg dark:border-dark-600 dark:bg-dark-700"
+        class="model-dropdown"
       >
-        <div class="sticky top-0 border-b border-gray-200 bg-white p-2 dark:border-dark-600 dark:bg-dark-700">
+        <div class="model-dropdown-search">
           <input
             v-model="searchQuery"
             type="text"
@@ -52,14 +52,12 @@
             :key="model.value"
             type="button"
             @click="toggleModel(model.value)"
-            class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-dark-600"
+            class="model-option"
           >
             <span
               :class="[
-                'flex h-4 w-4 shrink-0 items-center justify-center rounded border',
-                modelValue.includes(model.value)
-                  ? 'border-primary-500 bg-primary-500 text-white'
-                  : 'border-gray-300 dark:border-dark-500'
+                'model-checkmark',
+                modelValue.includes(model.value) ? 'model-checkmark--selected' : ''
               ]"
             >
               <svg v-if="modelValue.includes(model.value)" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -67,9 +65,9 @@
               </svg>
             </span>
             <ModelIcon :model="model.value" size="18px" />
-            <span class="truncate text-gray-900 dark:text-white">{{ model.value }}</span>
+            <span class="model-option-name">{{ model.value }}</span>
           </button>
-          <div v-if="filteredModels.length === 0" class="px-3 py-4 text-center text-sm text-gray-500">
+          <div v-if="filteredModels.length === 0" class="model-empty">
             {{ t('admin.accounts.noMatchingModels') }}
           </div>
         </div>
@@ -81,7 +79,7 @@
       <button
         type="button"
         @click="fillRelated"
-        class="rounded-lg border border-blue-200 px-3 py-1.5 text-sm text-blue-600 hover:bg-blue-50 dark:border-blue-800 dark:text-blue-400 dark:hover:bg-blue-900/30"
+        class="model-action model-action--neutral"
       >
         {{ t('admin.accounts.fillRelatedModels') }}
       </button>
@@ -90,14 +88,14 @@
         type="button"
         @click="syncUpstreamModels"
         :disabled="isSyncingUpstream"
-        class="rounded-lg border border-emerald-200 px-3 py-1.5 text-sm text-emerald-600 hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-emerald-800 dark:text-emerald-400 dark:hover:bg-emerald-900/30"
+        class="model-action model-action--success"
       >
         {{ isSyncingUpstream ? t('admin.accounts.syncUpstreamModelsLoading') : t('admin.accounts.syncUpstreamModels') }}
       </button>
       <button
         type="button"
         @click="clearAll"
-        class="rounded-lg border border-red-200 px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/30"
+        class="model-action model-action--danger"
       >
         {{ t('admin.accounts.clearAllModels') }}
       </button>
@@ -105,7 +103,7 @@
 
     <!-- Custom Model Input -->
     <div class="mb-3">
-      <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">{{ t('admin.accounts.customModelName') }}</label>
+      <label class="model-field-label">{{ t('admin.accounts.customModelName') }}</label>
       <div class="flex gap-2">
         <input
           v-model="customModel"
@@ -119,7 +117,7 @@
         <button
           type="button"
           @click="addCustom"
-          class="rounded-lg bg-primary-50 px-4 py-2 text-sm font-medium text-primary-600 hover:bg-primary-100 dark:bg-primary-900/30 dark:text-primary-400 dark:hover:bg-primary-900/50"
+          class="model-add-button"
         >
           {{ t('admin.accounts.addModel') }}
         </button>
@@ -309,3 +307,179 @@ const clearAll = () => {
 }
 
 </script>
+
+<style scoped>
+.model-selector-trigger {
+  cursor: pointer;
+  border: 1px solid var(--nm-border);
+  border-radius: var(--nm-radius-lg);
+  background: var(--nm-surface);
+  padding: 0.5rem 0.75rem;
+}
+
+.model-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.25rem;
+  border: 1px solid var(--nm-border-light);
+  border-radius: var(--nm-radius);
+  background: var(--nm-surface-soft);
+  padding: 0.25rem 0.5rem;
+  color: var(--nm-ink-muted);
+  font-size: 0.75rem;
+  line-height: 1.25;
+}
+
+.model-chip-remove {
+  flex-shrink: 0;
+  border-radius: var(--nm-radius-sm);
+  color: var(--nm-ink-faint);
+  transition: background-color 160ms ease, color 160ms ease;
+}
+
+.model-chip-remove:hover {
+  background: var(--nm-surface-alt);
+  color: var(--nm-ink);
+}
+
+.model-selector-footer {
+  margin-top: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid var(--nm-border-light);
+  padding-top: 0.5rem;
+}
+
+.model-count,
+.model-chevron,
+.model-empty {
+  color: var(--nm-ink-faint);
+}
+
+.model-count {
+  font-size: 0.75rem;
+  line-height: 1.25;
+}
+
+.model-dropdown {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  z-index: 50;
+  margin-top: 0.25rem;
+  border: 1px solid var(--nm-border);
+  border-radius: var(--nm-radius-lg);
+  background: var(--nm-surface);
+}
+
+.model-dropdown-search {
+  position: sticky;
+  top: 0;
+  border-bottom: 1px solid var(--nm-border-light);
+  background: var(--nm-surface);
+  padding: 0.5rem;
+}
+
+.model-option {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  color: var(--nm-ink);
+  font-size: 0.875rem;
+  transition: background-color 160ms ease;
+}
+
+.model-option:hover {
+  background: var(--nm-surface-soft);
+}
+
+.model-checkmark {
+  display: flex;
+  height: 1rem;
+  width: 1rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--nm-border);
+  border-radius: var(--nm-radius-sm);
+  color: var(--nm-on-accent);
+}
+
+.model-checkmark--selected {
+  border-color: var(--nm-accent);
+  background: var(--nm-accent);
+}
+
+.model-option-name {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--nm-ink);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.model-empty {
+  padding: 1rem 0.75rem;
+  text-align: center;
+  font-size: 0.875rem;
+}
+
+.model-action,
+.model-add-button {
+  border: 1px solid var(--nm-border);
+  border-radius: var(--nm-radius);
+  padding: 0.375rem 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+
+.model-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.model-action--neutral,
+.model-add-button {
+  color: var(--nm-accent-text);
+}
+
+.model-action--neutral:hover,
+.model-add-button:hover {
+  border-color: var(--nm-accent);
+  background: var(--nm-accent-soft);
+}
+
+.model-action--success {
+  border-color: var(--nm-success);
+  color: var(--nm-success-text);
+}
+
+.model-action--success:hover {
+  background: var(--nm-success-soft);
+}
+
+.model-action--danger {
+  border-color: var(--nm-danger);
+  color: var(--nm-danger-text);
+}
+
+.model-action--danger:hover {
+  background: var(--nm-danger-soft);
+}
+
+.model-field-label {
+  margin-bottom: 0.375rem;
+  display: block;
+  color: var(--nm-ink-muted);
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+</style>
