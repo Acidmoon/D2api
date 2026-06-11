@@ -100,7 +100,7 @@ onBeforeUnmount(() => {
     <!-- Trigger Icon -->
     <slot name="trigger">
       <svg
-        class="h-4 w-4 cursor-help text-gray-400 transition-colors hover:text-primary-600 dark:text-gray-500 dark:hover:text-primary-400"
+        class="tooltip-trigger-icon h-4 w-4 cursor-help"
         fill="none"
         viewBox="0 0 24 24"
         stroke="currentColor"
@@ -121,7 +121,7 @@ onBeforeUnmount(() => {
         v-show="show"
         role="tooltip"
         :class="[
-          'fixed z-[99999] -translate-x-1/2 -translate-y-full rounded-lg bg-gray-900 p-3 text-xs leading-relaxed text-white shadow-xl ring-1 ring-white/10 dark:bg-gray-800',
+          'tooltip-panel fixed z-[99999] -translate-x-1/2 -translate-y-full p-3 text-xs leading-relaxed',
           props.widthClass,
         ]"
         :style="{ top: `calc(${tooltipStyle.top} - 8px)`, left: tooltipStyle.left }"
@@ -129,7 +129,7 @@ onBeforeUnmount(() => {
         <button
           v-if="props.trigger === 'click'"
           type="button"
-          class="absolute right-1.5 top-1.5 rounded p-1 text-gray-300 transition-colors hover:bg-white/10 hover:text-white"
+          class="tooltip-close absolute right-1.5 top-1.5 p-1"
           aria-label="Close"
           @click.stop="closeTooltip"
         >
@@ -138,8 +138,43 @@ onBeforeUnmount(() => {
           </svg>
         </button>
         <slot>{{ content }}</slot>
-        <div class="absolute -bottom-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 bg-gray-900 dark:bg-gray-800"></div>
+        <div class="tooltip-arrow absolute -bottom-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45"></div>
       </div>
     </Teleport>
   </div>
 </template>
+
+<style scoped>
+.tooltip-trigger-icon {
+  color: var(--nm-ink-faint);
+  transition: color 160ms ease;
+}
+
+.tooltip-trigger-icon:hover {
+  color: var(--nm-accent-text);
+}
+
+.tooltip-panel {
+  color: var(--nm-ink);
+  background: var(--nm-surface);
+  border: 1px solid var(--nm-border);
+  border-radius: var(--nm-radius);
+}
+
+.tooltip-close {
+  color: var(--nm-ink-muted);
+  border-radius: var(--nm-radius-sm);
+  transition: background-color 160ms ease, color 160ms ease;
+}
+
+.tooltip-close:hover {
+  color: var(--nm-ink);
+  background: var(--nm-surface-soft);
+}
+
+.tooltip-arrow {
+  background: var(--nm-surface);
+  border-bottom: 1px solid var(--nm-border);
+  border-right: 1px solid var(--nm-border);
+}
+</style>

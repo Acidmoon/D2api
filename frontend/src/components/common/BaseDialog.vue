@@ -20,7 +20,7 @@
             <button
               v-if="showCloseButton"
               @click="emit('close')"
-              class="-mr-2 rounded-xl p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 dark:text-dark-500 dark:hover:bg-dark-700 dark:hover:text-dark-300"
+              class="dialog-close-button -mr-2 p-2"
               aria-label="Close modal"
             >
               <Icon name="x" size="md" />
@@ -151,3 +151,18 @@ onUnmounted(() => {
   document.body.classList.remove('modal-open')
 })
 </script>
+
+<style scoped>
+.dialog-close-button {
+  color: var(--nm-ink-faint);
+  border: 1px solid transparent;
+  border-radius: var(--nm-radius);
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+
+.dialog-close-button:hover {
+  color: var(--nm-ink);
+  background: var(--nm-surface-soft);
+  border-color: var(--nm-border-light);
+}
+</style>
