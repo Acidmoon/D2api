@@ -2,7 +2,8 @@
   <div class="space-y-4">
     <button type="button" :disabled="buttonDisabled" class="btn btn-secondary w-full" @click="startLogin">
       <span
-        class="mr-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-green-100 text-xs font-semibold text-green-700 dark:bg-green-900/30 dark:text-green-300"
+        class="mr-2 inline-flex h-5 w-5 items-center justify-center border text-xs font-semibold"
+        style="border-color: var(--nm-border); background: var(--nm-surface-soft); color: var(--nm-ink); border-radius: var(--nm-radius-sm)"
       >
         W
       </span>
@@ -12,17 +13,17 @@
     <p
       v-if="disabledHint"
       data-testid="wechat-oauth-hint"
-      class="text-sm text-amber-600 dark:text-amber-400"
+      class="text-sm text-semantic-warning"
     >
       {{ disabledHint }}
     </p>
 
     <div v-if="showDivider" class="flex items-center gap-3">
-      <div class="h-px flex-1 bg-gray-200 dark:bg-dark-700"></div>
-      <span class="text-xs text-gray-500 dark:text-dark-400">
+      <div class="h-px flex-1" style="background: var(--nm-border-light)"></div>
+      <span class="text-xs" style="color: var(--nm-ink-muted)">
         {{ t('auth.oauthOrContinue') }}
       </span>
-      <div class="h-px flex-1 bg-gray-200 dark:bg-dark-700"></div>
+      <div class="h-px flex-1" style="background: var(--nm-border-light)"></div>
     </div>
   </div>
 </template>

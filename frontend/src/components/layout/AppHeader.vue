@@ -1,5 +1,8 @@
 <template>
-  <header class="glass sticky top-0 z-30">
+  <header
+    class="sticky top-0 z-30 border-b"
+    style="background: var(--nm-bg); border-color: var(--nm-border-light)"
+  >
     <div class="flex h-16 items-center justify-between px-4 md:px-6">
       <!-- Left: Mobile Menu Toggle + Page Title -->
       <div class="flex items-center gap-4">
@@ -73,7 +76,7 @@
         <div v-if="user" class="relative" ref="dropdownRef">
           <button
             @click="toggleDropdown"
-            class="flex min-h-11 items-center gap-2 p-1.5 transition-colors hover:bg-gray-100 dark:hover:bg-dark-800"
+            class="user-menu-trigger flex min-h-11 items-center gap-2 p-1.5 transition-colors"
             style="border-radius: var(--nm-radius)"
             aria-label="User Menu"
           >
@@ -94,26 +97,26 @@
                 {{ user.role }}
               </div>
             </div>
-            <Icon name="chevronDown" size="sm" class="hidden text-gray-400 md:block" />
+            <Icon name="chevronDown" size="sm" class="hidden md:block" style="color: var(--nm-ink-muted)" />
           </button>
 
           <!-- Dropdown Menu -->
           <transition name="dropdown">
             <div v-if="dropdownOpen" class="dropdown right-0 mt-2 w-56">
               <!-- User Info -->
-              <div class="border-b border-gray-100 px-4 py-3 dark:border-dark-700">
-                <div class="text-sm font-medium text-gray-900 dark:text-white">
+              <div class="border-b px-4 py-3" style="border-color: var(--nm-border-light)">
+                <div class="text-sm font-medium" style="color: var(--nm-ink)">
                   {{ displayName }}
                 </div>
-                <div class="text-xs text-gray-500 dark:text-dark-400">{{ user.email }}</div>
+                <div class="text-xs" style="color: var(--nm-ink-muted)">{{ user.email }}</div>
               </div>
 
               <!-- Balance (mobile only) -->
-              <div class="border-b border-gray-100 px-4 py-2 dark:border-dark-700 sm:hidden">
-                <div class="text-xs text-gray-500 dark:text-dark-400">
+              <div class="border-b px-4 py-2 sm:hidden" style="border-color: var(--nm-border-light)">
+                <div class="text-xs" style="color: var(--nm-ink-muted)">
                   {{ t('common.balance') }}
                 </div>
-                <div class="text-sm font-semibold text-primary-600 dark:text-primary-400">
+                <div class="text-sm font-semibold" style="color: var(--nm-accent-text)">
                   ${{ user.balance?.toFixed(2) || '0.00' }}
                 </div>
               </div>
@@ -152,9 +155,10 @@
               <!-- Contact Support (only show if configured) -->
               <div
                 v-if="contactInfo"
-                class="border-t border-gray-100 px-4 py-2.5 dark:border-dark-700"
+                class="border-t px-4 py-2.5"
+                style="border-color: var(--nm-border-light)"
               >
-                <div class="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                <div class="flex items-center gap-2 text-xs" style="color: var(--nm-ink-muted)">
                   <svg
                     class="h-3.5 w-3.5 flex-shrink-0"
                     fill="none"
@@ -169,13 +173,13 @@
                     />
                   </svg>
                   <span>{{ t('common.contactSupport') }}:</span>
-                  <span class="font-medium text-gray-700 dark:text-gray-300">{{
+                  <span class="font-medium" style="color: var(--nm-ink)">{{
                     contactInfo
                   }}</span>
                 </div>
               </div>
 
-              <div v-if="showOnboardingButton" class="border-t border-gray-100 py-1 dark:border-dark-700">
+              <div v-if="showOnboardingButton" class="border-t py-1" style="border-color: var(--nm-border-light)">
                 <button @click="handleReplayGuide" class="dropdown-item w-full">
                   <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
                     <path
@@ -186,10 +190,10 @@
                 </button>
               </div>
 
-              <div class="border-t border-gray-100 py-1 dark:border-dark-700">
+              <div class="border-t py-1" style="border-color: var(--nm-border-light)">
                 <button
                   @click="handleLogout"
-                  class="dropdown-item w-full text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
+                  class="dropdown-item logout-item w-full text-semantic-danger"
                 >
                   <svg
                     class="h-4 w-4"
@@ -342,5 +346,13 @@ onBeforeUnmount(() => {
 .dropdown-leave-to {
   opacity: 0;
   transform: scale(0.95) translateY(-4px);
+}
+
+.user-menu-trigger:hover {
+  background: var(--nm-surface-soft);
+}
+
+.logout-item:hover {
+  background: var(--nm-danger-soft);
 }
 </style>
