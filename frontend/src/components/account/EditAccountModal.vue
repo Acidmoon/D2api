@@ -70,14 +70,14 @@
         </div>
 
         <!-- Model Restriction Section (不适用于 Antigravity) -->
-        <div v-if="account.platform !== 'antigravity'" class="border-t border-gray-200 pt-4 dark:border-dark-600">
+        <div v-if="account.platform !== 'antigravity'" class="edit-section">
           <label class="input-label">{{ t('admin.accounts.modelRestriction') }}</label>
 
           <div
             v-if="isOpenAIModelRestrictionDisabled"
-            class="mb-3 rounded-lg bg-amber-50 p-3 dark:bg-amber-900/20"
+            class="edit-callout edit-callout--warning"
           >
-            <p class="text-xs text-amber-700 dark:text-amber-400">
+            <p class="edit-callout-text">
               {{ t('admin.accounts.openai.modelRestrictionDisabledByPassthrough') }}
             </p>
           </div>
@@ -89,10 +89,8 @@
                 type="button"
                 @click="modelRestrictionMode = 'whitelist'"
                 :class="[
-                  'flex-1 rounded-lg px-4 py-2 text-sm font-medium transition-all',
-                  modelRestrictionMode === 'whitelist'
-                    ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500'
+                  'edit-mode-tab',
+                  modelRestrictionMode === 'whitelist' ? 'edit-mode-tab--active' : ''
                 ]"
               >
                 <svg
@@ -114,10 +112,8 @@
                 type="button"
                 @click="modelRestrictionMode = 'mapping'"
                 :class="[
-                  'flex-1 rounded-lg px-4 py-2 text-sm font-medium transition-all',
-                  modelRestrictionMode === 'mapping'
-                    ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500'
+                  'edit-mode-tab',
+                  modelRestrictionMode === 'mapping' ? 'edit-mode-tab--active' : ''
                 ]"
               >
                 <svg
@@ -140,7 +136,7 @@
             <!-- Whitelist Mode -->
             <div v-if="modelRestrictionMode === 'whitelist'">
               <ModelWhitelistSelector v-model="allowedModels" :platform="account?.platform || 'anthropic'" :account-id="account?.id" />
-              <p class="text-xs text-gray-500 dark:text-gray-400">
+              <p class="edit-hint">
                 {{ t('admin.accounts.selectedModels', { count: allowedModels.length }) }}
                 <span v-if="allowedModels.length === 0 && modelMappings.length === 0">{{
                   t('admin.accounts.supportsAllModels')
@@ -150,8 +146,8 @@
 
             <!-- Mapping Mode -->
             <div v-else>
-              <div class="mb-3 rounded-lg bg-purple-50 p-3 dark:bg-purple-900/20">
-                <p class="text-xs text-purple-700 dark:text-purple-400">
+              <div class="edit-callout edit-callout--info">
+                <p class="edit-callout-text">
                   <svg
                     class="mr-1 inline h-4 w-4"
                     fill="none"
@@ -183,7 +179,7 @@
                   :placeholder="t('admin.accounts.requestModel')"
                 />
                 <svg
-                  class="h-4 w-4 flex-shrink-0 text-gray-400"
+                  class="edit-mapping-arrow"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
@@ -204,7 +200,7 @@
                 <button
                   type="button"
                   @click="removeModelMapping(index)"
-                  class="rounded-lg p-2 text-red-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
+                  class="edit-icon-danger"
                 >
                   <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path
@@ -221,7 +217,7 @@
             <button
               type="button"
               @click="addModelMapping"
-              class="mb-3 w-full rounded-lg border-2 border-dashed border-gray-300 px-4 py-2 text-gray-600 transition-colors hover:border-gray-400 hover:text-gray-700 dark:border-dark-500 dark:text-gray-400 dark:hover:border-dark-400 dark:hover:text-gray-300"
+              class="edit-add-row-button"
             >
               <svg
                 class="mr-1 inline h-4 w-4"
@@ -246,7 +242,7 @@
                   :key="preset.label"
                   type="button"
                   @click="addPresetMapping(preset.from, preset.to)"
-                  :class="['rounded-lg px-3 py-1 text-xs transition-colors', preset.color]"
+                  class="edit-preset-chip"
                 >
                   + {{ preset.label }}
                 </button>
@@ -256,11 +252,11 @@
         </div>
 
         <!-- Pool Mode Section -->
-        <div class="border-t border-gray-200 pt-4 dark:border-dark-600">
+        <div class="edit-section">
           <div class="mb-3 flex items-center justify-between">
             <div>
               <label class="input-label mb-0">{{ t('admin.accounts.poolMode') }}</label>
-              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              <p class="edit-hint">
                 {{ t('admin.accounts.poolModeHint') }}
               </p>
             </div>
@@ -268,20 +264,20 @@
               type="button"
               @click="poolModeEnabled = !poolModeEnabled"
               :class="[
-                'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2',
-                poolModeEnabled ? 'bg-primary-600' : 'bg-gray-200 dark:bg-dark-600'
+                'edit-switch',
+                poolModeEnabled ? 'edit-switch--on' : 'edit-switch--off'
               ]"
             >
               <span
                 :class="[
-                  'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out',
+                  'edit-switch-thumb',
                   poolModeEnabled ? 'translate-x-5' : 'translate-x-0'
                 ]"
               />
             </button>
           </div>
-          <div v-if="poolModeEnabled" class="rounded-lg bg-blue-50 p-3 dark:bg-blue-900/20">
-            <p class="text-xs text-blue-700 dark:text-blue-400">
+          <div v-if="poolModeEnabled" class="edit-callout edit-callout--info">
+            <p class="edit-callout-text">
               <Icon name="exclamationCircle" size="sm" class="mr-1 inline" :stroke-width="2" />
               {{ t('admin.accounts.poolModeInfo') }}
             </p>
@@ -296,7 +292,7 @@
               step="1"
               class="input"
             />
-            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            <p class="edit-hint">
               {{
                 t('admin.accounts.poolModeRetryCountHint', {
                   default: DEFAULT_POOL_MODE_RETRY_COUNT,
@@ -313,18 +309,18 @@
               class="input"
               :placeholder="DEFAULT_POOL_MODE_RETRY_STATUS_CODES.join(', ')"
             />
-            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            <p class="edit-hint">
               {{ t('admin.accounts.poolModeRetryStatusCodesHint', { default: DEFAULT_POOL_MODE_RETRY_STATUS_CODES.join(', ') }) }}
             </p>
           </div>
         </div>
 
         <!-- Custom Error Codes Section -->
-        <div class="border-t border-gray-200 pt-4 dark:border-dark-600">
+        <div class="edit-section">
           <div class="mb-3 flex items-center justify-between">
             <div>
               <label class="input-label mb-0">{{ t('admin.accounts.customErrorCodes') }}</label>
-              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              <p class="edit-hint">
                 {{ t('admin.accounts.customErrorCodesHint') }}
               </p>
             </div>
@@ -332,13 +328,13 @@
               type="button"
               @click="customErrorCodesEnabled = !customErrorCodesEnabled"
               :class="[
-                'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2',
-                customErrorCodesEnabled ? 'bg-primary-600' : 'bg-gray-200 dark:bg-dark-600'
+                'edit-switch',
+                customErrorCodesEnabled ? 'edit-switch--on' : 'edit-switch--off'
               ]"
             >
               <span
                 :class="[
-                  'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out',
+                  'edit-switch-thumb',
                   customErrorCodesEnabled ? 'translate-x-5' : 'translate-x-0'
                 ]"
               />
@@ -346,8 +342,8 @@
           </div>
 
           <div v-if="customErrorCodesEnabled" class="space-y-3">
-            <div class="rounded-lg bg-amber-50 p-3 dark:bg-amber-900/20">
-              <p class="text-xs text-amber-700 dark:text-amber-400">
+            <div class="edit-callout edit-callout--warning">
+              <p class="edit-callout-text">
                 <Icon name="exclamationTriangle" size="sm" class="mr-1 inline" :stroke-width="2" />
                 {{ t('admin.accounts.customErrorCodesWarning') }}
               </p>
@@ -361,10 +357,8 @@
                 type="button"
                 @click="toggleErrorCode(code.value)"
                 :class="[
-                  'rounded-lg px-3 py-1.5 text-sm font-medium transition-colors',
-                  selectedErrorCodes.includes(code.value)
-                    ? 'bg-red-100 text-red-700 ring-1 ring-red-500 dark:bg-red-900/30 dark:text-red-400'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500'
+                  'edit-chip',
+                  selectedErrorCodes.includes(code.value) ? 'edit-chip--danger-active' : ''
                 ]"
               >
                 {{ code.value }} {{ code.label }}
@@ -399,18 +393,18 @@
               <span
                 v-for="code in selectedErrorCodes.sort((a, b) => a - b)"
                 :key="code"
-                class="inline-flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-0.5 text-sm font-medium text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                class="edit-chip edit-chip--danger-active"
               >
                 {{ code }}
                 <button
                   type="button"
                   @click="removeErrorCode(code)"
-                  class="hover:text-red-900 dark:hover:text-red-300"
+                  class="edit-chip-remove"
                 >
                   <Icon name="x" size="sm" :stroke-width="2" />
                 </button>
               </span>
-              <span v-if="selectedErrorCodes.length === 0" class="text-xs text-gray-400">
+              <span v-if="selectedErrorCodes.length === 0" class="edit-empty-text">
                 {{ t('admin.accounts.noneSelectedUsesDefault') }}
               </span>
             </div>
@@ -422,15 +416,15 @@
       <!-- OpenAI OAuth Model Mapping (OAuth 类型没有 apikey 容器，需要独立的模型映射区域) -->
       <div
         v-if="account.platform === 'openai' && account.type === 'oauth'"
-        class="border-t border-gray-200 pt-4 dark:border-dark-600"
+        class="edit-section"
       >
         <label class="input-label">{{ t('admin.accounts.modelRestriction') }}</label>
 
         <div
           v-if="isOpenAIModelRestrictionDisabled"
-          class="mb-3 rounded-lg bg-amber-50 p-3 dark:bg-amber-900/20"
+          class="edit-callout edit-callout--warning"
         >
-          <p class="text-xs text-amber-700 dark:text-amber-400">
+          <p class="edit-callout-text">
             {{ t('admin.accounts.openai.modelRestrictionDisabledByPassthrough') }}
           </p>
         </div>
@@ -442,10 +436,8 @@
               type="button"
               @click="modelRestrictionMode = 'whitelist'"
               :class="[
-                'flex-1 rounded-lg px-4 py-2 text-sm font-medium transition-all',
-                modelRestrictionMode === 'whitelist'
-                  ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500'
+                'edit-mode-tab',
+                modelRestrictionMode === 'whitelist' ? 'edit-mode-tab--active' : ''
               ]"
             >
               {{ t('admin.accounts.modelWhitelist') }}
@@ -454,10 +446,8 @@
               type="button"
               @click="modelRestrictionMode = 'mapping'"
               :class="[
-                'flex-1 rounded-lg px-4 py-2 text-sm font-medium transition-all',
-                modelRestrictionMode === 'mapping'
-                  ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500'
+                'edit-mode-tab',
+                modelRestrictionMode === 'mapping' ? 'edit-mode-tab--active' : ''
               ]"
             >
               {{ t('admin.accounts.modelMapping') }}
@@ -467,7 +457,7 @@
           <!-- Whitelist Mode -->
           <div v-if="modelRestrictionMode === 'whitelist'">
             <ModelWhitelistSelector v-model="allowedModels" :platform="account?.platform || 'anthropic'" :account-id="account?.id" />
-            <p class="text-xs text-gray-500 dark:text-gray-400">
+            <p class="edit-hint">
               {{ t('admin.accounts.selectedModels', { count: allowedModels.length }) }}
               <span v-if="allowedModels.length === 0 && modelMappings.length === 0">{{
                 t('admin.accounts.supportsAllModels')
@@ -477,8 +467,8 @@
 
           <!-- Mapping Mode -->
           <div v-else>
-            <div class="mb-3 rounded-lg bg-purple-50 p-3 dark:bg-purple-900/20">
-              <p class="text-xs text-purple-700 dark:text-purple-400">
+            <div class="edit-callout edit-callout--info">
+              <p class="edit-callout-text">
                 {{ t('admin.accounts.mapRequestModels') }}
               </p>
             </div>
@@ -496,7 +486,7 @@
                   :placeholder="t('admin.accounts.requestModel')"
                 />
                 <svg
-                  class="h-4 w-4 flex-shrink-0 text-gray-400"
+                  class="edit-mapping-arrow"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
@@ -517,7 +507,7 @@
                 <button
                   type="button"
                   @click="removeModelMapping(index)"
-                  class="rounded-lg p-2 text-red-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
+                  class="edit-icon-danger"
                 >
                   <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path
@@ -534,7 +524,7 @@
             <button
               type="button"
               @click="addModelMapping"
-              class="mb-3 w-full rounded-lg border-2 border-dashed border-gray-300 px-4 py-2 text-gray-600 transition-colors hover:border-gray-400 hover:text-gray-700 dark:border-dark-500 dark:text-gray-400 dark:hover:border-dark-400 dark:hover:text-gray-300"
+              class="edit-add-row-button"
             >
               + {{ t('admin.accounts.addMapping') }}
             </button>
@@ -546,7 +536,7 @@
                 :key="'oauth-' + preset.label"
                 type="button"
                 @click="addPresetMapping(preset.from, preset.to)"
-                :class="['rounded-lg px-3 py-1 text-xs transition-colors', preset.color]"
+                class="edit-preset-chip"
               >
                 + {{ preset.label }}
               </button>
@@ -4239,3 +4229,191 @@ const handleMixedChannelCancel = () => {
   clearMixedChannelDialog()
 }
 </script>
+
+<style scoped>
+.edit-section {
+  border-top: 1px solid var(--nm-border-light);
+  padding-top: 1rem;
+}
+
+.edit-callout {
+  margin-bottom: 0.75rem;
+  border: 1px solid var(--nm-border-light);
+  border-radius: var(--nm-radius-lg);
+  padding: 0.75rem;
+}
+
+.edit-callout--warning {
+  border-color: color-mix(in srgb, var(--nm-warning) 34%, var(--nm-border-light));
+  background: var(--nm-warning-soft);
+  color: var(--nm-warning-text);
+}
+
+.edit-callout--info {
+  border-color: color-mix(in srgb, var(--nm-info) 28%, var(--nm-border-light));
+  background: var(--nm-info-soft);
+  color: var(--nm-info-text);
+}
+
+.edit-callout-text {
+  color: inherit;
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+.edit-mode-tab {
+  flex: 1 1 0;
+  border: 1px solid var(--nm-border);
+  border-radius: var(--nm-radius);
+  background: var(--nm-surface-soft);
+  padding: 0.5rem 1rem;
+  color: var(--nm-ink-muted);
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.4;
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+
+.edit-mode-tab:hover {
+  border-color: var(--nm-ink-muted);
+  color: var(--nm-ink);
+}
+
+.edit-mode-tab--active {
+  border-color: var(--nm-accent);
+  background: var(--nm-accent-soft);
+  color: var(--nm-accent-text);
+}
+
+.edit-hint {
+  margin-top: 0.25rem;
+  color: var(--nm-ink-faint);
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+.edit-mapping-arrow {
+  height: 1rem;
+  width: 1rem;
+  flex-shrink: 0;
+  color: var(--nm-ink-faint);
+}
+
+.edit-icon-danger {
+  border-radius: var(--nm-radius);
+  padding: 0.5rem;
+  color: var(--nm-danger-text);
+  transition: background-color 160ms ease, color 160ms ease;
+}
+
+.edit-icon-danger:hover {
+  background: var(--nm-danger-soft);
+  color: var(--nm-danger);
+}
+
+.edit-add-row-button {
+  margin-bottom: 0.75rem;
+  width: 100%;
+  border: 1px dashed var(--nm-border);
+  border-radius: var(--nm-radius-lg);
+  padding: 0.5rem 1rem;
+  color: var(--nm-ink-muted);
+  transition: border-color 160ms ease, color 160ms ease, background-color 160ms ease;
+}
+
+.edit-add-row-button:hover {
+  border-color: var(--nm-ink-muted);
+  background: var(--nm-surface-soft);
+  color: var(--nm-ink);
+}
+
+.edit-preset-chip,
+.edit-chip {
+  border: 1px solid var(--nm-border);
+  border-radius: var(--nm-radius);
+  background: var(--nm-surface-soft);
+  color: var(--nm-ink-muted);
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+
+.edit-preset-chip {
+  padding: 0.25rem 0.75rem;
+  font-size: 0.75rem;
+  line-height: 1.3;
+}
+
+.edit-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.375rem 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.edit-preset-chip:hover,
+.edit-chip:hover {
+  border-color: var(--nm-ink-muted);
+  color: var(--nm-ink);
+}
+
+.edit-chip--danger-active {
+  border-color: color-mix(in srgb, var(--nm-danger) 34%, var(--nm-border-light));
+  background: var(--nm-danger-soft);
+  color: var(--nm-danger-text);
+}
+
+.edit-chip-remove {
+  color: inherit;
+  transition: color 160ms ease;
+}
+
+.edit-chip-remove:hover {
+  color: var(--nm-danger);
+}
+
+.edit-empty-text {
+  color: var(--nm-ink-faint);
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+
+.edit-switch {
+  position: relative;
+  display: inline-flex;
+  height: 1.5rem;
+  width: 2.75rem;
+  flex-shrink: 0;
+  cursor: pointer;
+  align-items: center;
+  border: 1px solid var(--nm-border);
+  border-radius: 999px;
+  transition: background-color 160ms ease, border-color 160ms ease;
+}
+
+.edit-switch:focus-visible {
+  outline: 3px solid var(--nm-accent);
+  outline-offset: 2px;
+}
+
+.edit-switch--on {
+  border-color: var(--nm-accent);
+  background: var(--nm-accent);
+}
+
+.edit-switch--off {
+  background: var(--nm-surface-soft);
+}
+
+.edit-switch-thumb {
+  pointer-events: none;
+  display: inline-block;
+  height: 1.25rem;
+  width: 1.25rem;
+  border: 1px solid var(--nm-border);
+  border-radius: 999px;
+  background: var(--nm-surface);
+  transition: transform 160ms ease;
+}
+</style>
