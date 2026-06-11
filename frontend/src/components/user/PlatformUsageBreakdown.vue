@@ -1,25 +1,25 @@
 <template>
   <div class="group/usage relative text-sm">
     <div class="flex items-center gap-1.5">
-      <span class="text-gray-500 dark:text-gray-400">{{ t('admin.users.today') }}:</span>
-      <span class="font-medium text-gray-900 dark:text-white">${{ today.toFixed(4) }}</span>
+      <span style="color: var(--nm-ink-muted)">{{ t('admin.users.today') }}:</span>
+      <span class="font-medium" style="color: var(--nm-ink)">${{ today.toFixed(4) }}</span>
       <Icon
         v-if="hasBreakdown"
         name="infoCircle"
         size="xs"
-        class="text-gray-400 dark:text-gray-500"
+        style="color: var(--nm-ink-muted)"
       />
     </div>
     <div class="mt-0.5 flex items-center gap-1.5">
-      <span class="text-gray-500 dark:text-gray-400">{{ t('admin.users.total') }}:</span>
-      <span class="font-medium text-gray-900 dark:text-white">${{ total.toFixed(4) }}</span>
+      <span style="color: var(--nm-ink-muted)">{{ t('admin.users.total') }}:</span>
+      <span class="font-medium" style="color: var(--nm-ink)">${{ total.toFixed(4) }}</span>
     </div>
 
     <div
       v-if="hasBreakdown"
-      class="pointer-events-none absolute left-full top-0 z-50 ml-2 min-w-[220px] whitespace-nowrap rounded-md bg-gray-900 px-3 py-2 text-xs text-white opacity-0 shadow-xl transition-opacity duration-100 group-hover/usage:opacity-100 dark:bg-dark-600"
+      class="usage-tooltip pointer-events-none absolute left-full top-0 z-50 ml-2 min-w-[220px] whitespace-nowrap px-3 py-2 text-xs opacity-0 transition-opacity duration-100 group-hover/usage:opacity-100"
     >
-      <div class="mb-1.5 flex items-center justify-between gap-3 border-b border-white/10 pb-1 text-[11px] opacity-80">
+      <div class="mb-1.5 flex items-center justify-between gap-3 border-b pb-1 text-[11px]" style="border-color: var(--nm-border-light); color: var(--nm-ink-muted)">
         <span>{{ t('admin.users.platformBreakdown') }}</span>
         <span class="font-mono">{{ t('admin.users.today') }} / {{ t('admin.users.total') }}</span>
       </div>
@@ -101,3 +101,12 @@ function platformLabel(platform: string): string {
   return PLATFORM_LABELS[platform] ?? platform
 }
 </script>
+
+<style scoped>
+.usage-tooltip {
+  color: var(--nm-ink);
+  background: var(--nm-surface);
+  border: 1px solid var(--nm-border);
+  border-radius: var(--nm-radius-sm);
+}
+</style>

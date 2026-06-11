@@ -3,21 +3,21 @@
     <!-- Mini Progress Display -->
     <button
       @click="toggleTooltip"
-      class="flex cursor-pointer items-center gap-2 rounded-xl bg-purple-50 px-3 py-1.5 transition-colors hover:bg-purple-100 dark:bg-purple-900/20 dark:hover:bg-purple-900/30"
+      class="subscription-trigger flex cursor-pointer items-center gap-2 px-3 py-1.5 transition-colors"
       :title="t('subscriptionProgress.viewDetails')"
     >
-      <Icon name="creditCard" size="sm" class="text-purple-600 dark:text-purple-400" />
+      <Icon name="creditCard" size="sm" style="color: var(--nm-accent-text)" />
       <div class="flex items-center gap-1.5">
         <!-- Combined progress indicator -->
         <div class="flex items-center gap-0.5">
           <div
             v-for="(sub, index) in displaySubscriptions.slice(0, 3)"
             :key="index"
-            class="h-2 w-2 rounded-full"
+            class="subscription-dot h-2 w-2"
             :class="getProgressDotClass(sub)"
           ></div>
         </div>
-        <span class="text-xs font-medium text-purple-700 dark:text-purple-300">
+        <span class="text-xs font-medium" style="color: var(--nm-accent-text)">
           {{ activeSubscriptions.length }}
         </span>
       </div>
@@ -27,13 +27,13 @@
     <transition name="dropdown">
       <div
         v-if="tooltipOpen"
-        class="absolute right-0 z-50 mt-2 w-[340px] overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl dark:border-dark-700 dark:bg-dark-800"
+        class="dropdown right-0 mt-2 w-[340px] overflow-hidden"
       >
-        <div class="border-b border-gray-100 p-3 dark:border-dark-700">
-          <h3 class="text-sm font-semibold text-gray-900 dark:text-white">
+        <div class="border-b p-3" style="border-color: var(--nm-border-light)">
+          <h3 class="text-sm font-semibold" style="color: var(--nm-ink)">
             {{ t('subscriptionProgress.title') }}
           </h3>
-          <p class="mt-0.5 text-xs text-gray-500 dark:text-dark-400">
+          <p class="mt-0.5 text-xs" style="color: var(--nm-ink-muted)">
             {{ t('subscriptionProgress.activeCount', { count: activeSubscriptions.length }) }}
           </p>
         </div>
@@ -42,10 +42,11 @@
           <div
             v-for="subscription in displaySubscriptions"
             :key="subscription.id"
-            class="border-b border-gray-50 p-3 last:border-b-0 dark:border-dark-700/50"
+            class="border-b p-3 last:border-b-0"
+            style="border-color: var(--nm-border-light)"
           >
             <div class="mb-2 flex items-center justify-between">
-              <span class="text-sm font-medium text-gray-900 dark:text-white">
+              <span class="text-sm font-medium" style="color: var(--nm-ink)">
                 {{ subscription.group?.name || `Group #${subscription.group_id}` }}
               </span>
               <span
@@ -62,8 +63,7 @@
               <!-- Unlimited subscription badge -->
               <div
                 v-if="isUnlimited(subscription)"
-                class="flex items-center gap-2 rounded-lg px-2.5 py-1.5"
-                style="background: var(--nm-success-soft)"
+                class="subscription-unlimited flex items-center gap-2 px-2.5 py-1.5"
               >
                 <span class="text-lg" style="color: var(--nm-success-text)">∞</span>
                 <span class="text-xs font-medium" style="color: var(--nm-success-text)">
@@ -74,12 +74,12 @@
               <!-- Progress bars for limited subscriptions -->
               <template v-else>
                 <div v-if="subscription.group?.daily_limit_usd" class="flex items-center gap-2">
-                  <span class="w-8 flex-shrink-0 text-[10px] text-gray-500">{{
+                  <span class="w-8 flex-shrink-0 text-[10px]" style="color: var(--nm-ink-muted)">{{
                     t('subscriptionProgress.daily')
                   }}</span>
-                  <div class="h-1.5 min-w-0 flex-1 rounded-full bg-gray-200 dark:bg-dark-600">
+                  <div class="metric-progress h-1.5 min-w-0 flex-1">
                     <div
-                      class="h-1.5 rounded-full transition-all"
+                      class="metric-progress-bar h-full transition-all"
                       :class="
                         getProgressBarClass(
                           subscription.daily_usage_usd,
@@ -94,7 +94,7 @@
                       }"
                     ></div>
                   </div>
-                  <span class="w-24 flex-shrink-0 text-right text-[10px] text-gray-500">
+                  <span class="w-24 flex-shrink-0 text-right text-[10px]" style="color: var(--nm-ink-muted)">
                     {{
                       formatUsage(subscription.daily_usage_usd, subscription.group?.daily_limit_usd)
                     }}
@@ -102,12 +102,12 @@
                 </div>
 
                 <div v-if="subscription.group?.weekly_limit_usd" class="flex items-center gap-2">
-                  <span class="w-8 flex-shrink-0 text-[10px] text-gray-500">{{
+                  <span class="w-8 flex-shrink-0 text-[10px]" style="color: var(--nm-ink-muted)">{{
                     t('subscriptionProgress.weekly')
                   }}</span>
-                  <div class="h-1.5 min-w-0 flex-1 rounded-full bg-gray-200 dark:bg-dark-600">
+                  <div class="metric-progress h-1.5 min-w-0 flex-1">
                     <div
-                      class="h-1.5 rounded-full transition-all"
+                      class="metric-progress-bar h-full transition-all"
                       :class="
                         getProgressBarClass(
                           subscription.weekly_usage_usd,
@@ -122,7 +122,7 @@
                       }"
                     ></div>
                   </div>
-                  <span class="w-24 flex-shrink-0 text-right text-[10px] text-gray-500">
+                  <span class="w-24 flex-shrink-0 text-right text-[10px]" style="color: var(--nm-ink-muted)">
                     {{
                       formatUsage(subscription.weekly_usage_usd, subscription.group?.weekly_limit_usd)
                     }}
@@ -130,12 +130,12 @@
                 </div>
 
                 <div v-if="subscription.group?.monthly_limit_usd" class="flex items-center gap-2">
-                  <span class="w-8 flex-shrink-0 text-[10px] text-gray-500">{{
+                  <span class="w-8 flex-shrink-0 text-[10px]" style="color: var(--nm-ink-muted)">{{
                     t('subscriptionProgress.monthly')
                   }}</span>
-                  <div class="h-1.5 min-w-0 flex-1 rounded-full bg-gray-200 dark:bg-dark-600">
+                  <div class="metric-progress h-1.5 min-w-0 flex-1">
                     <div
-                      class="h-1.5 rounded-full transition-all"
+                      class="metric-progress-bar h-full transition-all"
                       :class="
                         getProgressBarClass(
                           subscription.monthly_usage_usd,
@@ -150,7 +150,7 @@
                       }"
                     ></div>
                   </div>
-                  <span class="w-24 flex-shrink-0 text-right text-[10px] text-gray-500">
+                  <span class="w-24 flex-shrink-0 text-right text-[10px]" style="color: var(--nm-ink-muted)">
                     {{
                       formatUsage(
                         subscription.monthly_usage_usd,
@@ -164,11 +164,11 @@
           </div>
         </div>
 
-        <div class="border-t border-gray-100 p-2 dark:border-dark-700">
+        <div class="border-t p-2" style="border-color: var(--nm-border-light)">
           <router-link
             to="/subscriptions"
             @click="closeTooltip"
-            class="block w-full py-1 text-center text-xs text-primary-600 hover:underline dark:text-primary-400"
+            class="subscription-link block w-full py-1 text-center text-xs"
           >
             {{ t('subscriptionProgress.viewAll') }}
           </router-link>
@@ -230,20 +230,20 @@ function isUnlimited(sub: UserSubscription): boolean {
 function getProgressDotClass(sub: UserSubscription): string {
   // Unlimited subscriptions get a special color
   if (isUnlimited(sub)) {
-    return 'bg-emerald-500'
+    return 'subscription-dot-success'
   }
   const maxPercentage = getMaxUsagePercentage(sub)
-  if (maxPercentage >= 90) return 'bg-red-500'
-  if (maxPercentage >= 70) return 'bg-orange-500'
-  return 'bg-green-500'
+  if (maxPercentage >= 90) return 'subscription-dot-danger'
+  if (maxPercentage >= 70) return 'subscription-dot-warning'
+  return 'subscription-dot-success'
 }
 
 function getProgressBarClass(used: number | undefined, limit: number | null | undefined): string {
-  if (!limit || limit === 0) return 'bg-gray-400'
+  if (!limit || limit === 0) return ''
   const percentage = ((used || 0) / limit) * 100
-  if (percentage >= 90) return 'bg-red-500'
-  if (percentage >= 70) return 'bg-orange-500'
-  return 'bg-green-500'
+  if (percentage >= 90) return 'metric-progress-bar-danger'
+  if (percentage >= 70) return 'metric-progress-bar-warning'
+  return 'metric-progress-bar-success'
 }
 
 function getProgressWidth(used: number | undefined, limit: number | null | undefined): string {
@@ -274,9 +274,9 @@ function getDaysRemainingClass(expiresAt: string): string {
   const expires = new Date(expiresAt)
   const diff = expires.getTime() - now.getTime()
   const days = Math.ceil(diff / (1000 * 60 * 60 * 24))
-  if (days <= 3) return 'text-red-600 dark:text-red-400'
-  if (days <= 7) return 'text-orange-600 dark:text-orange-400'
-  return 'text-gray-500 dark:text-dark-400'
+  if (days <= 3) return 'text-semantic-danger'
+  if (days <= 7) return 'text-semantic-warning'
+  return 'subscription-muted'
 }
 
 function toggleTooltip() {
@@ -317,5 +317,50 @@ onBeforeUnmount(() => {
 .dropdown-leave-to {
   opacity: 0;
   transform: scale(0.95) translateY(-4px);
+}
+
+.subscription-trigger {
+  border: 1px solid var(--nm-border);
+  background: var(--nm-surface);
+  border-radius: var(--nm-radius);
+}
+
+.subscription-trigger:hover {
+  background: var(--nm-surface-soft);
+}
+
+.subscription-dot {
+  border-radius: 999px;
+}
+
+.subscription-dot-success {
+  background: var(--nm-success);
+}
+
+.subscription-dot-warning {
+  background: var(--nm-warning);
+}
+
+.subscription-dot-danger {
+  background: var(--nm-danger);
+}
+
+.subscription-unlimited {
+  border: 1px solid var(--nm-success);
+  background: var(--nm-success-soft);
+  border-radius: var(--nm-radius-sm);
+}
+
+.subscription-link {
+  color: var(--nm-accent-text);
+  border-radius: var(--nm-radius-sm);
+}
+
+.subscription-link:hover {
+  background: var(--nm-surface-soft);
+}
+
+.subscription-muted {
+  color: var(--nm-ink-muted);
 }
 </style>
