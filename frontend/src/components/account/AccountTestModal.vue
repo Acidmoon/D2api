@@ -9,22 +9,16 @@
       <!-- Account Info Card -->
       <div
         v-if="account"
-        class="flex items-center justify-between rounded-xl p-3"
-        style="background: var(--nm-surface-soft); box-shadow: var(--nm-shadow-inset)"
+        class="test-header flex items-center justify-between p-3"
       >
         <div class="flex items-center gap-3">
-          <div
-            class="flex h-10 w-10 items-center justify-center rounded-lg"
-            style="background: var(--nm-accent); color: var(--nm-on-accent); box-shadow: var(--nm-shadow-raised-sm)"
-          >
+          <div class="test-header-icon flex h-10 w-10 items-center justify-center">
             <Icon name="play" size="md" :stroke-width="2" />
           </div>
           <div>
-            <div class="font-semibold text-gray-900 dark:text-gray-100">{{ account.name }}</div>
-            <div class="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
-              <span
-                class="rounded bg-gray-200 px-1.5 py-0.5 text-[10px] font-medium uppercase dark:bg-dark-500"
-              >
+            <div class="test-title font-semibold">{{ account.name }}</div>
+            <div class="test-muted flex items-center gap-1.5 text-xs">
+              <span class="test-type-badge px-1.5 py-0.5 text-[10px] font-medium uppercase">
                 {{ account.type }}
               </span>
               <span>{{ t('admin.accounts.account') }}</span>
@@ -33,10 +27,10 @@
         </div>
         <span
           :class="[
-            'rounded-full px-2.5 py-1 text-xs font-semibold',
+            'test-status px-2.5 py-1 text-xs font-semibold',
             account.status === 'active'
-              ? 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400'
-              : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
+              ? 'test-status-active'
+              : 'test-status-muted'
           ]"
         >
           {{ account.status }}
@@ -44,7 +38,7 @@
       </div>
 
       <div class="space-y-1.5">
-        <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
+        <label class="test-field-label text-sm font-medium">
           {{ t('admin.accounts.selectTestModel') }}
         </label>
         <Select
@@ -58,7 +52,7 @@
       </div>
 
       <div v-if="isOpenAIAccount" class="space-y-1.5">
-        <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
+        <label class="test-field-label text-sm font-medium">
           {{ t('admin.accounts.openai.testMode') }}
         </label>
         <Select
@@ -83,39 +77,39 @@
       <div class="group relative">
         <div
           ref="terminalRef"
-          class="max-h-[240px] min-h-[120px] overflow-y-auto rounded-xl border border-gray-700 bg-gray-900 p-4 font-mono text-sm dark:border-gray-800 dark:bg-black"
+          class="test-terminal max-h-[240px] min-h-[120px] overflow-y-auto p-4 font-mono text-sm"
         >
           <!-- Status Line -->
-          <div v-if="status === 'idle'" class="flex items-center gap-2 text-gray-500">
+          <div v-if="status === 'idle'" class="test-log-muted flex items-center gap-2">
             <Icon name="play" size="sm" :stroke-width="2" />
             <span>{{ t('admin.accounts.readyToTest') }}</span>
           </div>
-          <div v-else-if="status === 'connecting'" class="flex items-center gap-2 text-yellow-400">
+          <div v-else-if="status === 'connecting'" class="test-log-warning flex items-center gap-2">
             <Icon name="refresh" size="sm" class="animate-spin" :stroke-width="2" />
             <span>{{ t('admin.accounts.connectingToApi') }}</span>
           </div>
 
           <!-- Output Lines -->
-          <div v-for="(line, index) in outputLines" :key="index" :class="line.class">
+          <div v-for="(line, index) in outputLines" :key="index" :class="['test-log-line', line.class]">
             {{ line.text }}
           </div>
 
           <!-- Streaming Content -->
-          <div v-if="streamingContent" class="text-green-400">
+          <div v-if="streamingContent" class="test-log-success">
             {{ streamingContent }}<span class="animate-pulse">_</span>
           </div>
 
           <!-- Result Status -->
           <div
             v-if="status === 'success'"
-            class="mt-3 flex items-center gap-2 border-t border-gray-700 pt-3 text-green-400"
+            class="test-result-line test-log-success mt-3 flex items-center gap-2 pt-3"
           >
             <Icon name="check" size="sm" :stroke-width="2" />
             <span>{{ t('admin.accounts.testCompleted') }}</span>
           </div>
           <div
             v-else-if="status === 'error'"
-            class="mt-3 flex items-center gap-2 border-t border-gray-700 pt-3 text-red-400"
+            class="test-result-line test-log-danger mt-3 flex items-center gap-2 pt-3"
           >
             <Icon name="x" size="sm" :stroke-width="2" />
             <span>{{ errorMessage }}</span>
@@ -126,29 +120,30 @@
         <button
           v-if="outputLines.length > 0"
           @click="copyOutput"
-          class="absolute right-2 top-2 rounded-lg bg-gray-800/80 p-1.5 text-gray-400 opacity-0 transition-all hover:bg-gray-700 hover:text-white group-hover:opacity-100"
+          class="test-copy-button absolute right-2 top-2 p-1.5 opacity-0 transition-all group-hover:opacity-100"
           :title="t('admin.accounts.copyOutput')"
+          :aria-label="t('admin.accounts.copyOutput')"
         >
           <Icon name="link" size="sm" :stroke-width="2" />
         </button>
       </div>
 
       <div v-if="generatedImages.length > 0" class="space-y-2">
-        <div class="text-xs font-medium text-gray-600 dark:text-gray-300">
+        <div class="test-field-label text-xs font-medium">
           {{ t('admin.accounts.imagePreview') }}
         </div>
         <div class="flex flex-wrap justify-center gap-3">
           <div
             v-for="(image, index) in generatedImages"
             :key="`${image.url}-${index}`"
-            class="group/img relative cursor-pointer overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition hover:border-primary-300 hover:shadow-md dark:border-dark-500 dark:bg-dark-700"
+            class="test-image-card group/img relative cursor-pointer overflow-hidden transition-colors"
             @click="previewImageUrl = image.url"
           >
             <img :src="image.url" :alt="`test-image-${index + 1}`" class="max-h-[360px] w-full object-contain" />
-            <div class="absolute inset-0 flex items-center justify-center bg-black/0 transition-colors group-hover/img:bg-black/20">
-              <Icon name="eye" size="lg" class="text-white opacity-0 drop-shadow-lg transition-opacity group-hover/img:opacity-100" :stroke-width="2" />
+            <div class="test-image-overlay absolute inset-0 flex items-center justify-center opacity-0 transition-opacity group-hover/img:opacity-100">
+              <Icon name="eye" size="lg" :stroke-width="2" />
             </div>
-            <div class="border-t border-gray-100 px-3 py-1.5 text-xs text-gray-500 dark:border-dark-500 dark:text-gray-300">
+            <div class="test-image-meta px-3 py-1.5 text-xs">
               {{ image.mimeType || 'image/*' }}
             </div>
           </div>
@@ -160,26 +155,27 @@
         <Transition name="fade">
           <div
             v-if="previewImageUrl"
-            class="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4"
+            class="test-lightbox fixed inset-0 z-[100] flex items-center justify-center p-4"
             @click.self="previewImageUrl = ''"
           >
             <button
-              class="absolute right-4 top-4 rounded-full bg-black/50 p-2 text-white transition-colors hover:bg-black/70"
+              class="test-lightbox-close absolute right-4 top-4 p-2 transition-colors"
               @click="previewImageUrl = ''"
+              :aria-label="t('common.close')"
             >
               <Icon name="x" size="lg" :stroke-width="2" />
             </button>
             <img
               :src="previewImageUrl"
               alt="preview"
-              class="max-h-[90vh] max-w-[90vw] rounded-lg object-contain shadow-2xl"
+              class="test-lightbox-image max-h-[90vh] max-w-[90vw] object-contain"
             />
           </div>
         </Transition>
       </Teleport>
 
       <!-- Test Info -->
-      <div class="flex items-center justify-between px-1 text-xs text-gray-500 dark:text-gray-400">
+      <div class="test-muted flex items-center justify-between px-1 text-xs">
         <div class="flex items-center gap-3">
           <span class="flex items-center gap-1">
             <Icon name="grid" size="sm" :stroke-width="2" />
@@ -201,7 +197,7 @@
       <div class="flex justify-end gap-3">
         <button
           @click="handleClose"
-          class="rounded-lg bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-300 dark:hover:bg-dark-500"
+          class="test-button test-button-secondary px-4 py-2 text-sm font-medium transition-colors"
         >
           {{ t('common.close') }}
         </button>
@@ -209,14 +205,8 @@
           @click="startTest"
           :disabled="status === 'connecting' || !selectedModelId"
           :class="[
-            'flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all',
-            status === 'connecting' || !selectedModelId
-              ? 'cursor-not-allowed bg-primary-400 text-white'
-              : status === 'success'
-                ? 'bg-green-500 text-white hover:bg-green-600'
-                : status === 'error'
-                  ? 'bg-orange-500 text-white hover:bg-orange-600'
-                  : 'bg-primary-500 text-white hover:bg-primary-600'
+            'test-button flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors',
+            testActionClass
           ]"
         >
           <Icon
@@ -310,6 +300,13 @@ const supportsOpenAIImageTest = computed(() => {
 
 const supportsImageTest = computed(() => supportsGeminiImageTest.value || supportsOpenAIImageTest.value)
 
+const testActionClass = computed(() => {
+  if (status.value === 'connecting' || !selectedModelId.value) return 'test-button-disabled'
+  if (status.value === 'success') return 'test-button-success'
+  if (status.value === 'error') return 'test-button-warning'
+  return 'test-button-primary'
+})
+
 const sortTestModels = (models: ClaudeModel[]) => {
   const priorityMap = new Map(prioritizedGeminiModels.map((id, index) => [id, index]))
 
@@ -393,7 +390,7 @@ const abortStream = () => {
   }
 }
 
-const addLine = (text: string, className: string = 'text-gray-300') => {
+const addLine = (text: string = '', className: string = 'test-log-default') => {
   outputLines.value.push({ text, class: className })
   scrollToBottom()
 }
@@ -410,9 +407,9 @@ const startTest = async () => {
 
   resetState()
   status.value = 'connecting'
-  addLine(t('admin.accounts.startingTestForAccount', { name: props.account.name }), 'text-blue-400')
-  addLine(t('admin.accounts.testAccountTypeLabel', { type: props.account.type }), 'text-gray-400')
-  addLine('', 'text-gray-300')
+  addLine(t('admin.accounts.startingTestForAccount', { name: props.account.name }), 'test-log-info')
+  addLine(t('admin.accounts.testAccountTypeLabel', { type: props.account.type }), 'test-log-muted')
+  addLine()
 
   abortStream()
 
@@ -479,7 +476,7 @@ const startTest = async () => {
     status.value = 'error'
     const msg = error instanceof Error ? error.message : 'Unknown error'
     errorMessage.value = msg
-    addLine(`Error: ${msg}`, 'text-red-400')
+    addLine(`Error: ${msg}`, 'test-log-danger')
   }
 }
 
@@ -494,18 +491,18 @@ const handleEvent = (event: {
 }) => {
   switch (event.type) {
     case 'test_start':
-      addLine(t('admin.accounts.connectedToApi'), 'text-green-400')
+      addLine(t('admin.accounts.connectedToApi'), 'test-log-success')
       if (event.model) {
-        addLine(t('admin.accounts.usingModel', { model: event.model }), 'text-cyan-400')
+        addLine(t('admin.accounts.usingModel', { model: event.model }), 'test-log-info')
       }
       addLine(
         supportsImageTest.value
             ? t('admin.accounts.sendingImageRequest')
             : t('admin.accounts.sendingTestMessage'),
-        'text-gray-400'
+        'test-log-muted'
       )
-      addLine('', 'text-gray-300')
-      addLine(t('admin.accounts.response'), 'text-yellow-400')
+      addLine()
+      addLine(t('admin.accounts.response'), 'test-log-warning')
       break
 
     case 'content':
@@ -517,7 +514,7 @@ const handleEvent = (event: {
 
     case 'status':
       if (event.text) {
-        addLine(event.text, 'text-cyan-300')
+        addLine(event.text, 'test-log-info')
       }
       break
 
@@ -527,14 +524,14 @@ const handleEvent = (event: {
           url: event.image_url,
           mimeType: event.mime_type
         })
-        addLine(t('admin.accounts.imageReceived', { count: generatedImages.value.length }), 'text-purple-300')
+        addLine(t('admin.accounts.imageReceived', { count: generatedImages.value.length }), 'test-log-info')
       }
       break
 
     case 'test_complete':
       // Move streaming content to output lines
       if (streamingContent.value) {
-        addLine(streamingContent.value, 'text-green-300')
+        addLine(streamingContent.value, 'test-log-success')
         streamingContent.value = ''
       }
       if (event.success) {
@@ -549,7 +546,7 @@ const handleEvent = (event: {
       status.value = 'error'
       errorMessage.value = event.error || 'Unknown error'
       if (streamingContent.value) {
-        addLine(streamingContent.value, 'text-green-300')
+        addLine(streamingContent.value, 'test-log-success')
         streamingContent.value = ''
       }
       break
@@ -562,7 +559,205 @@ const copyOutput = () => {
 }
 </script>
 
-<style>
+<style scoped>
+.test-header {
+  border: 1px solid var(--nm-border-light);
+  border-radius: var(--nm-radius);
+  background: var(--nm-surface-soft);
+}
+
+.test-header-icon,
+.test-type-badge,
+.test-status,
+.test-terminal,
+.test-copy-button,
+.test-image-card,
+.test-lightbox-close,
+.test-lightbox-image,
+.test-button {
+  border-radius: var(--nm-radius-sm);
+}
+
+.test-header-icon {
+  background: var(--nm-accent);
+  color: var(--nm-on-accent);
+}
+
+.test-title {
+  color: var(--nm-ink);
+}
+
+.test-muted {
+  color: var(--nm-ink-faint);
+}
+
+.test-field-label {
+  color: var(--nm-ink-muted);
+}
+
+.test-type-badge,
+.test-status {
+  border: 1px solid var(--nm-border-light);
+}
+
+.test-type-badge {
+  background: var(--nm-surface);
+  color: var(--nm-ink-muted);
+}
+
+.test-status-active {
+  background: var(--nm-success-soft);
+  color: var(--nm-success-text);
+}
+
+.test-status-muted {
+  background: var(--nm-surface);
+  color: var(--nm-ink-muted);
+}
+
+.test-terminal {
+  border: 1px solid var(--nm-border);
+  background: var(--nm-surface-alt);
+  color: var(--nm-ink-muted);
+}
+
+.test-log-line {
+  min-height: 1.25rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.test-log-default {
+  color: var(--nm-ink-muted);
+}
+
+.test-log-muted {
+  color: var(--nm-ink-faint);
+}
+
+.test-log-info {
+  color: var(--nm-info-text);
+}
+
+.test-log-success {
+  color: var(--nm-success-text);
+}
+
+.test-log-warning {
+  color: var(--nm-warning-text);
+}
+
+.test-log-danger {
+  color: var(--nm-danger-text);
+}
+
+.test-result-line {
+  border-top: 1px solid var(--nm-border-light);
+}
+
+.test-copy-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--nm-border-light);
+  background: color-mix(in srgb, var(--nm-surface) 88%, transparent);
+  color: var(--nm-ink-faint);
+  cursor: pointer;
+}
+
+.test-copy-button:hover {
+  background: var(--nm-accent-soft);
+  color: var(--nm-accent-text);
+}
+
+.test-image-card {
+  border: 1px solid var(--nm-border);
+  background: var(--nm-surface);
+}
+
+.test-image-card:hover {
+  border-color: var(--nm-accent);
+}
+
+.test-image-overlay {
+  background: color-mix(in srgb, var(--nm-ink) 24%, transparent);
+  color: var(--nm-bg);
+}
+
+.test-image-meta {
+  border-top: 1px solid var(--nm-border-light);
+  color: var(--nm-ink-faint);
+}
+
+.test-lightbox {
+  background: color-mix(in srgb, var(--nm-ink) 82%, transparent);
+}
+
+.test-lightbox-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid color-mix(in srgb, var(--nm-bg) 35%, transparent);
+  background: color-mix(in srgb, var(--nm-ink) 55%, transparent);
+  color: var(--nm-bg);
+  cursor: pointer;
+}
+
+.test-lightbox-close:hover {
+  background: color-mix(in srgb, var(--nm-ink) 72%, transparent);
+}
+
+.test-lightbox-image {
+  border: 1px solid color-mix(in srgb, var(--nm-bg) 25%, transparent);
+  background: var(--nm-surface);
+}
+
+.test-button {
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+
+.test-button-secondary {
+  border-color: var(--nm-border);
+  background: var(--nm-surface);
+  color: var(--nm-ink-muted);
+}
+
+.test-button-secondary:hover {
+  border-color: var(--nm-ink-muted);
+  color: var(--nm-ink);
+}
+
+.test-button-primary {
+  border-color: var(--nm-accent);
+  background: var(--nm-accent);
+  color: var(--nm-on-accent);
+}
+
+.test-button-primary:hover {
+  border-color: var(--nm-accent-strong);
+  background: var(--nm-accent-strong);
+}
+
+.test-button-success {
+  border-color: var(--nm-success);
+  background: var(--nm-success);
+  color: var(--nm-on-accent);
+}
+
+.test-button-warning {
+  border-color: var(--nm-warning);
+  background: var(--nm-warning);
+  color: var(--nm-bg);
+}
+
+.test-button-disabled {
+  border-color: var(--nm-border);
+  background: var(--nm-surface-soft);
+  color: var(--nm-ink-faint);
+  cursor: not-allowed;
+}
+
 .fade-enter-active,
 .fade-leave-active {
   transition: opacity 0.2s ease;
