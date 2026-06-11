@@ -27,7 +27,7 @@
         <!-- Search and Batch Test Header -->
         <div class="select-header">
           <div class="select-search">
-            <Icon name="search" size="sm" class="text-gray-400" />
+            <Icon name="search" size="sm" class="select-search-icon" />
             <input
               ref="searchInputRef"
               v-model="searchQuery"
@@ -72,7 +72,7 @@
             :class="['select-option', modelValue === null && 'select-option-selected']"
           >
             <span class="select-option-label">{{ t('admin.accounts.noProxy') }}</span>
-            <Icon v-if="modelValue === null" name="check" size="sm" class="text-primary-500" />
+            <Icon v-if="modelValue === null" name="check" size="sm" class="select-check-icon" />
           </div>
 
           <!-- Proxy options -->
@@ -88,7 +88,7 @@
                 <!-- Account count badge -->
                 <span
                   v-if="proxy.account_count !== undefined"
-                  class="inline-flex flex-shrink-0 items-center rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-600 dark:bg-dark-600 dark:text-gray-400"
+                  class="proxy-badge proxy-badge-muted inline-flex flex-shrink-0 items-center px-1.5 py-0.5 text-xs"
                 >
                   {{ proxy.account_count }}
                 </span>
@@ -96,7 +96,7 @@
                 <template v-if="testResults[proxy.id]">
                   <span
                     v-if="testResults[proxy.id].success"
-                    class="inline-flex flex-shrink-0 items-center gap-1 rounded bg-emerald-100 px-1.5 py-0.5 text-xs text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
+                    class="proxy-badge proxy-badge-success inline-flex flex-shrink-0 items-center gap-1 px-1.5 py-0.5 text-xs"
                   >
                     <span v-if="testResults[proxy.id].country">{{
                       testResults[proxy.id].country
@@ -107,13 +107,13 @@
                   </span>
                   <span
                     v-else
-                    class="inline-flex flex-shrink-0 items-center rounded bg-red-100 px-1.5 py-0.5 text-xs text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                    class="proxy-badge proxy-badge-danger inline-flex flex-shrink-0 items-center px-1.5 py-0.5 text-xs"
                   >
                     {{ t('admin.proxies.testFailed') }}
                   </span>
                 </template>
               </div>
-              <div class="truncate text-xs text-gray-500 dark:text-gray-400">
+              <div class="select-option-meta truncate text-xs">
                 {{ proxy.protocol }}://{{ proxy.host }}:{{ proxy.port }}
               </div>
             </div>
@@ -153,7 +153,7 @@
               v-if="modelValue === proxy.id"
               name="check"
               size="sm"
-              class="flex-shrink-0 text-primary-500"
+              class="select-check-icon flex-shrink-0"
             />
           </div>
 
@@ -321,22 +321,25 @@ onUnmounted(() => {
 <style scoped>
 .select-trigger {
   @apply flex w-full items-center justify-between gap-2;
-  @apply rounded-xl px-4 py-2.5 text-sm;
-  @apply bg-white dark:bg-dark-800;
-  @apply border border-gray-200 dark:border-dark-600;
-  @apply text-gray-900 dark:text-gray-100;
-  @apply transition-all duration-200;
-  @apply focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/30;
-  @apply hover:border-gray-300 dark:hover:border-dark-500;
+  @apply px-4 py-2.5 text-sm;
+  @apply transition-colors duration-200;
   @apply cursor-pointer;
+  min-height: 2.75rem;
+  border: 1px solid var(--nm-border);
+  border-radius: var(--nm-radius);
+  background: var(--nm-surface);
+  color: var(--nm-ink);
 }
 
 .select-trigger-open {
-  @apply border-primary-500 ring-2 ring-primary-500/30;
+  border-color: var(--nm-accent);
+  background: var(--nm-accent-soft);
+  color: var(--nm-accent-text);
 }
 
 .select-trigger-disabled {
-  @apply cursor-not-allowed bg-gray-100 opacity-60 dark:bg-dark-900;
+  @apply cursor-not-allowed opacity-60;
+  background: var(--nm-surface-alt);
 }
 
 .select-value {
@@ -344,39 +347,52 @@ onUnmounted(() => {
 }
 
 .select-icon {
-  @apply flex-shrink-0 text-gray-400 dark:text-dark-400;
+  @apply flex-shrink-0;
+  color: var(--nm-ink-faint);
 }
 
 .select-dropdown {
   @apply absolute z-[100] mt-2 w-full;
-  @apply bg-white dark:bg-dark-800;
-  @apply rounded-xl;
-  @apply border border-gray-200 dark:border-dark-700;
-  @apply shadow-lg shadow-black/10 dark:shadow-black/30;
   @apply overflow-hidden;
+  border: 1px solid var(--nm-border);
+  border-radius: var(--nm-radius);
+  background: var(--nm-surface);
 }
 
 .select-header {
   @apply flex items-center gap-2 px-3 py-2;
-  @apply border-b border-gray-100 dark:border-dark-700;
+  border-bottom: 1px solid var(--nm-border-light);
 }
 
 .select-search {
   @apply flex flex-1 items-center gap-2;
 }
 
+.select-search-icon,
+.select-option-meta {
+  color: var(--nm-ink-faint);
+}
+
 .select-search-input {
   @apply flex-1 bg-transparent text-sm;
-  @apply text-gray-900 dark:text-gray-100;
-  @apply placeholder:text-gray-400 dark:placeholder:text-dark-400;
   @apply focus:outline-none;
+  color: var(--nm-ink);
+}
+
+.select-search-input::placeholder {
+  color: var(--nm-ink-faint);
 }
 
 .batch-test-btn {
-  @apply flex-shrink-0 rounded-lg p-1.5;
-  @apply text-gray-500 hover:text-emerald-600 dark:hover:text-emerald-400;
-  @apply hover:bg-emerald-50 dark:hover:bg-emerald-900/20;
+  @apply flex-shrink-0 p-1.5;
   @apply transition-colors disabled:cursor-not-allowed disabled:opacity-50;
+  border-radius: var(--nm-radius-sm);
+  color: var(--nm-ink-muted);
+}
+
+.batch-test-btn:hover {
+  background: var(--nm-accent-soft);
+  color: var(--nm-accent-text);
 }
 
 .select-options {
@@ -386,14 +402,18 @@ onUnmounted(() => {
 .select-option {
   @apply flex items-center justify-between gap-2;
   @apply px-4 py-2.5 text-sm;
-  @apply text-gray-700 dark:text-gray-300;
   @apply cursor-pointer transition-colors duration-150;
-  @apply hover:bg-gray-50 dark:hover:bg-dark-700;
+  color: var(--nm-ink-muted);
+}
+
+.select-option:hover {
+  background: var(--nm-surface-soft);
+  color: var(--nm-ink);
 }
 
 .select-option-selected {
-  @apply bg-primary-50 dark:bg-primary-900/20;
-  @apply text-primary-700 dark:text-primary-300;
+  background: var(--nm-accent-soft);
+  color: var(--nm-accent-text);
 }
 
 .select-option-label {
@@ -402,14 +422,42 @@ onUnmounted(() => {
 
 .select-empty {
   @apply px-4 py-8 text-center text-sm;
-  @apply text-gray-500 dark:text-dark-400;
+  color: var(--nm-ink-faint);
 }
 
 .test-btn {
-  @apply flex-shrink-0 rounded p-1;
-  @apply text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400;
-  @apply hover:bg-emerald-50 dark:hover:bg-emerald-900/20;
+  @apply flex-shrink-0 p-1;
   @apply transition-colors disabled:cursor-not-allowed disabled:opacity-50;
+  border-radius: var(--nm-radius-sm);
+  color: var(--nm-ink-faint);
+}
+
+.test-btn:hover {
+  background: var(--nm-accent-soft);
+  color: var(--nm-accent-text);
+}
+
+.select-check-icon {
+  color: var(--nm-accent-text);
+}
+
+.proxy-badge {
+  border-radius: var(--nm-radius-sm);
+}
+
+.proxy-badge-muted {
+  background: var(--nm-surface-soft);
+  color: var(--nm-ink-muted);
+}
+
+.proxy-badge-success {
+  background: var(--nm-success-soft);
+  color: var(--nm-success-text);
+}
+
+.proxy-badge-danger {
+  background: var(--nm-danger-soft);
+  color: var(--nm-danger-text);
 }
 
 /* Dropdown animation */
