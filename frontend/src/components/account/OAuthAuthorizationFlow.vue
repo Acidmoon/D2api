@@ -1,94 +1,92 @@
 <template>
-  <div
-    class="rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-700 dark:bg-blue-900/30"
-  >
-      <div class="flex items-start gap-4">
-      <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-blue-500">
-        <Icon name="link" size="md" class="text-white" />
+  <div class="oauth-flow-card">
+    <div class="flex items-start gap-4">
+      <div class="oauth-flow-icon">
+        <Icon name="link" size="md" />
       </div>
       <div class="flex-1">
-        <h4 class="mb-3 font-semibold text-blue-900 dark:text-blue-200">{{ oauthTitle }}</h4>
+        <h4 class="oauth-flow-title">{{ oauthTitle }}</h4>
 
         <!-- Auth Method Selection -->
         <div v-if="showMethodSelection" class="mb-4">
-          <label class="mb-2 block text-sm font-medium text-blue-800 dark:text-blue-300">
+          <label class="oauth-method-label">
             {{ methodLabel }}
           </label>
           <div class="flex flex-wrap gap-4">
-            <label class="flex cursor-pointer items-center gap-2">
+            <label class="oauth-method-option">
               <input
                 v-model="inputMethod"
                 type="radio"
                 value="manual"
-                class="text-blue-600 focus:ring-blue-500"
+                class="oauth-radio"
               />
-              <span class="text-sm text-blue-900 dark:text-blue-200">{{
+              <span class="oauth-method-text">{{
                 t('admin.accounts.oauth.manualAuth')
               }}</span>
             </label>
-            <label v-if="showCookieOption" class="flex cursor-pointer items-center gap-2">
+            <label v-if="showCookieOption" class="oauth-method-option">
               <input
                 v-model="inputMethod"
                 type="radio"
                 value="cookie"
-                class="text-blue-600 focus:ring-blue-500"
+                class="oauth-radio"
               />
-              <span class="text-sm text-blue-900 dark:text-blue-200">{{
+              <span class="oauth-method-text">{{
                 t('admin.accounts.oauth.cookieAutoAuth')
               }}</span>
             </label>
-            <label v-if="showRefreshTokenOption" class="flex cursor-pointer items-center gap-2">
+            <label v-if="showRefreshTokenOption" class="oauth-method-option">
               <input
                 v-model="inputMethod"
                 type="radio"
                 value="refresh_token"
-                class="text-blue-600 focus:ring-blue-500"
+                class="oauth-radio"
               />
-              <span class="text-sm text-blue-900 dark:text-blue-200">{{
+              <span class="oauth-method-text">{{
                 t(getOAuthKey('refreshTokenAuth'))
               }}</span>
             </label>
-            <label v-if="showMobileRefreshTokenOption" class="flex cursor-pointer items-center gap-2">
+            <label v-if="showMobileRefreshTokenOption" class="oauth-method-option">
               <input
                 v-model="inputMethod"
                 type="radio"
                 value="mobile_refresh_token"
-                class="text-blue-600 focus:ring-blue-500"
+                class="oauth-radio"
               />
-              <span class="text-sm text-blue-900 dark:text-blue-200">{{
+              <span class="oauth-method-text">{{
                 t('admin.accounts.oauth.openai.mobileRefreshTokenAuth', '手动输入 Mobile RT')
               }}</span>
             </label>
-            <label v-if="showSessionTokenOption" class="flex cursor-pointer items-center gap-2">
+            <label v-if="showSessionTokenOption" class="oauth-method-option">
               <input
                 v-model="inputMethod"
                 type="radio"
                 value="session_token"
-                class="text-blue-600 focus:ring-blue-500"
+                class="oauth-radio"
               />
-              <span class="text-sm text-blue-900 dark:text-blue-200">{{
+              <span class="oauth-method-text">{{
                 t(getOAuthKey('sessionTokenAuth'))
               }}</span>
             </label>
-            <label v-if="showAccessTokenOption" class="flex cursor-pointer items-center gap-2">
+            <label v-if="showAccessTokenOption" class="oauth-method-option">
               <input
                 v-model="inputMethod"
                 type="radio"
                 value="access_token"
-                class="text-blue-600 focus:ring-blue-500"
+                class="oauth-radio"
               />
-              <span class="text-sm text-blue-900 dark:text-blue-200">{{
+              <span class="oauth-method-text">{{
                 t('admin.accounts.oauth.openai.accessTokenAuth', '手动输入 AT')
               }}</span>
             </label>
-            <label v-if="showCodexSessionImportOption" class="flex cursor-pointer items-center gap-2">
+            <label v-if="showCodexSessionImportOption" class="oauth-method-option">
               <input
                 v-model="inputMethod"
                 type="radio"
                 value="codex_session"
-                class="text-blue-600 focus:ring-blue-500"
+                class="oauth-radio"
               />
-              <span class="text-sm text-blue-900 dark:text-blue-200">{{
+              <span class="oauth-method-text">{{
                 t('admin.accounts.oauth.openai.codexSessionAuth')
               }}</span>
             </label>
@@ -97,23 +95,19 @@
 
         <!-- Refresh Token Input (OpenAI / Antigravity / Mobile RT) -->
         <div v-if="inputMethod === 'refresh_token' || inputMethod === 'mobile_refresh_token'" class="space-y-4">
-          <div
-            class="rounded-lg border border-blue-300 bg-white/80 p-4 dark:border-blue-600 dark:bg-gray-800/80"
-          >
-            <p class="mb-3 text-sm text-blue-700 dark:text-blue-300">
+          <div class="oauth-panel">
+            <p class="oauth-copy">
               {{ t(getOAuthKey('refreshTokenDesc')) }}
             </p>
 
             <!-- Refresh Token Input -->
             <div class="mb-4">
-              <label
-                class="mb-2 flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300"
-              >
-                <Icon name="key" size="sm" class="text-blue-500" />
+              <label class="oauth-field-label">
+                <Icon name="key" size="sm" class="oauth-field-icon" />
                 Refresh Token
                 <span
                   v-if="parsedRefreshTokenCount > 1"
-                  class="rounded-full bg-blue-500 px-2 py-0.5 text-xs text-white"
+                  class="oauth-count-badge"
                 >
                   {{ t('admin.accounts.oauth.keysCount', { count: parsedRefreshTokenCount }) }}
                 </span>
@@ -126,18 +120,15 @@
               ></textarea>
               <p
                 v-if="parsedRefreshTokenCount > 1"
-                class="mt-1 text-xs text-blue-600 dark:text-blue-400"
+                class="oauth-hint oauth-hint--accent"
               >
                 {{ t('admin.accounts.oauth.batchCreateAccounts', { count: parsedRefreshTokenCount }) }}
               </p>
             </div>
 
             <!-- Error Message -->
-            <div
-              v-if="error"
-              class="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 dark:border-red-700 dark:bg-red-900/30"
-            >
-              <p class="whitespace-pre-line text-sm text-red-600 dark:text-red-400">
+            <div v-if="error" class="oauth-error">
+              <p class="oauth-error-text">
                 {{ error }}
               </p>
             </div>
@@ -181,22 +172,18 @@
 
         <!-- Codex JSON / AT 批量输入 -->
         <div v-if="inputMethod === 'codex_session'" class="space-y-4">
-          <div
-            class="rounded-lg border border-blue-300 bg-white/80 p-4 dark:border-blue-600 dark:bg-gray-800/80"
-          >
-            <p class="mb-3 text-sm text-blue-700 dark:text-blue-300">
+          <div class="oauth-panel">
+            <p class="oauth-copy">
               {{ t('admin.accounts.oauth.openai.codexSessionDesc') }}
             </p>
 
             <div class="mb-4">
-              <label
-                class="mb-2 flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300"
-              >
-                <Icon name="key" size="sm" class="text-blue-500" />
+              <label class="oauth-field-label">
+                <Icon name="key" size="sm" class="oauth-field-icon" />
                 {{ t('admin.accounts.oauth.openai.codexSessionInputLabel') }}
                 <span
                   v-if="parsedCodexSessionCount > 1"
-                  class="rounded-full bg-blue-500 px-2 py-0.5 text-xs text-white"
+                  class="oauth-count-badge"
                 >
                   {{ t('admin.accounts.oauth.keysCount', { count: parsedCodexSessionCount }) }}
                 </span>
@@ -208,16 +195,13 @@
                 :placeholder="t('admin.accounts.oauth.openai.codexSessionPlaceholder')"
                 spellcheck="false"
               ></textarea>
-              <p class="mt-1 text-xs text-blue-600 dark:text-blue-400">
+              <p class="oauth-hint oauth-hint--accent">
                 {{ t('admin.accounts.oauth.openai.codexSessionHint') }}
               </p>
             </div>
 
-            <div
-              v-if="error"
-              class="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 dark:border-red-700 dark:bg-red-900/30"
-            >
-              <p class="whitespace-pre-line text-sm text-red-600 dark:text-red-400">
+            <div v-if="error" class="oauth-error">
+              <p class="oauth-error-text">
                 {{ error }}
               </p>
             </div>
@@ -260,30 +244,26 @@
 
         <!-- Cookie Auto-Auth Form -->
         <div v-if="inputMethod === 'cookie'" class="space-y-4">
-          <div
-            class="rounded-lg border border-blue-300 bg-white/80 p-4 dark:border-blue-600 dark:bg-gray-800/80"
-          >
-            <p class="mb-3 text-sm text-blue-700 dark:text-blue-300">
+          <div class="oauth-panel">
+            <p class="oauth-copy">
               {{ t('admin.accounts.oauth.cookieAutoAuthDesc') }}
             </p>
 
             <!-- sessionKey Input -->
             <div class="mb-4">
-              <label
-                class="mb-2 flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300"
-              >
-                <Icon name="key" size="sm" class="text-blue-500" />
+              <label class="oauth-field-label">
+                <Icon name="key" size="sm" class="oauth-field-icon" />
                 {{ t('admin.accounts.oauth.sessionKey') }}
                 <span
                   v-if="parsedKeyCount > 1 && allowMultiple"
-                  class="rounded-full bg-blue-500 px-2 py-0.5 text-xs text-white"
+                  class="oauth-count-badge"
                 >
                   {{ t('admin.accounts.oauth.keysCount', { count: parsedKeyCount }) }}
                 </span>
                 <button
                   v-if="showHelp"
                   type="button"
-                  class="text-blue-500 hover:text-blue-600"
+                  class="oauth-icon-link"
                   @click="showHelpDialog = !showHelpDialog"
                 >
                   <svg
@@ -313,23 +293,18 @@
               ></textarea>
               <p
                 v-if="parsedKeyCount > 1 && allowMultiple"
-                class="mt-1 text-xs text-blue-600 dark:text-blue-400"
+                class="oauth-hint oauth-hint--accent"
               >
                 {{ t('admin.accounts.oauth.batchCreateAccounts', { count: parsedKeyCount }) }}
               </p>
             </div>
 
             <!-- Help Section -->
-            <div
-              v-if="showHelpDialog && showHelp"
-              class="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-700 dark:bg-amber-900/30"
-            >
-              <h5 class="mb-2 font-semibold text-amber-800 dark:text-amber-200">
+            <div v-if="showHelpDialog && showHelp" class="oauth-callout oauth-callout--warning">
+              <h5 class="oauth-callout-title">
                 {{ t('admin.accounts.oauth.howToGetSessionKey') }}
               </h5>
-              <ol
-                class="list-inside list-decimal space-y-1 text-xs text-amber-700 dark:text-amber-300"
-              >
+              <ol class="oauth-callout-list">
                 <li>{{ t('admin.accounts.oauth.step1') }}</li>
                 <li>{{ t('admin.accounts.oauth.step2') }}</li>
                 <li>{{ t('admin.accounts.oauth.step3') }}</li>
@@ -338,17 +313,14 @@
                 <li>{{ t('admin.accounts.oauth.step6') }}</li>
               </ol>
               <p
-                class="mt-2 text-xs text-amber-600 dark:text-amber-400"
+                class="oauth-callout-footnote"
                 v-text="t('admin.accounts.oauth.sessionKeyFormat')"
               ></p>
             </div>
 
             <!-- Error Message -->
-            <div
-              v-if="error"
-              class="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 dark:border-red-700 dark:bg-red-900/30"
-            >
-              <p class="whitespace-pre-line text-sm text-red-600 dark:text-red-400">
+            <div v-if="error" class="oauth-error">
+              <p class="oauth-error-text">
                 {{ error }}
               </p>
             </div>
@@ -392,22 +364,18 @@
 
         <!-- Manual Authorization Flow -->
         <div v-if="inputMethod === 'manual'" class="space-y-4">
-          <p class="mb-4 text-sm text-blue-800 dark:text-blue-300">
+          <p class="oauth-copy oauth-copy--intro">
             {{ oauthFollowSteps }}
           </p>
 
           <!-- Step 1: Generate Auth URL -->
-          <div
-            class="rounded-lg border border-blue-300 bg-white/80 p-4 dark:border-blue-600 dark:bg-gray-800/80"
-          >
+          <div class="oauth-step-card">
             <div class="flex items-start gap-3">
-              <div
-                class="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white"
-              >
+              <div class="oauth-step-index">
                 1
               </div>
               <div class="flex-1">
-                <p class="mb-2 font-medium text-blue-900 dark:text-blue-200">
+                <p class="oauth-step-title">
                   {{ oauthStep1GenerateUrl }}
                 </p>
                 <div v-if="showProjectId && platform === 'gemini'" class="mb-3">
@@ -417,7 +385,7 @@
                       href="https://console.cloud.google.com/"
                       target="_blank"
                       rel="noopener noreferrer"
-                      class="inline-flex items-center gap-1 text-xs font-normal text-blue-500 hover:text-blue-600 dark:text-blue-400"
+                      class="oauth-inline-link"
                     >
                       <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z" />
@@ -431,7 +399,7 @@
                     class="input w-full font-mono text-sm"
                     :placeholder="t('admin.accounts.oauth.gemini.projectIdPlaceholder')"
                   />
-                  <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  <p class="oauth-hint">
                     {{ t('admin.accounts.oauth.gemini.projectIdHint') }}
                   </p>
                 </div>
@@ -471,7 +439,7 @@
                       :value="authUrl"
                       readonly
                       type="text"
-                      class="input flex-1 bg-gray-50 font-mono text-xs dark:bg-gray-700"
+                      class="input oauth-readonly-input flex-1 font-mono text-xs"
                     />
                     <button
                       type="button"
@@ -497,14 +465,14 @@
                         v-else
                         name="check"
                         size="sm"
-                        class="text-green-500"
+                        class="oauth-success-icon"
                         :stroke-width="2"
                       />
                     </button>
                   </div>
                   <button
                     type="button"
-                    class="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400"
+                    class="oauth-link"
                     @click="handleRegenerate"
                   >
                     <Icon name="refresh" size="xs" class="mr-1 inline" />
@@ -516,39 +484,35 @@
           </div>
 
           <!-- Step 2: Open URL and authorize -->
-          <div
-            class="rounded-lg border border-blue-300 bg-white/80 p-4 dark:border-blue-600 dark:bg-gray-800/80"
-          >
+          <div class="oauth-step-card">
             <div class="flex items-start gap-3">
-              <div
-                class="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white"
-              >
+              <div class="oauth-step-index">
                 2
               </div>
               <div class="flex-1">
-                <p class="mb-2 font-medium text-blue-900 dark:text-blue-200">
+                <p class="oauth-step-title">
                   {{ oauthStep2OpenUrl }}
                 </p>
-                <p class="text-sm text-blue-700 dark:text-blue-300">
+                <p class="oauth-copy">
                   {{ oauthOpenUrlDesc }}
                 </p>
                 <!-- OpenAI Important Notice -->
                 <div
                   v-if="isOpenAI"
-                  class="mt-2 rounded border border-amber-300 bg-amber-50 p-3 dark:border-amber-700 dark:bg-amber-900/30"
+                  class="oauth-callout oauth-callout--warning"
                 >
                   <p
-                    class="text-xs text-amber-800 dark:text-amber-300"
+                    class="oauth-callout-text"
                     v-text="oauthImportantNotice"
                   ></p>
                 </div>
                 <!-- Proxy Warning (for non-OpenAI) -->
                 <div
                   v-else-if="showProxyWarning"
-                  class="mt-2 rounded border border-yellow-300 bg-yellow-50 p-3 dark:border-yellow-700 dark:bg-yellow-900/30"
+                  class="oauth-callout oauth-callout--warning"
                 >
                   <p
-                    class="text-xs text-yellow-800 dark:text-yellow-300"
+                    class="oauth-callout-text"
                     v-text="t('admin.accounts.oauth.proxyWarning')"
                   ></p>
                 </div>
@@ -557,26 +521,22 @@
           </div>
 
           <!-- Step 3: Enter authorization code -->
-          <div
-            class="rounded-lg border border-blue-300 bg-white/80 p-4 dark:border-blue-600 dark:bg-gray-800/80"
-          >
+          <div class="oauth-step-card">
             <div class="flex items-start gap-3">
-              <div
-                class="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white"
-              >
+              <div class="oauth-step-index">
                 3
               </div>
               <div class="flex-1">
-                <p class="mb-2 font-medium text-blue-900 dark:text-blue-200">
+                <p class="oauth-step-title">
                   {{ oauthStep3EnterCode }}
                 </p>
                 <p
-                  class="mb-3 text-sm text-blue-700 dark:text-blue-300"
+                  class="oauth-copy"
                   v-text="oauthAuthCodeDesc"
                 ></p>
                 <div>
                   <label class="input-label">
-                    <Icon name="key" size="sm" class="mr-1 inline text-blue-500" />
+                    <Icon name="key" size="sm" class="oauth-field-icon mr-1 inline" />
                     {{ oauthAuthCode }}
                   </label>
                   <textarea
@@ -585,7 +545,7 @@
                     class="input w-full resize-none font-mono text-sm"
                     :placeholder="oauthAuthCodePlaceholder"
                   ></textarea>
-                  <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                  <p class="oauth-hint">
                     <Icon name="infoCircle" size="xs" class="mr-1 inline" />
                     {{ oauthAuthCodeHint }}
                   </p>
@@ -593,16 +553,16 @@
                   <!-- Gemini-specific state parameter warning -->
                   <div
                     v-if="platform === 'gemini'"
-                    class="mt-3 rounded-lg border-2 border-amber-400 bg-amber-50 p-3 dark:border-amber-600 dark:bg-amber-900/30"
+                    class="oauth-callout oauth-callout--strong-warning"
                   >
                     <div class="flex items-start gap-2">
                       <Icon
                         name="exclamationTriangle"
                         size="md"
-                        class="flex-shrink-0 text-amber-600 dark:text-amber-400"
+                        class="oauth-warning-icon"
                         :stroke-width="2"
                       />
-                      <div class="text-sm text-amber-800 dark:text-amber-300">
+                      <div class="oauth-callout-body">
                         <p class="font-semibold">{{ $t('admin.accounts.oauth.gemini.stateWarningTitle') }}</p>
                         <p class="mt-1">{{ $t('admin.accounts.oauth.gemini.stateWarningDesc') }}</p>
                       </div>
@@ -611,11 +571,8 @@
                 </div>
 
                 <!-- Error Message -->
-                <div
-                  v-if="error"
-                  class="mt-3 rounded-lg border border-red-200 bg-red-50 p-3 dark:border-red-700 dark:bg-red-900/30"
-                >
-                  <p class="whitespace-pre-line text-sm text-red-600 dark:text-red-400">
+                <div v-if="error" class="oauth-error oauth-error--spaced">
+                  <p class="oauth-error-text">
                     {{ error }}
                   </p>
                 </div>
@@ -860,3 +817,252 @@ defineExpose({
   }
 })
 </script>
+
+<style scoped>
+.oauth-flow-card {
+  border: 1px solid var(--nm-border);
+  border-radius: var(--nm-radius-lg);
+  background: var(--nm-surface);
+  padding: 1rem;
+}
+
+.oauth-flow-icon {
+  display: flex;
+  height: 2.5rem;
+  width: 2.5rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--nm-accent);
+  border-radius: var(--nm-radius);
+  background: var(--nm-accent-soft);
+  color: var(--nm-accent-text);
+}
+
+.oauth-flow-title {
+  margin-bottom: 0.75rem;
+  color: var(--nm-ink);
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.oauth-method-label {
+  margin-bottom: 0.5rem;
+  display: block;
+  color: var(--nm-ink-muted);
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.oauth-method-option {
+  display: flex;
+  cursor: pointer;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.oauth-radio {
+  accent-color: var(--nm-accent);
+}
+
+.oauth-radio:focus-visible,
+.oauth-icon-link:focus-visible,
+.oauth-link:focus-visible,
+.oauth-inline-link:focus-visible {
+  outline: 3px solid var(--nm-accent);
+  outline-offset: 2px;
+}
+
+.oauth-method-text,
+.oauth-copy,
+.oauth-callout-body {
+  color: var(--nm-ink-muted);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.oauth-panel,
+.oauth-step-card {
+  border: 1px solid var(--nm-border);
+  border-radius: var(--nm-radius-lg);
+  background: var(--nm-surface);
+  padding: 1rem;
+}
+
+.oauth-copy {
+  margin-bottom: 0.75rem;
+}
+
+.oauth-copy--intro {
+  margin-bottom: 1rem;
+}
+
+.oauth-field-label {
+  margin-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--nm-ink);
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.oauth-field-icon,
+.oauth-icon-link,
+.oauth-link,
+.oauth-inline-link {
+  color: var(--nm-accent-text);
+}
+
+.oauth-count-badge {
+  border: 1px solid var(--nm-accent);
+  border-radius: var(--nm-radius-sm);
+  background: var(--nm-accent-soft);
+  padding: 0.125rem 0.5rem;
+  color: var(--nm-accent-text);
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.oauth-hint {
+  margin-top: 0.5rem;
+  color: var(--nm-ink-faint);
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+.oauth-hint--accent {
+  margin-top: 0.25rem;
+  color: var(--nm-accent-text);
+}
+
+.oauth-error {
+  margin-bottom: 1rem;
+  border: 1px solid var(--nm-danger);
+  border-radius: var(--nm-radius-lg);
+  background: var(--nm-danger-soft);
+  padding: 0.75rem;
+}
+
+.oauth-error--spaced {
+  margin-top: 0.75rem;
+  margin-bottom: 0;
+}
+
+.oauth-error-text {
+  white-space: pre-line;
+  color: var(--nm-danger-text);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.oauth-icon-link,
+.oauth-link,
+.oauth-inline-link {
+  transition: color 160ms ease;
+}
+
+.oauth-icon-link:hover,
+.oauth-link:hover,
+.oauth-inline-link:hover {
+  color: var(--nm-accent-strong);
+}
+
+.oauth-link {
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+
+.oauth-inline-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 400;
+  line-height: 1.3;
+}
+
+.oauth-callout {
+  margin-top: 0.5rem;
+  margin-bottom: 1rem;
+  border: 1px solid var(--nm-warning);
+  border-radius: var(--nm-radius);
+  background: var(--nm-warning-soft);
+  padding: 0.75rem;
+  color: var(--nm-warning-text);
+}
+
+.oauth-callout--strong-warning {
+  margin-top: 0.75rem;
+  border-width: 2px;
+}
+
+.oauth-callout-title {
+  margin-bottom: 0.5rem;
+  color: var(--nm-warning-text);
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.oauth-callout-list {
+  list-style-position: inside;
+  list-style-type: decimal;
+  color: var(--nm-warning-text);
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+.oauth-callout-list > * + * {
+  margin-top: 0.25rem;
+}
+
+.oauth-callout-text,
+.oauth-callout-footnote {
+  color: var(--nm-warning-text);
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+.oauth-callout-footnote {
+  margin-top: 0.5rem;
+}
+
+.oauth-step-index {
+  display: flex;
+  height: 1.5rem;
+  width: 1.5rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--nm-accent);
+  border-radius: var(--nm-radius-sm);
+  background: var(--nm-accent);
+  color: var(--nm-surface);
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.oauth-step-title {
+  margin-bottom: 0.5rem;
+  color: var(--nm-ink);
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.oauth-readonly-input {
+  background: var(--nm-surface-soft);
+}
+
+.oauth-success-icon {
+  color: var(--nm-success-text);
+}
+
+.oauth-warning-icon {
+  flex-shrink: 0;
+  color: var(--nm-warning-text);
+}
+</style>
