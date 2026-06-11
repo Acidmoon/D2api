@@ -4,12 +4,8 @@
     <template v-if="isAdmin">
       <button
         @click="toggleDropdown"
-        class="flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs transition-colors"
-        :class="[
-          hasUpdate
-            ? 'bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:hover:bg-amber-900/50'
-            : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-800 dark:text-dark-400 dark:hover:bg-dark-700'
-        ]"
+        class="version-trigger flex items-center gap-1.5 border px-2 py-1 text-xs transition-colors"
+        :class="{ 'version-trigger-update': hasUpdate }"
         :title="hasUpdate ? t('version.updateAvailable') : t('version.upToDate')"
       >
         <span v-if="currentVersion" class="font-medium">v{{ currentVersion }}</span>
@@ -20,9 +16,9 @@
         <!-- Update indicator -->
         <span v-if="hasUpdate" class="relative flex h-2 w-2">
           <span
-            class="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75"
+            class="version-dot-ping absolute inline-flex h-full w-full animate-ping opacity-75"
           ></span>
-          <span class="relative inline-flex h-2 w-2 rounded-full bg-amber-500"></span>
+          <span class="version-dot relative inline-flex h-2 w-2"></span>
         </span>
       </button>
 
@@ -31,18 +27,19 @@
         <div
           v-if="dropdownOpen"
           ref="dropdownRef"
-          class="absolute left-0 z-50 mt-2 w-64 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg dark:border-dark-700 dark:bg-dark-800"
+          class="version-dropdown absolute left-0 z-50 mt-2 w-64 overflow-hidden border"
         >
           <!-- Header with refresh button -->
           <div
-            class="flex items-center justify-between border-b border-gray-100 px-4 py-3 dark:border-dark-700"
+            class="flex items-center justify-between border-b px-4 py-3"
+            style="border-color: var(--nm-border-light)"
           >
-            <span class="text-sm font-medium text-gray-700 dark:text-dark-300">{{
+            <span class="text-sm font-medium" style="color: var(--nm-ink)">{{
               t('version.currentVersion')
             }}</span>
             <button
               @click="refreshVersion(true)"
-              class="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-dark-700 dark:hover:text-dark-200"
+              class="version-icon-button p-1.5 transition-colors"
               :disabled="loading"
               :title="t('version.refresh')"
             >
@@ -58,7 +55,7 @@
           <div class="p-4">
             <!-- Loading state -->
             <div v-if="loading" class="flex items-center justify-center py-6">
-              <svg class="h-6 w-6 animate-spin text-primary-500" fill="none" viewBox="0 0 24 24">
+              <svg class="h-6 w-6 animate-spin" style="color: var(--nm-accent-text)" fill="none" viewBox="0 0 24 24">
                 <circle
                   class="opacity-25"
                   cx="12"
@@ -82,17 +79,18 @@
                 <div class="inline-flex items-center gap-2">
                   <span
                     v-if="currentVersion"
-                    class="text-2xl font-bold text-gray-900 dark:text-white"
+                    class="text-2xl font-bold"
+                    style="color: var(--nm-ink)"
                     >v{{ currentVersion }}</span
                   >
                   <span v-else class="text-2xl font-bold text-gray-400 dark:text-dark-500">--</span>
                   <!-- Show check mark when up to date -->
                   <span
                     v-if="!hasUpdate"
-                    class="flex h-5 w-5 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30"
+                    class="version-inline-status flex h-5 w-5 items-center justify-center"
                   >
                     <svg
-                      class="h-3 w-3 text-green-600 dark:text-green-400"
+                      class="h-3 w-3 text-semantic-success"
                       fill="currentColor"
                       viewBox="0 0 20 20"
                     >
@@ -104,7 +102,7 @@
                     </svg>
                   </span>
                 </div>
-                <p class="mt-1 text-xs text-gray-500 dark:text-dark-400">
+                <p class="mt-1 text-xs" style="color: var(--nm-ink-muted)">
                   {{
                     hasUpdate
                       ? t('version.latestVersion') + ': v' + latestVersion
@@ -116,23 +114,24 @@
               <!-- Priority 1: Update error (must check before hasUpdate) -->
               <div v-if="updateError" class="space-y-2">
                 <div
-                  class="flex items-center gap-3 rounded-lg border border-red-200 bg-red-50 p-3 dark:border-red-800/50 dark:bg-red-900/20"
+                  class="version-status-panel flex items-center gap-3 p-3"
+                  style="border-color: var(--nm-danger); background: var(--nm-danger-soft)"
                 >
                   <div
-                    class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/50"
+                    class="version-status-icon flex h-8 w-8 flex-shrink-0 items-center justify-center"
                   >
                     <Icon
                       name="x"
                       size="sm"
                       :stroke-width="2"
-                      class="text-red-600 dark:text-red-400"
+                      class="text-semantic-danger"
                     />
                   </div>
                   <div class="min-w-0 flex-1">
-                    <p class="text-sm font-medium text-red-700 dark:text-red-300">
+                    <p class="text-sm font-medium text-semantic-danger">
                       {{ t('version.updateFailed') }}
                     </p>
-                    <p class="truncate text-xs text-red-600/70 dark:text-red-400/70">
+                    <p class="truncate text-xs text-semantic-danger">
                       {{ updateError }}
                     </p>
                   </div>
@@ -142,7 +141,7 @@
                 <button
                   @click="handleUpdate"
                   :disabled="updating"
-                  class="flex w-full items-center justify-center gap-2 rounded-lg bg-red-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-50"
+                  class="btn btn-danger flex w-full items-center justify-center gap-2 px-4 py-2"
                 >
                   {{ t('version.retry') }}
                 </button>
@@ -151,13 +150,14 @@
               <!-- Priority 2: Update success - need restart -->
               <div v-else-if="updateSuccess && needRestart" class="space-y-2">
                 <div
-                  class="flex items-center gap-3 rounded-lg border border-green-200 bg-green-50 p-3 dark:border-green-800/50 dark:bg-green-900/20"
+                  class="version-status-panel flex items-center gap-3 p-3"
+                  style="border-color: var(--nm-success); background: var(--nm-success-soft)"
                 >
                   <div
-                    class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/50"
+                    class="version-status-icon flex h-8 w-8 flex-shrink-0 items-center justify-center"
                   >
                     <svg
-                      class="h-4 w-4 text-green-600 dark:text-green-400"
+                      class="h-4 w-4 text-semantic-success"
                       fill="none"
                       viewBox="0 0 24 24"
                       stroke="currentColor"
@@ -167,10 +167,10 @@
                     </svg>
                   </div>
                   <div class="min-w-0 flex-1">
-                    <p class="text-sm font-medium text-green-700 dark:text-green-300">
+                    <p class="text-sm font-medium text-semantic-success">
                       {{ t('version.updateComplete') }}
                     </p>
-                    <p class="text-xs text-green-600/70 dark:text-green-400/70">
+                    <p class="text-xs text-semantic-success">
                       {{ t('version.restartRequired') }}
                     </p>
                   </div>
@@ -180,7 +180,7 @@
                 <button
                   @click="handleRestart"
                   :disabled="restarting"
-                  class="flex w-full items-center justify-center gap-2 rounded-lg bg-green-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-green-600 disabled:cursor-not-allowed disabled:opacity-50"
+                  class="btn flex w-full items-center justify-center gap-2 px-4 py-2"
                 >
                   <svg
                     v-if="restarting"
@@ -233,28 +233,29 @@
                   :href="releaseInfo.html_url"
                   target="_blank"
                   rel="noopener noreferrer"
-                  class="group flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3 transition-colors hover:bg-amber-100 dark:border-amber-800/50 dark:bg-amber-900/20 dark:hover:bg-amber-900/30"
+                  class="version-status-panel group flex items-center gap-3 p-3 transition-colors"
+                  style="border-color: var(--nm-warning); background: var(--nm-warning-soft)"
                 >
                   <div
-                    class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/50"
+                    class="version-status-icon flex h-8 w-8 flex-shrink-0 items-center justify-center"
                   >
                     <Icon
                       name="download"
                       size="sm"
                       :stroke-width="2"
-                      class="text-amber-600 dark:text-amber-400"
+                      class="text-semantic-warning"
                     />
                   </div>
                   <div class="min-w-0 flex-1">
-                    <p class="text-sm font-medium text-amber-700 dark:text-amber-300">
+                    <p class="text-sm font-medium text-semantic-warning">
                       {{ t('version.updateAvailable') }}
                     </p>
-                    <p class="text-xs text-amber-600/70 dark:text-amber-400/70">
+                    <p class="text-xs text-semantic-warning">
                       v{{ latestVersion }}
                     </p>
                   </div>
                   <svg
-                    class="h-4 w-4 text-amber-500 transition-transform group-hover:translate-x-0.5 dark:text-amber-400"
+                    class="h-4 w-4 text-semantic-warning transition-transform group-hover:translate-x-0.5"
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
@@ -265,10 +266,11 @@
                 </a>
                 <!-- Source build hint -->
                 <div
-                  class="flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 p-2 dark:border-blue-800/50 dark:bg-blue-900/20"
+                  class="version-status-panel flex items-center gap-2 p-2"
+                  style="border-color: var(--nm-info); background: var(--nm-info-soft)"
                 >
                   <svg
-                    class="h-3.5 w-3.5 flex-shrink-0 text-blue-500 dark:text-blue-400"
+                    class="h-3.5 w-3.5 flex-shrink-0 text-semantic-info"
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
@@ -280,7 +282,7 @@
                       d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                     />
                   </svg>
-                  <p class="text-xs text-blue-600 dark:text-blue-400">
+                  <p class="text-xs text-semantic-info">
                     {{ t('version.sourceModeHint') }}
                   </p>
                 </div>
@@ -290,23 +292,24 @@
               <div v-else-if="hasUpdate && isReleaseBuild" class="space-y-3">
                 <!-- Update info card -->
                 <div
-                  class="flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-800/50 dark:bg-amber-900/20"
+                  class="version-status-panel flex items-center gap-3 p-3"
+                  style="border-color: var(--nm-warning); background: var(--nm-warning-soft)"
                 >
                   <div
-                    class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/50"
+                    class="version-status-icon flex h-8 w-8 flex-shrink-0 items-center justify-center"
                   >
                     <Icon
                       name="download"
                       size="sm"
                       :stroke-width="2"
-                      class="text-amber-600 dark:text-amber-400"
+                      class="text-semantic-warning"
                     />
                   </div>
                   <div class="min-w-0 flex-1">
-                    <p class="text-sm font-medium text-amber-700 dark:text-amber-300">
+                    <p class="text-sm font-medium text-semantic-warning">
                       {{ t('version.updateAvailable') }}
                     </p>
-                    <p class="text-xs text-amber-600/70 dark:text-amber-400/70">
+                    <p class="text-xs text-semantic-warning">
                       v{{ latestVersion }}
                     </p>
                   </div>
@@ -314,15 +317,16 @@
 
                 <!-- Docker deployment guide -->
                 <div
-                  class="rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-800/50 dark:bg-blue-900/20"
+                  class="version-status-panel p-3"
+                  style="border-color: var(--nm-info); background: var(--nm-info-soft)"
                 >
-                  <p class="mb-2 text-xs font-medium text-blue-700 dark:text-blue-300">
+                  <p class="mb-2 text-xs font-medium text-semantic-info">
                     {{ t('version.dockerUpdateGuideTitle') }}
                   </p>
-                  <p class="mb-2 text-xs text-blue-600 dark:text-blue-400">
+                  <p class="mb-2 text-xs text-semantic-info">
                     {{ t('version.dockerUpdateGuide') }}
                   </p>
-                  <div class="space-y-1 rounded bg-white/60 p-2 font-mono text-xs text-blue-800 dark:bg-dark-900/50 dark:text-blue-300">
+                  <div class="space-y-1 p-2 font-mono text-xs text-semantic-info" style="background: var(--nm-bg); border-radius: var(--nm-radius-sm)">
                     <p>$ {{ t('version.dockerUpdateCmd1') }}</p>
                     <p>$ {{ t('version.dockerUpdateCmd2') }}</p>
                   </div>
@@ -542,5 +546,53 @@ onBeforeUnmount(() => {
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+.version-trigger {
+  border-color: var(--nm-border);
+  background: var(--nm-surface);
+  color: var(--nm-ink-muted);
+  border-radius: var(--nm-radius-sm);
+}
+
+.version-trigger:hover,
+.version-trigger-update {
+  border-color: var(--nm-warning);
+  background: var(--nm-warning-soft);
+  color: var(--nm-warning-text);
+}
+
+.version-dot,
+.version-dot-ping {
+  background: var(--nm-warning);
+  border-radius: 999px;
+}
+
+.version-dropdown {
+  border-color: var(--nm-border);
+  background: var(--nm-surface);
+  border-radius: var(--nm-radius);
+}
+
+.version-icon-button {
+  color: var(--nm-ink-muted);
+  border-radius: var(--nm-radius-sm);
+}
+
+.version-icon-button:hover {
+  background: var(--nm-surface-soft);
+  color: var(--nm-ink);
+}
+
+.version-inline-status,
+.version-status-icon {
+  border: 1px solid var(--nm-border-light);
+  background: var(--nm-surface-soft);
+  border-radius: var(--nm-radius-sm);
+}
+
+.version-status-panel {
+  border: 1px solid;
+  border-radius: var(--nm-radius);
 }
 </style>
