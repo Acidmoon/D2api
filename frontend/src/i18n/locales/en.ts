@@ -678,6 +678,8 @@ export default {
     noGroup: 'No Group',
     requests: 'Requests',
     tokens: 'Tokens',
+    time: 'Time',
+    cost: 'Cost',
     actual: 'Actual',
     standard: 'Standard',
     input: 'Input',

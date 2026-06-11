@@ -677,6 +677,8 @@ export default {
     noGroup: '无分组',
     requests: '请求',
     tokens: 'Token',
+    time: '时间',
+    cost: '花费',
     actual: '实际',
     standard: '标准',
     input: '输入',
