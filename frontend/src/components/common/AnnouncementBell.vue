@@ -3,8 +3,8 @@
     <!-- 铃铛按钮 -->
     <button
       @click="openModal"
-      class="relative flex h-9 w-9 items-center justify-center rounded-lg text-gray-600 transition-all hover:bg-gray-100 hover:scale-105 dark:text-gray-400 dark:hover:bg-dark-800"
-      :class="{ 'text-blue-600 dark:text-blue-400': unreadCount > 0 }"
+      class="announcement-trigger relative flex h-9 w-9 items-center justify-center"
+      :class="{ 'announcement-trigger-active': unreadCount > 0 }"
       :aria-label="t('announcements.title')"
     >
       <Icon name="bell" size="md" />
@@ -13,8 +13,8 @@
         v-if="unreadCount > 0"
         class="absolute right-1 top-1 flex h-2 w-2"
       >
-        <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-75"></span>
-        <span class="relative inline-flex h-2 w-2 rounded-full bg-red-500"></span>
+        <span class="announcement-dot-ping absolute inline-flex h-full w-full animate-ping opacity-75"></span>
+        <span class="announcement-dot relative inline-flex h-2 w-2"></span>
       </span>
     </button>
 
@@ -28,7 +28,7 @@
           @click="closeModal"
         >
           <div
-            class="w-full max-w-[620px] overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-black/5 dark:bg-dark-800 dark:ring-white/10"
+            class="announcement-panel w-full max-w-[620px] overflow-hidden"
             @click.stop
           >
             <!-- Header -->
@@ -36,14 +36,14 @@
               <div class="relative z-10 flex items-start justify-between">
                 <div>
                   <div class="flex items-center gap-2">
-                    <div class="flex h-8 w-8 items-center justify-center rounded-lg" style="background: var(--nm-accent); color: var(--nm-on-accent); box-shadow: var(--nm-shadow-raised-sm)">
+                    <div class="announcement-icon flex h-8 w-8 items-center justify-center">
                       <Icon name="bell" size="sm" />
                     </div>
-                    <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
+                    <h2 class="text-lg font-semibold" style="color: var(--nm-ink)">
                       {{ t('announcements.title') }}
                     </h2>
                   </div>
-                  <p v-if="unreadCount > 0" class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                  <p v-if="unreadCount > 0" class="mt-2 text-sm" style="color: var(--nm-ink-muted)">
                     <span class="font-medium" style="color: var(--nm-accent-text)">{{ unreadCount }}</span>
                     {{ t('announcements.unread') }}
                   </p>
@@ -53,15 +53,13 @@
                     v-if="unreadCount > 0"
                     @click="markAllAsRead"
                     :disabled="loading"
-                    class="rounded-lg px-4 py-2 text-xs font-medium transition-all hover:opacity-90 disabled:opacity-50"
-                    style="background: var(--nm-accent); color: var(--nm-on-accent); box-shadow: var(--nm-shadow-raised-sm)"
+                    class="btn btn-primary btn-sm"
                   >
                     {{ t('announcements.markAllRead') }}
                   </button>
                   <button
                     @click="closeModal"
-                    class="flex h-9 w-9 items-center justify-center rounded-lg text-gray-500 transition-all hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
-                    style="background: var(--nm-surface-soft)"
+                    class="announcement-icon-button flex h-9 w-9 items-center justify-center"
                     :aria-label="t('common.close')"
                   >
                     <Icon name="x" size="sm" />
@@ -74,10 +72,7 @@
             <div class="max-h-[65vh] overflow-y-auto">
               <!-- Loading -->
               <div v-if="loading" class="flex items-center justify-center py-16">
-                <div class="relative">
-                  <div class="h-12 w-12 animate-spin rounded-full border-4 border-gray-200 dark:border-dark-600" style="border-top-color: var(--nm-accent)"></div>
-                  <div class="absolute inset-0 h-12 w-12 animate-pulse rounded-full border-4" style="border-color: var(--nm-accent-soft)"></div>
-                </div>
+                <div class="announcement-spinner"></div>
               </div>
 
               <!-- Announcements List -->
@@ -85,8 +80,8 @@
                 <div
                   v-for="item in announcements"
                   :key="item.id"
-                  class="group relative flex items-center gap-4 border-b border-gray-100 px-6 py-4 transition-all hover:bg-gray-50 dark:border-dark-700 dark:hover:bg-dark-700/30"
-                  :class="{ 'bg-blue-50/30 dark:bg-blue-900/5': !item.read_at }"
+                  class="announcement-row group relative flex items-center gap-4 border-b px-6 py-4"
+                  :class="{ 'announcement-row-unread': !item.read_at }"
                   style="min-height: 72px"
                   @click="openDetail(item)"
                 >
@@ -94,11 +89,10 @@
                   <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center">
                     <div
                       v-if="!item.read_at"
-                      class="relative flex h-10 w-10 items-center justify-center rounded-xl"
-                      style="background: var(--nm-accent); color: var(--nm-on-accent); box-shadow: var(--nm-shadow-raised-sm)"
+                      class="announcement-state-icon announcement-state-icon-unread relative flex h-10 w-10 items-center justify-center"
                     >
                       <!-- Pulse ring -->
-                      <span class="absolute inline-flex h-full w-full animate-ping rounded-xl opacity-75" style="background: var(--nm-accent)"></span>
+                      <span class="announcement-icon-ping absolute inline-flex h-full w-full animate-ping opacity-75"></span>
                       <!-- Icon -->
                       <svg class="relative z-10 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -106,7 +100,7 @@
                     </div>
                     <div
                       v-else
-                      class="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100 text-gray-400 dark:bg-dark-700 dark:text-gray-600"
+                      class="announcement-state-icon flex h-10 w-10 items-center justify-center"
                     >
                       <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -117,21 +111,20 @@
                   <!-- Content -->
                   <div class="flex min-w-0 flex-1 items-center justify-between gap-4">
                     <div class="min-w-0 flex-1">
-                      <h3 class="truncate text-sm font-medium text-gray-900 dark:text-white">
+                      <h3 class="truncate text-sm font-medium" style="color: var(--nm-ink)">
                         {{ item.title }}
                       </h3>
                       <div class="mt-1 flex items-center gap-2">
-                        <time class="text-xs text-gray-500 dark:text-gray-400">
+                        <time class="text-xs" style="color: var(--nm-ink-muted)">
                           {{ formatRelativeTime(item.created_at) }}
                         </time>
                         <span
                           v-if="!item.read_at"
-                          class="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium"
-                          style="background: var(--nm-accent-soft); color: var(--nm-accent-text)"
+                          class="badge badge-primary inline-flex items-center gap-1"
                         >
                           <span class="relative flex h-1.5 w-1.5">
-                            <span class="absolute inline-flex h-full w-full animate-ping rounded-full opacity-75" style="background: var(--nm-accent)"></span>
-                            <span class="relative inline-flex h-1.5 w-1.5 rounded-full" style="background: var(--nm-accent)"></span>
+                            <span class="announcement-dot-ping absolute inline-flex h-full w-full animate-ping opacity-75"></span>
+                            <span class="announcement-dot relative inline-flex h-1.5 w-1.5"></span>
                           </span>
                           {{ t('announcements.unread') }}
                         </span>
@@ -141,7 +134,7 @@
                     <!-- Arrow -->
                     <div class="flex-shrink-0">
                       <svg
-                        class="h-5 w-5 text-gray-400 transition-transform group-hover:translate-x-1 dark:text-gray-600"
+                        class="announcement-chevron h-5 w-5 transition-transform group-hover:translate-x-1"
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"
@@ -155,7 +148,7 @@
                   <!-- Unread indicator bar -->
                   <div
                     v-if="!item.read_at"
-                    class="absolute left-0 top-0 h-full w-1"
+                    class="absolute left-0 top-0 h-full w-px"
                     style="background: var(--nm-accent)"
                   ></div>
                 </div>
@@ -164,17 +157,17 @@
               <!-- Empty State -->
               <div v-else class="flex flex-col items-center justify-center py-16">
                 <div class="relative mb-4">
-                  <div class="flex h-20 w-20 items-center justify-center rounded-full" style="background: var(--nm-surface-soft); box-shadow: var(--nm-shadow-inset)">
-                    <Icon name="inbox" size="xl" class="text-gray-400 dark:text-gray-500" />
+                  <div class="announcement-empty-icon flex h-20 w-20 items-center justify-center">
+                    <Icon name="inbox" size="xl" />
                   </div>
-                  <div class="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full text-white" style="background: var(--nm-success)">
+                  <div class="announcement-empty-check absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center">
                     <svg class="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 20 20">
                       <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
                     </svg>
                   </div>
                 </div>
-                <p class="text-sm font-medium text-gray-900 dark:text-white">{{ t('announcements.empty') }}</p>
-                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ t('announcements.emptyDescription') }}</p>
+                <p class="text-sm font-medium" style="color: var(--nm-ink)">{{ t('announcements.empty') }}</p>
+                <p class="mt-1 text-xs" style="color: var(--nm-ink-muted)">{{ t('announcements.emptyDescription') }}</p>
               </div>
             </div>
           </div>
@@ -192,7 +185,7 @@
           @click="closeDetail"
         >
           <div
-            class="w-full max-w-[780px] overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-black/5 dark:bg-dark-800 dark:ring-white/10"
+            class="announcement-panel w-full max-w-[780px] overflow-hidden"
             @click.stop
           >
             <!-- Header -->
@@ -201,23 +194,22 @@
                 <div class="flex-1 min-w-0">
                   <!-- Icon and Category -->
                   <div class="mb-3 flex items-center gap-2">
-                    <div class="flex h-10 w-10 items-center justify-center rounded-xl" style="background: var(--nm-accent); color: var(--nm-on-accent); box-shadow: var(--nm-shadow-raised-sm)">
+                    <div class="announcement-icon flex h-10 w-10 items-center justify-center">
                       <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
                     </div>
                     <div class="flex items-center gap-2">
-                      <span class="rounded-lg px-2.5 py-1 text-xs font-medium" style="background: var(--nm-accent-soft); color: var(--nm-accent-text)">
+                      <span class="badge badge-primary">
                         {{ t('announcements.title') }}
                       </span>
                       <span
                         v-if="!selectedAnnouncement.read_at"
-                        class="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium"
-                        style="background: var(--nm-accent); color: var(--nm-on-accent); box-shadow: var(--nm-shadow-raised-sm)"
+                        class="badge badge-primary inline-flex items-center gap-1.5"
                       >
                         <span class="relative flex h-2 w-2">
-                          <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75"></span>
-                          <span class="relative inline-flex h-2 w-2 rounded-full bg-white"></span>
+                          <span class="announcement-dot-ping absolute inline-flex h-full w-full animate-ping opacity-75"></span>
+                          <span class="announcement-dot relative inline-flex h-2 w-2"></span>
                         </span>
                         {{ t('announcements.unread') }}
                       </span>
@@ -225,12 +217,12 @@
                   </div>
 
                   <!-- Title -->
-                  <h2 class="mb-3 text-2xl font-bold leading-tight text-gray-900 dark:text-white">
+                  <h2 class="mb-3 text-2xl font-bold leading-tight" style="color: var(--nm-ink)">
                     {{ selectedAnnouncement.title }}
                   </h2>
 
                   <!-- Meta Info -->
-                  <div class="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
+                  <div class="flex items-center gap-4 text-sm" style="color: var(--nm-ink-muted)">
                     <div class="flex items-center gap-1.5">
                       <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -250,8 +242,7 @@
                 <!-- Close button -->
                 <button
                   @click="closeDetail"
-                  class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl text-gray-500 transition-all hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
-                  style="background: var(--nm-surface-soft)"
+                  class="announcement-icon-button flex h-10 w-10 flex-shrink-0 items-center justify-center"
                   :aria-label="t('common.close')"
                 >
                   <Icon name="x" size="md" />
@@ -260,11 +251,11 @@
             </div>
 
             <!-- Body with Enhanced Markdown -->
-            <div class="max-h-[60vh] overflow-y-auto bg-white px-8 py-8 dark:bg-dark-800">
+            <div class="max-h-[60vh] overflow-y-auto px-8 py-8" style="background: var(--nm-bg)">
               <!-- Content with decorative border -->
               <div class="relative">
                 <!-- Decorative left border -->
-                <div class="absolute left-0 top-0 bottom-0 w-1 rounded-full" style="background: var(--nm-accent)"></div>
+                <div class="absolute left-0 top-0 bottom-0 w-px" style="background: var(--nm-accent)"></div>
 
                 <div class="pl-6">
                   <div
@@ -276,9 +267,9 @@
             </div>
 
             <!-- Footer with Actions -->
-            <div class="border-t border-gray-100 bg-gray-50/50 px-8 py-5 dark:border-dark-700 dark:bg-dark-900/30">
+            <div class="border-t px-8 py-5" style="border-color: var(--nm-border-light); background: var(--nm-surface-soft)">
               <div class="flex items-center justify-between">
-                <div class="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                <div class="flex items-center gap-2 text-xs" style="color: var(--nm-ink-muted)">
                   <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
@@ -287,15 +278,14 @@
                 <div class="flex items-center gap-3">
                   <button
                     @click="closeDetail"
-                    class="rounded-xl border border-gray-300 bg-white px-5 py-2.5 text-sm font-medium text-gray-700 shadow-sm transition-all hover:bg-gray-50 hover:shadow dark:border-dark-600 dark:bg-dark-700 dark:text-gray-300 dark:hover:bg-dark-600"
+                    class="btn btn-secondary"
                   >
                     {{ t('common.close') }}
                   </button>
                   <button
                     v-if="!selectedAnnouncement.read_at"
                     @click="markAsReadAndClose(selectedAnnouncement.id)"
-                    class="rounded-xl px-5 py-2.5 text-sm font-medium transition-all hover:opacity-90"
-                    style="background: var(--nm-accent); color: var(--nm-on-accent); box-shadow: var(--nm-shadow-raised-sm)"
+                    class="btn btn-primary"
                   >
                     <span class="flex items-center gap-2">
                       <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -424,7 +414,105 @@ watch(
 </script>
 
 <style scoped>
-/* Modal Animations */
+.announcement-trigger {
+  color: var(--nm-ink-muted);
+  border: 1px solid transparent;
+  border-radius: var(--nm-radius);
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+
+.announcement-trigger:hover,
+.announcement-trigger-active {
+  color: var(--nm-accent-text);
+  background: var(--nm-accent-soft);
+  border-color: var(--nm-accent);
+}
+
+.announcement-panel {
+  background: var(--nm-surface);
+  border: 1px solid var(--nm-border);
+  border-radius: var(--nm-radius-lg);
+}
+
+.announcement-icon,
+.announcement-state-icon-unread {
+  color: var(--nm-accent-text);
+  background: var(--nm-accent-soft);
+  border: 1px solid var(--nm-accent);
+  border-radius: var(--nm-radius);
+}
+
+.announcement-icon-button {
+  color: var(--nm-ink-muted);
+  background: var(--nm-surface-soft);
+  border: 1px solid var(--nm-border-light);
+  border-radius: var(--nm-radius);
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+
+.announcement-icon-button:hover {
+  color: var(--nm-ink);
+  border-color: var(--nm-border);
+}
+
+.announcement-dot,
+.announcement-dot-ping,
+.announcement-icon-ping {
+  background: var(--nm-accent);
+  border-radius: 999px;
+}
+
+.announcement-row {
+  cursor: pointer;
+  border-color: var(--nm-border-light);
+  color: var(--nm-ink);
+  transition: background-color 160ms ease;
+}
+
+.announcement-row:hover,
+.announcement-row-unread {
+  background: var(--nm-surface-soft);
+}
+
+.announcement-state-icon {
+  color: var(--nm-ink-faint);
+  background: var(--nm-surface-soft);
+  border: 1px solid var(--nm-border-light);
+  border-radius: var(--nm-radius);
+}
+
+.announcement-chevron {
+  color: var(--nm-ink-faint);
+}
+
+.announcement-empty-icon {
+  color: var(--nm-ink-faint);
+  background: var(--nm-surface-soft);
+  border: 1px solid var(--nm-border-light);
+  border-radius: var(--nm-radius-lg);
+}
+
+.announcement-empty-check {
+  color: var(--nm-on-accent);
+  background: var(--nm-success);
+  border-radius: var(--nm-radius);
+}
+
+.announcement-spinner {
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 2px solid var(--nm-border-light);
+  border-top-color: var(--nm-accent);
+  border-radius: 999px;
+  animation: announcement-spin 800ms linear infinite;
+}
+
+@keyframes announcement-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .modal-fade-enter-active {
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -469,97 +557,154 @@ watch(
 .overflow-y-auto::-webkit-scrollbar-thumb:hover {
   background: var(--nm-ink-faint);
 }
-
-.dark .overflow-y-auto::-webkit-scrollbar-thumb:hover {
-  background: var(--nm-ink-faint);
-}
 </style>
 
 <style>
-/* Enhanced Markdown Styles */
 .markdown-body {
-  @apply text-[15px] leading-[1.75];
-  @apply text-gray-700 dark:text-gray-300;
+  color: var(--nm-ink-muted);
+  font-size: 15px;
+  line-height: 1.75;
 }
 
 .markdown-body h1 {
-  @apply mb-6 mt-8 border-b border-gray-200 pb-3 text-3xl font-bold text-gray-900 dark:border-dark-600 dark:text-white;
+  margin: 2rem 0 1.5rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--nm-border);
+  color: var(--nm-ink);
+  font-size: 1.875rem;
+  font-weight: 700;
 }
 
 .markdown-body h2 {
-  @apply mb-4 mt-7 border-b border-gray-100 pb-2 text-2xl font-bold text-gray-900 dark:border-dark-700 dark:text-white;
+  margin: 1.75rem 0 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--nm-border-light);
+  color: var(--nm-ink);
+  font-size: 1.5rem;
+  font-weight: 700;
 }
 
 .markdown-body h3 {
-  @apply mb-3 mt-6 text-xl font-semibold text-gray-900 dark:text-white;
+  margin: 1.5rem 0 0.75rem;
+  color: var(--nm-ink);
+  font-size: 1.25rem;
+  font-weight: 600;
 }
 
 .markdown-body h4 {
-  @apply mb-2 mt-5 text-lg font-semibold text-gray-900 dark:text-white;
+  margin: 1.25rem 0 0.5rem;
+  color: var(--nm-ink);
+  font-size: 1.125rem;
+  font-weight: 600;
 }
 
 .markdown-body p {
-  @apply mb-4 leading-relaxed;
+  margin-bottom: 1rem;
+  line-height: 1.75;
 }
 
 .markdown-body a {
-  @apply font-medium text-blue-600 underline decoration-blue-600/30 decoration-2 underline-offset-2 transition-all hover:decoration-blue-600 dark:text-blue-400 dark:decoration-blue-400/30 dark:hover:decoration-blue-400;
+  color: var(--nm-accent-text);
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--nm-accent) 40%, transparent);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
 }
 
 .markdown-body ul,
 .markdown-body ol {
-  @apply mb-4 ml-6 space-y-2;
+  margin: 0 0 1rem 1.5rem;
 }
 
 .markdown-body ul {
-  @apply list-disc;
+  list-style: disc;
 }
 
 .markdown-body ol {
-  @apply list-decimal;
+  list-style: decimal;
 }
 
 .markdown-body li {
-  @apply leading-relaxed;
-  @apply pl-2;
+  padding-left: 0.5rem;
+  line-height: 1.75;
+}
+
+.markdown-body li + li {
+  margin-top: 0.5rem;
 }
 
 .markdown-body li::marker {
-  @apply text-blue-600 dark:text-blue-400;
+  color: var(--nm-accent-text);
 }
 
 .markdown-body blockquote {
-  @apply relative my-5 border-l-4 border-blue-500 bg-blue-50/50 py-3 pl-5 pr-4 italic text-gray-700 dark:border-blue-400 dark:bg-blue-900/10 dark:text-gray-300;
+  position: relative;
+  margin: 1.25rem 0;
+  padding: 0.75rem 1rem 0.75rem 1.25rem;
+  border-left: 2px solid var(--nm-accent);
+  background: var(--nm-accent-soft);
+  color: var(--nm-ink);
+  font-style: italic;
 }
 
 .markdown-body blockquote::before {
   content: '"';
-  @apply absolute -left-1 top-0 text-5xl font-serif text-blue-500/20 dark:text-blue-400/20;
+  position: absolute;
+  top: 0;
+  left: -0.25rem;
+  color: color-mix(in srgb, var(--nm-accent) 30%, transparent);
+  font-family: serif;
+  font-size: 3rem;
 }
 
 .markdown-body code {
-  @apply rounded-lg bg-gray-100 px-2 py-1 text-[13px] font-mono text-pink-600 dark:bg-dark-700 dark:text-pink-400;
+  padding: 0.125rem 0.375rem;
+  border: 1px solid var(--nm-border-light);
+  border-radius: var(--nm-radius-sm);
+  background: var(--nm-surface-soft);
+  color: var(--nm-danger-text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px;
 }
 
 .markdown-body pre {
-  @apply my-5 overflow-x-auto rounded-xl border border-gray-200 bg-gray-50 p-5 dark:border-dark-600 dark:bg-dark-900/50;
+  margin: 1.25rem 0;
+  overflow-x: auto;
+  padding: 1.25rem;
+  border: 1px solid var(--nm-border);
+  border-radius: var(--nm-radius);
+  background: var(--nm-surface-soft);
 }
 
 .markdown-body pre code {
-  @apply bg-transparent p-0 text-[13px] text-gray-800 dark:text-gray-200;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--nm-ink);
+  font-size: 13px;
 }
 
 .markdown-body hr {
-  @apply my-8 border-0 border-t-2 border-gray-200 dark:border-dark-700;
+  margin: 2rem 0;
+  border: 0;
+  border-top: 1px solid var(--nm-border);
 }
 
 .markdown-body table {
-  @apply mb-5 w-full overflow-hidden rounded-lg border border-gray-200 dark:border-dark-600;
+  width: 100%;
+  margin-bottom: 1.25rem;
+  overflow: hidden;
+  border: 1px solid var(--nm-border);
+  border-radius: var(--nm-radius);
 }
 
 .markdown-body th,
 .markdown-body td {
-  @apply border-r border-b border-gray-200 px-4 py-3 text-left dark:border-dark-600;
+  padding: 0.75rem 1rem;
+  border-right: 1px solid var(--nm-border-light);
+  border-bottom: 1px solid var(--nm-border-light);
+  text-align: left;
 }
 
 .markdown-body th:last-child,
@@ -572,23 +717,33 @@ watch(
 }
 
 .markdown-body th {
-  @apply font-semibold text-gray-900 dark:text-white;
+  color: var(--nm-ink);
+  font-weight: 600;
   background: var(--nm-surface-soft);
 }
 
 .markdown-body tbody tr {
-  @apply transition-colors hover:bg-gray-50 dark:hover:bg-dark-700/30;
+  transition: background-color 160ms ease;
+}
+
+.markdown-body tbody tr:hover {
+  background: var(--nm-surface-soft);
 }
 
 .markdown-body img {
-  @apply my-5 max-w-full rounded-xl border border-gray-200 shadow-md dark:border-dark-600;
+  max-width: 100%;
+  margin: 1.25rem 0;
+  border: 1px solid var(--nm-border);
+  border-radius: var(--nm-radius);
 }
 
 .markdown-body strong {
-  @apply font-semibold text-gray-900 dark:text-white;
+  color: var(--nm-ink);
+  font-weight: 600;
 }
 
 .markdown-body em {
-  @apply italic text-gray-600 dark:text-gray-400;
+  color: var(--nm-ink-muted);
+  font-style: italic;
 }
 </style>
