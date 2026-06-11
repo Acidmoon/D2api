@@ -2,7 +2,7 @@
   <div class="card p-4">
     <div class="mb-4 flex items-center justify-between">
       <h3 class="text-sm font-semibold" style="color: var(--nm-ink)">
-        {{ t('dashboard.tokenHeatmap') }}
+        {{ t('dashboard.activityHeatmap') }}
       </h3>
       <span class="text-xs" style="color: var(--nm-ink-faint)">{{ t('dashboard.last7Days') }}</span>
     </div>

@@ -1,7 +1,9 @@
 <template>
-  <div class="space-y-6">
+  <section>
+    <h2 class="section-title">{{ t('dashboard.activityAnalysis') }}</h2>
+
     <!-- Date Range Filter -->
-    <div class="card p-4">
+    <div class="card mb-6 p-4">
       <div class="flex flex-wrap items-center gap-4">
         <div class="flex items-center gap-2">
           <span class="text-sm font-medium" style="color: var(--nm-ink-muted)">{{ t('dashboard.timeRange') }}:</span>
@@ -19,16 +21,16 @@
       </div>
     </div>
 
-    <!-- Charts Grid：左折线(2/3 趋势) + 右热力图(1/3 用量分布) -->
+    <!-- 左请求趋势(2/3) + 右模型排行(1/3) -->
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
       <div class="lg:col-span-2">
         <TokenUsageTrend :trend-data="trend" :loading="loading" />
       </div>
       <div class="lg:col-span-1">
-        <UserDashboardHeatmap :trend-data="trend" :loading="loading" />
+        <UserDashboardModels :models="models" :loading="loading" />
       </div>
     </div>
-  </div>
+  </section>
 </template>
 
 <script setup lang="ts">
@@ -36,10 +38,19 @@ import { useI18n } from 'vue-i18n'
 import DateRangePicker from '@/components/common/DateRangePicker.vue'
 import Select from '@/components/common/Select.vue'
 import TokenUsageTrend from '@/components/charts/TokenUsageTrend.vue'
-import UserDashboardHeatmap from '@/components/user/dashboard/UserDashboardHeatmap.vue'
-import type { TrendDataPoint } from '@/types'
+import UserDashboardModels from '@/components/user/dashboard/UserDashboardModels.vue'
+import type { TrendDataPoint, ModelStat } from '@/types'
 
-defineProps<{ loading: boolean, startDate: string, endDate: string, granularity: string, trend: TrendDataPoint[] }>()
+defineProps<{ loading: boolean, startDate: string, endDate: string, granularity: string, trend: TrendDataPoint[], models: ModelStat[] }>()
 defineEmits(['update:startDate', 'update:endDate', 'update:granularity', 'dateRangeChange', 'granularityChange', 'refresh'])
 const { t } = useI18n()
 </script>
+
+<style scoped>
+.section-title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--nm-ink);
+  margin-bottom: 1rem;
+}
+</style>
