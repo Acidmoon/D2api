@@ -1,12 +1,12 @@
 <template>
   <div class="inline-flex flex-col gap-0.5 text-xs font-medium">
     <!-- Row 1: Platform + Type -->
-    <div class="inline-flex items-center overflow-hidden rounded-md">
-      <span :class="['inline-flex items-center gap-1 px-2 py-1', platformClass]">
+    <div class="platform-type-row inline-flex items-center overflow-hidden">
+      <span :class="['platform-type-segment inline-flex items-center gap-1 px-2 py-1', platformClass]">
         <PlatformIcon :platform="platform" size="xs" />
         <span>{{ platformLabel }}</span>
       </span>
-      <span :class="['inline-flex items-center gap-1 px-1.5 py-1', typeClass]">
+      <span :class="['platform-type-segment inline-flex items-center gap-1 px-1.5 py-1', typeClass]">
         <!-- OAuth icon -->
         <svg
           v-if="type === 'oauth'"
@@ -31,13 +31,13 @@
       </span>
     </div>
     <!-- Row 2: Plan type + Privacy mode (only if either exists) -->
-    <div v-if="planLabel || privacyBadge" class="inline-flex items-center overflow-hidden rounded-md">
-      <span v-if="planLabel" :class="['inline-flex items-center gap-1 px-1.5 py-1', planBadgeClass]">
+    <div v-if="planLabel || privacyBadge" class="platform-type-row inline-flex items-center overflow-hidden">
+      <span v-if="planLabel" :class="['platform-type-segment inline-flex items-center gap-1 px-1.5 py-1', planBadgeClass]">
         <span>{{ planLabel }}</span>
       </span>
       <span
         v-if="privacyBadge"
-        :class="['inline-flex items-center gap-1 px-1.5 py-1', privacyBadge.class]"
+        :class="['platform-type-segment inline-flex items-center gap-1 px-1.5 py-1', privacyBadge.class]"
         :title="privacyBadge.title"
       >
         <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -47,7 +47,7 @@
       </span>
     </div>
     <!-- Row 3: Subscription expiration (non-free paid accounts only) -->
-    <div v-if="expiresLabel" class="text-[10px] leading-tight text-gray-400 dark:text-gray-500 pl-0.5" :title="subscriptionExpiresAt">
+    <div v-if="expiresLabel" class="platform-type-expiry pl-0.5 text-[10px] leading-tight" :title="subscriptionExpiresAt">
       {{ expiresLabel }}
     </div>
   </div>
@@ -117,34 +117,18 @@ const planLabel = computed(() => {
 })
 
 const platformClass = computed(() => {
-  if (props.platform === 'anthropic') {
-    return 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
-  }
-  if (props.platform === 'openai') {
-    return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
-  }
-  if (props.platform === 'antigravity') {
-    return 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
-  }
-  return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+  return props.platform === 'anthropic' || props.platform === 'openai' || props.platform === 'antigravity'
+    ? 'platform-type-primary'
+    : 'platform-type-info'
 })
 
 const typeClass = computed(() => {
-  if (props.platform === 'anthropic') {
-    return 'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400'
-  }
-  if (props.platform === 'openai') {
-    return 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400'
-  }
-  if (props.platform === 'antigravity') {
-    return 'bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400'
-  }
-  return 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
+  return 'platform-type-muted'
 })
 
 const planBadgeClass = computed(() => {
   if (props.planType && props.planType.toLowerCase() === 'abnormal') {
-    return 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400'
+    return 'platform-type-danger'
   }
   return typeClass.value
 })
@@ -176,18 +160,69 @@ const privacyBadge = computed(() => {
   switch (props.privacyMode) {
     // OpenAI states
     case 'training_off':
-      return { label: 'Private', icon: shieldCheck, title: t('admin.accounts.privacyTrainingOff'), class: 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400' }
+      return { label: 'Private', icon: shieldCheck, title: t('admin.accounts.privacyTrainingOff'), class: 'platform-type-success' }
     case 'training_set_cf_blocked':
-      return { label: 'CF', icon: shieldX, title: t('admin.accounts.privacyCfBlocked'), class: 'bg-yellow-100 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400' }
+      return { label: 'CF', icon: shieldX, title: t('admin.accounts.privacyCfBlocked'), class: 'platform-type-warning' }
     case 'training_set_failed':
-      return { label: 'Fail', icon: shieldX, title: t('admin.accounts.privacyFailed'), class: 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400' }
+      return { label: 'Fail', icon: shieldX, title: t('admin.accounts.privacyFailed'), class: 'platform-type-danger' }
     // Antigravity states
     case 'privacy_set':
-      return { label: 'Private', icon: shieldCheck, title: t('admin.accounts.privacyAntigravitySet'), class: 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400' }
+      return { label: 'Private', icon: shieldCheck, title: t('admin.accounts.privacyAntigravitySet'), class: 'platform-type-success' }
     case 'privacy_set_failed':
-      return { label: 'Fail', icon: shieldX, title: t('admin.accounts.privacyAntigravityFailed'), class: 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400' }
+      return { label: 'Fail', icon: shieldX, title: t('admin.accounts.privacyAntigravityFailed'), class: 'platform-type-danger' }
     default:
       return null
   }
 })
 </script>
+
+<style scoped>
+.platform-type-row {
+  max-width: 100%;
+  border: 1px solid var(--nm-border);
+  border-radius: var(--nm-radius-sm);
+  background: var(--nm-surface);
+}
+
+.platform-type-segment {
+  border-right: 1px solid var(--nm-border-light);
+}
+
+.platform-type-segment:last-child {
+  border-right: 0;
+}
+
+.platform-type-primary {
+  background: var(--nm-accent-soft);
+  color: var(--nm-accent-text);
+}
+
+.platform-type-info {
+  background: var(--nm-info-soft);
+  color: var(--nm-info-text);
+}
+
+.platform-type-muted {
+  background: var(--nm-surface-soft);
+  color: var(--nm-ink-muted);
+}
+
+.platform-type-success {
+  background: var(--nm-success-soft);
+  color: var(--nm-success-text);
+}
+
+.platform-type-warning {
+  background: var(--nm-warning-soft);
+  color: var(--nm-warning-text);
+}
+
+.platform-type-danger {
+  background: var(--nm-danger-soft);
+  color: var(--nm-danger-text);
+}
+
+.platform-type-expiry {
+  color: var(--nm-ink-faint);
+}
+</style>

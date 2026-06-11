@@ -11,7 +11,7 @@
         <span v-if="currentVersion" class="font-medium">v{{ currentVersion }}</span>
         <span
           v-else
-          class="h-3 w-12 animate-pulse rounded bg-gray-200 font-medium dark:bg-dark-600"
+          class="version-skeleton h-3 w-12 animate-pulse font-medium"
         ></span>
         <!-- Update indicator -->
         <span v-if="hasUpdate" class="relative flex h-2 w-2">
@@ -83,7 +83,7 @@
                     style="color: var(--nm-ink)"
                     >v{{ currentVersion }}</span
                   >
-                  <span v-else class="text-2xl font-bold text-gray-400 dark:text-dark-500">--</span>
+                  <span v-else class="version-placeholder text-2xl font-bold">--</span>
                   <!-- Show check mark when up to date -->
                   <span
                     v-if="!hasUpdate"
@@ -338,7 +338,7 @@
                   :href="releaseInfo.html_url"
                   target="_blank"
                   rel="noopener noreferrer"
-                  class="flex items-center justify-center gap-1 text-xs text-gray-500 transition-colors hover:text-gray-700 dark:text-dark-400 dark:hover:text-dark-200"
+                  class="version-link flex items-center justify-center gap-1 text-xs transition-colors"
                 >
                   {{ t('version.viewChangelog') }}
                   <Icon name="externalLink" size="xs" :stroke-width="2" />
@@ -351,7 +351,7 @@
                 :href="releaseInfo.html_url"
                 target="_blank"
                 rel="noopener noreferrer"
-                class="flex items-center justify-center gap-2 py-2 text-sm text-gray-500 transition-colors hover:text-gray-700 dark:text-dark-400 dark:hover:text-dark-200"
+                class="version-link flex items-center justify-center gap-2 py-2 text-sm transition-colors"
               >
                 <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
                   <path
@@ -369,7 +369,7 @@
     </template>
 
     <!-- Non-admin: Simple static version text -->
-    <span v-else-if="version" class="text-xs text-gray-500 dark:text-dark-400">
+    <span v-else-if="version" class="version-static text-xs">
       v{{ version }}
     </span>
   </div>
@@ -553,6 +553,24 @@ onBeforeUnmount(() => {
   background: var(--nm-surface);
   color: var(--nm-ink-muted);
   border-radius: var(--nm-radius-sm);
+}
+
+.version-skeleton {
+  border-radius: var(--nm-radius-sm);
+  background: var(--nm-surface-alt);
+}
+
+.version-placeholder,
+.version-static {
+  color: var(--nm-ink-faint);
+}
+
+.version-link {
+  color: var(--nm-ink-muted);
+}
+
+.version-link:hover {
+  color: var(--nm-ink);
 }
 
 .version-trigger:hover,
