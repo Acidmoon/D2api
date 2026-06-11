@@ -408,6 +408,44 @@
     transform: none;
   }
 
+  .swiss-panel {
+    background-color: var(--nm-surface);
+    border: 1px solid var(--nm-border);
+    border-radius: var(--nm-radius-lg);
+    box-shadow: none;
+  }
+
+  .swiss-stat-card {
+    @apply p-4;
+    background-color: var(--nm-surface);
+    border: 1px solid var(--nm-border);
+    border-radius: var(--nm-radius-lg);
+    box-shadow: none;
+  }
+
+  .swiss-stat-icon {
+    @apply flex h-9 w-9 shrink-0 items-center justify-center;
+    background-color: var(--nm-surface-soft);
+    border: 1px solid var(--nm-border-light);
+    border-radius: var(--nm-radius);
+    color: var(--nm-ink-muted);
+  }
+
+  .swiss-action {
+    @apply inline-flex items-center justify-center gap-1.5 px-2 py-1 text-xs font-medium;
+    min-height: 2rem;
+    color: var(--nm-ink-muted);
+    border: 1px solid transparent;
+    border-radius: var(--nm-radius);
+    transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease;
+  }
+
+  .swiss-action:hover {
+    background-color: var(--nm-surface-soft);
+    border-color: var(--nm-border);
+    color: var(--nm-ink);
+  }
+
   /* Glass variants degrade to flat neumorphic surfaces (no backdrop blur). */
   .glass,
   .glass-card,
@@ -570,6 +608,22 @@
   .badge-purple {
     background-color: var(--nm-accent-soft);
     color: var(--nm-accent-text);
+  }
+
+  .text-semantic-success {
+    color: var(--nm-success-text);
+  }
+
+  .text-semantic-warning {
+    color: var(--nm-warning-text);
+  }
+
+  .text-semantic-danger {
+    color: var(--nm-danger-text);
+  }
+
+  .text-semantic-info {
+    color: var(--nm-info-text);
   }
 
   /* ============ Dropdown menu ============ */
@@ -902,6 +956,31 @@
     @apply h-full transition-all duration-300;
     background: var(--nm-accent);
     border-radius: var(--nm-radius-sm);
+  }
+
+  .metric-progress {
+    @apply h-1.5 w-full overflow-hidden;
+    background-color: var(--nm-surface-soft);
+    border: 1px solid var(--nm-border-light);
+    border-radius: var(--nm-radius-sm);
+  }
+
+  .metric-progress-bar {
+    @apply h-full transition-all duration-300;
+    background-color: var(--nm-accent);
+    border-radius: 0;
+  }
+
+  .metric-progress-bar-success {
+    background-color: var(--nm-success);
+  }
+
+  .metric-progress-bar-warning {
+    background-color: var(--nm-warning);
+  }
+
+  .metric-progress-bar-danger {
+    background-color: var(--nm-danger);
   }
 
   /* ============ Switch ============ */

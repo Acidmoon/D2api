@@ -3,15 +3,13 @@
     <div class="space-y-6">
       <!-- Loading State -->
       <div v-if="loading" class="flex justify-center py-12">
-        <div
-          class="h-8 w-8 animate-spin rounded-full border-2 border-primary-500 border-t-transparent"
-        ></div>
+        <div class="spinner text-primary-500"></div>
       </div>
 
       <!-- Empty State -->
       <div v-else-if="subscriptions.length === 0" class="card p-12 text-center">
         <div
-          class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gray-100 dark:bg-dark-700"
+          class="swiss-stat-icon mx-auto mb-4 h-16 w-16"
         >
           <Icon name="creditCard" size="xl" class="text-gray-400" />
         </div>
@@ -28,7 +26,7 @@
         <div
           v-for="subscription in subscriptions"
           :key="subscription.id"
-          class="overflow-hidden rounded-2xl border bg-white dark:bg-dark-800"
+          class="swiss-panel overflow-hidden"
           :class="platformBorderClass(subscription.group?.platform || '')"
         >
           <!-- Header -->
@@ -36,7 +34,7 @@
             class="flex items-center justify-between border-b border-gray-100 p-4 dark:border-dark-700"
           >
             <div class="flex items-center gap-3">
-              <div :class="['h-1.5 w-1.5 shrink-0 rounded-full', platformAccentDotClass(subscription.group?.platform || '')]" />
+              <div :class="['h-2 w-2 shrink-0', platformAccentDotClass(subscription.group?.platform || '')]" />
               <div>
                 <div class="flex items-center gap-2">
                   <h3 class="font-semibold text-gray-900 dark:text-white">
@@ -53,20 +51,13 @@
             </div>
             <div class="flex items-center gap-2">
               <span
-                :class="[
-                  'rounded-full px-2 py-0.5 text-xs font-medium',
-                  subscription.status === 'active'
-                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'
-                    : subscription.status === 'expired'
-                      ? 'bg-gray-100 text-gray-600 dark:bg-dark-700 dark:text-gray-400'
-                      : 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300'
-                ]"
+                :class="['badge', getSubscriptionStatusClass(subscription.status)]"
               >
                 {{ t(`userSubscriptions.status.${subscription.status}`) }}
               </span>
               <button
                 v-if="subscription.status === 'active'"
-                :class="['rounded-lg px-3 py-1.5 text-xs font-semibold text-white transition-colors', platformButtonClass(subscription.group?.platform || '')]"
+                class="btn btn-primary btn-sm"
                 @click="router.push({ path: '/purchase', query: { tab: 'subscription', group: String(subscription.group_id) } })"
               >
                 {{ t('payment.renewNow') }}
@@ -106,9 +97,9 @@
                   }}
                 </span>
               </div>
-              <div class="relative h-2 overflow-hidden rounded-full bg-gray-200 dark:bg-dark-600">
+              <div class="metric-progress">
                 <div
-                  class="absolute inset-y-0 left-0 rounded-full transition-all duration-300"
+                  class="metric-progress-bar"
                   :class="
                     getProgressBarClass(
                       subscription.daily_usage_usd,
@@ -143,9 +134,9 @@
                   }}
                 </span>
               </div>
-              <div class="relative h-2 overflow-hidden rounded-full bg-gray-200 dark:bg-dark-600">
+              <div class="metric-progress">
                 <div
-                  class="absolute inset-y-0 left-0 rounded-full transition-all duration-300"
+                  class="metric-progress-bar"
                   :class="
                     getProgressBarClass(
                       subscription.weekly_usage_usd,
@@ -184,9 +175,9 @@
                   }}
                 </span>
               </div>
-              <div class="relative h-2 overflow-hidden rounded-full bg-gray-200 dark:bg-dark-600">
+              <div class="metric-progress">
                 <div
-                  class="absolute inset-y-0 left-0 rounded-full transition-all duration-300"
+                  class="metric-progress-bar"
                   :class="
                     getProgressBarClass(
                       subscription.monthly_usage_usd,
@@ -220,7 +211,7 @@
                 !subscription.group?.weekly_limit_usd &&
                 !subscription.group?.monthly_limit_usd
               "
-              class="flex items-center justify-center rounded-xl py-6"
+              class="flex items-center justify-center border py-6"
               style="background: var(--nm-success-soft)"
             >
               <div class="flex items-center gap-3">
@@ -252,15 +243,15 @@ import type { UserSubscription } from '@/types'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { formatDateOnly } from '@/utils/format'
-import { platformBorderClass, platformBadgeClass, platformButtonClass, platformLabel } from '@/utils/platformColors'
+import { platformBorderClass, platformBadgeClass, platformLabel } from '@/utils/platformColors'
 import { getRemainingDurationParts, isOneTimeDailyQuota, type RemainingDurationParts } from '@/utils/subscriptionQuota'
 
 function platformAccentDotClass(p: string): string {
   switch (p) {
-    case 'anthropic': return 'bg-orange-500'
-    case 'openai': return 'bg-emerald-500'
-    case 'antigravity': return 'bg-purple-500'
-    case 'gemini': return 'bg-blue-500'
+    case 'anthropic': return 'bg-[var(--nm-warning)]'
+    case 'openai': return 'bg-[var(--nm-success)]'
+    case 'antigravity': return 'bg-[var(--nm-accent)]'
+    case 'gemini': return 'bg-[var(--nm-info)]'
     default: return 'bg-gray-400'
   }
 }
@@ -293,9 +284,15 @@ function getProgressWidth(used: number | undefined, limit: number | null | undef
 function getProgressBarClass(used: number | undefined, limit: number | null | undefined): string {
   if (!limit || limit === 0) return 'bg-gray-400'
   const percentage = ((used || 0) / limit) * 100
-  if (percentage >= 90) return 'bg-red-500'
-  if (percentage >= 70) return 'bg-orange-500'
-  return 'bg-green-500'
+  if (percentage >= 90) return 'metric-progress-bar-danger'
+  if (percentage >= 70) return 'metric-progress-bar-warning'
+  return 'metric-progress-bar-success'
+}
+
+function getSubscriptionStatusClass(status: string): string {
+  if (status === 'active') return 'badge-success'
+  if (status === 'expired') return 'badge-gray'
+  return 'badge-danger'
 }
 
 function formatExpirationDate(expiresAt: string): string {
@@ -326,9 +323,9 @@ function getExpirationClass(expiresAt: string): string {
   const diff = expires.getTime() - now.getTime()
   const days = Math.ceil(diff / (1000 * 60 * 60 * 24))
 
-  if (days <= 0) return 'text-red-600 dark:text-red-400 font-medium'
-  if (days <= 3) return 'text-red-600 dark:text-red-400'
-  if (days <= 7) return 'text-orange-600 dark:text-orange-400'
+  if (days <= 0) return 'text-semantic-danger font-medium'
+  if (days <= 3) return 'text-semantic-danger'
+  if (days <= 7) return 'text-semantic-warning'
   return 'text-gray-700 dark:text-gray-300'
 }
 

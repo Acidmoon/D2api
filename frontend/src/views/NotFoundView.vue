@@ -12,12 +12,10 @@
           >
           <div class="absolute inset-0 flex items-center justify-center">
             <div
-              class="flex h-24 w-24 items-center justify-center rounded-2xl"
-              style="background: var(--nm-accent); box-shadow: var(--nm-shadow-raised)"
+              class="swiss-stat-icon flex h-24 w-24 items-center justify-center"
             >
               <svg
                 class="h-12 w-12"
-                style="color: var(--nm-on-accent)"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -57,7 +55,7 @@
       </div>
 
       <!-- Help Link -->
-      <p class="mt-8 text-sm" style="color: var(--nm-ink-faint)">
+        <p class="mt-8 text-sm" style="color: var(--nm-ink-faint)">
         Need help?
         <a
           href="#"

@@ -10,7 +10,7 @@
         type="button"
         :disabled="!method.available"
         :class="[
-          'relative flex h-[60px] flex-col items-center justify-center rounded-lg border px-3 transition-all sm:flex-1',
+          'relative flex min-h-[60px] flex-col items-center justify-center border px-3 transition-colors sm:flex-1',
           !method.available
             ? 'cursor-not-allowed border-gray-200 bg-gray-50 opacity-50 dark:border-dark-700 dark:bg-dark-800/50'
             : selected === method.type
@@ -86,10 +86,10 @@ function methodIcon(type: string): string {
 }
 
 function methodSelectedClass(type: string): string {
-  if (type.includes('alipay')) return 'border-[#02A9F1] bg-blue-50 text-gray-900 shadow-sm dark:bg-blue-950 dark:text-gray-100'
-  if (type.includes('wxpay')) return 'border-[#09BB07] bg-green-50 text-gray-900 shadow-sm dark:bg-green-950 dark:text-gray-100'
-  if (type === 'stripe') return 'border-[#676BE5] bg-indigo-50 text-gray-900 shadow-sm dark:bg-indigo-950 dark:text-gray-100'
-  if (type === 'airwallex') return 'border-[#FF6B3D] bg-orange-50 text-gray-900 shadow-sm dark:border-[#FF8E3C] dark:bg-orange-950 dark:text-gray-100'
-  return 'border-primary-500 bg-primary-50 text-gray-900 shadow-sm dark:bg-primary-950 dark:text-gray-100'
+  if (type.includes('alipay')) return 'border-[#02A9F1] bg-white text-gray-900 dark:bg-dark-800 dark:text-gray-100'
+  if (type.includes('wxpay')) return 'border-[#09BB07] bg-white text-gray-900 dark:bg-dark-800 dark:text-gray-100'
+  if (type === 'stripe') return 'border-[#676BE5] bg-white text-gray-900 dark:bg-dark-800 dark:text-gray-100'
+  if (type === 'airwallex') return 'border-[#FF6B3D] bg-white text-gray-900 dark:border-[#FF8E3C] dark:bg-dark-800 dark:text-gray-100'
+  return 'border-primary-500 bg-white text-gray-900 dark:bg-dark-800 dark:text-gray-100'
 }
 </script>

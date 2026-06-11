@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - 'v*'
+      - '!v*-d2api'
   workflow_dispatch:
     inputs:
       tag:
