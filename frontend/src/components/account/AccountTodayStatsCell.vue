@@ -1,55 +1,55 @@
 <template>
   <div>
     <!-- Loading state -->
-    <div v-if="props.loading && !props.stats" class="space-y-0.5">
-      <div class="h-3 w-12 animate-pulse rounded bg-gray-200 dark:bg-gray-700"></div>
-      <div class="h-3 w-16 animate-pulse rounded bg-gray-200 dark:bg-gray-700"></div>
-      <div class="h-3 w-10 animate-pulse rounded bg-gray-200 dark:bg-gray-700"></div>
+    <div v-if="props.loading && !props.stats" class="today-stats-skeleton-stack">
+      <div class="today-stats-skeleton today-stats-skeleton--sm"></div>
+      <div class="today-stats-skeleton today-stats-skeleton--md"></div>
+      <div class="today-stats-skeleton today-stats-skeleton--xs"></div>
     </div>
 
     <!-- Error state -->
-    <div v-else-if="props.error && !props.stats" class="text-xs text-red-500">
+    <div v-else-if="props.error && !props.stats" class="today-stats-error" role="alert">
       {{ props.error }}
     </div>
 
     <!-- Stats data -->
-    <div v-else-if="props.stats" class="space-y-0.5 text-xs">
+    <div v-else-if="props.stats" class="today-stats-list">
       <!-- Requests -->
-      <div class="flex items-center gap-1">
-        <span class="text-gray-500 dark:text-gray-400"
+      <div class="today-stats-row">
+        <span class="today-stats-label"
           >{{ t('admin.accounts.stats.requests') }}:</span
         >
-        <span class="font-medium text-gray-700 dark:text-gray-300">{{
+        <span class="today-stats-value">{{
           formatNumber(props.stats.requests)
         }}</span>
       </div>
       <!-- Tokens -->
-      <div class="flex items-center gap-1">
-        <span class="text-gray-500 dark:text-gray-400"
+      <div class="today-stats-row">
+        <span class="today-stats-label"
           >{{ t('admin.accounts.stats.tokens') }}:</span
         >
-        <span class="font-medium text-gray-700 dark:text-gray-300">{{
+        <span class="today-stats-value">{{
           formatTokens(props.stats.tokens)
         }}</span>
       </div>
       <!-- Cost (Account) -->
-      <div class="flex items-center gap-1">
-        <span class="text-gray-500 dark:text-gray-400">{{ t('usage.accountBilled') }}:</span>
-        <span class="font-medium text-emerald-600 dark:text-emerald-400">{{
+      <div class="today-stats-row">
+        <span class="today-stats-label">{{ t('usage.accountBilled') }}:</span>
+        <span class="today-stats-cost">{{
           formatCurrency(props.stats.cost)
         }}</span>
       </div>
       <!-- Cost (User/API Key) -->
-      <div v-if="props.stats.user_cost != null" class="flex items-center gap-1">
-        <span class="text-gray-500 dark:text-gray-400">{{ t('usage.userBilled') }}:</span>
-        <span class="font-medium text-gray-700 dark:text-gray-300">{{
+      <div v-if="props.stats.user_cost != null" class="today-stats-row">
+        <span class="today-stats-label">{{ t('usage.userBilled') }}:</span>
+        <span class="today-stats-value">{{
           formatCurrency(props.stats.user_cost)
         }}</span>
       </div>
     </div>
 
     <!-- No data -->
-    <div v-else class="text-xs text-gray-400">-</div>
+    <div v-else class="today-stats-empty">-</div>
   </div>
 </template>
 
@@ -83,3 +83,82 @@ const formatTokens = (tokens: number): string => {
   return tokens.toString()
 }
 </script>
+
+<style scoped>
+.today-stats-skeleton-stack,
+.today-stats-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.today-stats-skeleton {
+  height: 0.75rem;
+  border-radius: var(--nm-radius-sm);
+  background: var(--nm-surface-alt);
+  animation: today-stats-pulse 1.35s ease-in-out infinite;
+}
+
+.today-stats-skeleton--xs {
+  width: 2.5rem;
+}
+
+.today-stats-skeleton--sm {
+  width: 3rem;
+}
+
+.today-stats-skeleton--md {
+  width: 4rem;
+}
+
+.today-stats-error,
+.today-stats-empty,
+.today-stats-list {
+  font-size: 0.75rem;
+  line-height: 1.25;
+}
+
+.today-stats-error {
+  color: var(--nm-danger-text);
+}
+
+.today-stats-row {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.today-stats-label {
+  color: var(--nm-ink-faint);
+}
+
+.today-stats-value,
+.today-stats-cost {
+  color: var(--nm-ink-muted);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.today-stats-cost {
+  color: var(--nm-success-text);
+}
+
+.today-stats-empty {
+  color: var(--nm-ink-faint);
+}
+
+@keyframes today-stats-pulse {
+  0% {
+    opacity: 0.52;
+  }
+
+  50% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0.52;
+  }
+}
+</style>

@@ -7,7 +7,7 @@
   >
     <div class="space-y-4">
       <div v-if="loading" class="flex items-center justify-center py-8">
-        <svg class="h-6 w-6 animate-spin text-gray-400" fill="none" viewBox="0 0 24 24">
+        <svg class="temp-status-spinner h-6 w-6 animate-spin" fill="none" viewBox="0 0 24 24">
           <circle
             class="opacity-25"
             cx="12"
@@ -24,80 +24,80 @@
         </svg>
       </div>
 
-      <div v-else-if="!isActive" class="rounded-lg border border-gray-200 p-4 text-sm text-gray-500 dark:border-dark-600 dark:text-gray-400">
+      <div v-else-if="!isActive" class="temp-status-empty">
         {{ t('admin.accounts.tempUnschedulable.notActive') }}
       </div>
 
       <div v-else class="space-y-4">
-        <div class="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300">
+        <div class="temp-status-notice">
           {{ t('admin.accounts.recoverStateHint') }}
         </div>
 
-        <div class="rounded-lg border border-gray-200 p-4 dark:border-dark-600">
-          <p class="text-xs text-gray-500 dark:text-gray-400">
+        <div class="temp-status-card temp-status-card--wide">
+          <p class="temp-status-label">
             {{ t('admin.accounts.tempUnschedulable.accountName') }}
           </p>
-          <p class="mt-1 text-sm font-medium text-gray-900 dark:text-gray-100">
+          <p class="temp-status-value">
             {{ account?.name || '-' }}
           </p>
         </div>
 
         <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <div class="rounded-lg border border-gray-200 p-3 dark:border-dark-600">
-            <p class="text-xs text-gray-500 dark:text-gray-400">
+          <div class="temp-status-card">
+            <p class="temp-status-label">
               {{ t('admin.accounts.tempUnschedulable.triggeredAt') }}
             </p>
-            <p class="mt-1 text-sm font-medium text-gray-900 dark:text-gray-100">
+            <p class="temp-status-value">
               {{ triggeredAtText }}
             </p>
           </div>
-          <div class="rounded-lg border border-gray-200 p-3 dark:border-dark-600">
-            <p class="text-xs text-gray-500 dark:text-gray-400">
+          <div class="temp-status-card">
+            <p class="temp-status-label">
               {{ t('admin.accounts.tempUnschedulable.until') }}
             </p>
-            <p class="mt-1 text-sm font-medium text-gray-900 dark:text-gray-100">
+            <p class="temp-status-value">
               {{ untilText }}
             </p>
           </div>
-          <div class="rounded-lg border border-gray-200 p-3 dark:border-dark-600">
-            <p class="text-xs text-gray-500 dark:text-gray-400">
+          <div class="temp-status-card">
+            <p class="temp-status-label">
               {{ t('admin.accounts.tempUnschedulable.remaining') }}
             </p>
-            <p class="mt-1 text-sm font-medium text-gray-900 dark:text-gray-100">
+            <p class="temp-status-value">
               {{ remainingText }}
             </p>
           </div>
-          <div class="rounded-lg border border-gray-200 p-3 dark:border-dark-600">
-            <p class="text-xs text-gray-500 dark:text-gray-400">
+          <div class="temp-status-card">
+            <p class="temp-status-label">
               {{ t('admin.accounts.tempUnschedulable.errorCode') }}
             </p>
-            <p class="mt-1 text-sm font-medium text-gray-900 dark:text-gray-100">
+            <p class="temp-status-value">
               {{ state?.status_code || '-' }}
             </p>
           </div>
-          <div class="rounded-lg border border-gray-200 p-3 dark:border-dark-600">
-            <p class="text-xs text-gray-500 dark:text-gray-400">
+          <div class="temp-status-card">
+            <p class="temp-status-label">
               {{ t('admin.accounts.tempUnschedulable.matchedKeyword') }}
             </p>
-            <p class="mt-1 text-sm font-medium text-gray-900 dark:text-gray-100">
+            <p class="temp-status-value">
               {{ state?.matched_keyword || '-' }}
             </p>
           </div>
-          <div class="rounded-lg border border-gray-200 p-3 dark:border-dark-600">
-            <p class="text-xs text-gray-500 dark:text-gray-400">
+          <div class="temp-status-card">
+            <p class="temp-status-label">
               {{ t('admin.accounts.tempUnschedulable.ruleOrder') }}
             </p>
-            <p class="mt-1 text-sm font-medium text-gray-900 dark:text-gray-100">
+            <p class="temp-status-value">
               {{ ruleIndexDisplay }}
             </p>
           </div>
         </div>
 
-        <div class="rounded-lg border border-gray-200 p-3 dark:border-dark-600">
-          <p class="text-xs text-gray-500 dark:text-gray-400">
+        <div class="temp-status-card">
+          <p class="temp-status-label">
             {{ t('admin.accounts.tempUnschedulable.errorMessage') }}
           </p>
-          <div class="mt-2 rounded bg-gray-50 p-2 text-xs text-gray-700 dark:bg-dark-700 dark:text-gray-300">
+          <div class="temp-status-message">
             {{ state?.error_message || '-' }}
           </div>
         </div>
@@ -251,3 +251,69 @@ watch(
   }
 )
 </script>
+
+<style scoped>
+.temp-status-spinner {
+  color: var(--nm-ink-faint);
+}
+
+.temp-status-empty,
+.temp-status-notice,
+.temp-status-card {
+  border: 1px solid var(--nm-border);
+  border-radius: var(--nm-radius-lg);
+}
+
+.temp-status-empty {
+  padding: 1rem;
+  color: var(--nm-ink-muted);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.temp-status-notice {
+  border-color: var(--nm-success);
+  background: var(--nm-success-soft);
+  padding: 0.75rem;
+  color: var(--nm-success-text);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.temp-status-card {
+  padding: 0.75rem;
+  background: var(--nm-surface);
+}
+
+.temp-status-card--wide {
+  padding: 1rem;
+}
+
+.temp-status-label {
+  color: var(--nm-ink-faint);
+  font-size: 0.75rem;
+  line-height: 1.35;
+}
+
+.temp-status-value {
+  margin-top: 0.25rem;
+  color: var(--nm-ink);
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.45;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.temp-status-message {
+  margin-top: 0.5rem;
+  border: 1px solid var(--nm-border-light);
+  border-radius: var(--nm-radius);
+  background: var(--nm-surface-soft);
+  padding: 0.5rem;
+  color: var(--nm-ink-muted);
+  font-size: 0.75rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+</style>

@@ -16,8 +16,11 @@
       <button
         v-if="hiddenCount > 0"
         ref="moreButtonRef"
+        type="button"
+        aria-haspopup="dialog"
+        :aria-expanded="showPopover"
         @click.stop="showPopover = !showPopover"
-        class="inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-xs font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-300 dark:hover:bg-dark-500 transition-colors cursor-pointer whitespace-nowrap"
+        class="groups-more-button"
       >
         <span>+{{ hiddenCount }}</span>
       </button>
@@ -36,16 +39,18 @@
         <div
           v-if="showPopover"
           ref="popoverRef"
-          class="fixed z-50 min-w-48 max-w-96 rounded-lg border border-gray-200 bg-white p-3 shadow-lg dark:border-dark-600 dark:bg-dark-800"
+          class="groups-popover"
           :style="popoverStyle"
         >
           <div class="mb-2 flex items-center justify-between">
-            <span class="text-xs font-medium text-gray-500 dark:text-gray-400">
+            <span class="groups-popover-title">
               {{ t('admin.accounts.groupCountTotal', { count: groups.length }) }}
             </span>
             <button
+              type="button"
+              :aria-label="t('common.close')"
               @click="showPopover = false"
-              class="rounded p-0.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-dark-700 dark:hover:text-gray-300"
+              class="groups-close-button"
             >
               <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -74,7 +79,7 @@
       @click="showPopover = false"
     />
   </div>
-  <span v-else class="text-sm text-gray-400 dark:text-dark-500">-</span>
+  <span v-else class="groups-empty">-</span>
 </template>
 
 <script setup lang="ts">
@@ -156,3 +161,65 @@ onUnmounted(() => {
   window.removeEventListener('keydown', handleKeydown)
 })
 </script>
+
+<style scoped>
+.groups-more-button {
+  display: inline-flex;
+  cursor: pointer;
+  align-items: center;
+  gap: 0.125rem;
+  white-space: nowrap;
+  border: 1px solid var(--nm-border);
+  border-radius: var(--nm-radius-sm);
+  background: var(--nm-surface);
+  padding: 0.125rem 0.375rem;
+  color: var(--nm-ink-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.2;
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+
+.groups-more-button:hover {
+  border-color: var(--nm-ink-muted);
+  background: var(--nm-surface-soft);
+  color: var(--nm-ink);
+}
+
+.groups-popover {
+  position: fixed;
+  z-index: 50;
+  min-width: 12rem;
+  max-width: 24rem;
+  border: 1px solid var(--nm-border);
+  border-radius: var(--nm-radius-lg);
+  background: var(--nm-surface);
+  padding: 0.75rem;
+}
+
+.groups-popover-title,
+.groups-empty {
+  color: var(--nm-ink-faint);
+  font-size: 0.75rem;
+}
+
+.groups-popover-title {
+  font-weight: 600;
+}
+
+.groups-empty {
+  font-size: 0.875rem;
+}
+
+.groups-close-button {
+  border-radius: var(--nm-radius-sm);
+  padding: 0.125rem;
+  color: var(--nm-ink-faint);
+  transition: background-color 160ms ease, color 160ms ease;
+}
+
+.groups-close-button:hover {
+  background: var(--nm-surface-soft);
+  color: var(--nm-ink);
+}
+</style>
