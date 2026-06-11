@@ -42,6 +42,9 @@ jobs:
         run: npx vite build
         working-directory: frontend
 
+      - name: Copy frontend dist for embed
+        run: cp -r frontend/dist backend/internal/web/dist
+
       - name: Setup Go
         uses: actions/setup-go@v6
         with:
