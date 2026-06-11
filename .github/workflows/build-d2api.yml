@@ -39,7 +39,7 @@ jobs:
         working-directory: frontend
 
       - name: Build frontend
-        run: pnpm run build
+        run: npx vite build
         working-directory: frontend
 
       - name: Setup Go
