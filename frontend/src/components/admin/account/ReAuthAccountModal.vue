@@ -8,29 +8,19 @@
     <div v-if="account" class="space-y-4">
       <!-- Account Info -->
       <div
-        class="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-dark-600 dark:bg-dark-700"
+        class="reauth-panel p-4"
       >
         <div class="flex items-center gap-3">
           <div
-            class="flex h-10 w-10 items-center justify-center rounded-lg text-white"
-            style="box-shadow: var(--nm-shadow-raised-sm)"
-            :class="[
-              isOpenAILike
-                ? 'bg-green-500'
-                : isGemini
-                  ? 'bg-blue-500'
-                  : isAntigravity
-                    ? 'bg-purple-500'
-                    : 'bg-orange-500'
-            ]"
+            :class="['reauth-avatar flex h-10 w-10 items-center justify-center', platformToneClass]"
           >
-            <Icon name="sparkles" size="md" class="text-white" />
+            <Icon name="sparkles" size="md" />
           </div>
           <div>
-            <span class="block font-semibold text-gray-900 dark:text-white">{{
+            <span class="reauth-account-name block font-semibold">{{
               account.name
             }}</span>
-            <span class="text-sm text-gray-500 dark:text-gray-400">
+            <span class="reauth-account-meta text-sm">
               {{
                 isOpenAI
                   ? t('admin.accounts.openaiAccount')
@@ -56,7 +46,7 @@
               value="oauth"
               class="mr-2 text-primary-600 focus:ring-primary-500"
             />
-            <span class="text-sm text-gray-700 dark:text-gray-300">{{
+            <span class="reauth-choice-label text-sm">{{
               t('admin.accounts.types.oauth')
             }}</span>
           </label>
@@ -67,7 +57,7 @@
               value="setup-token"
               class="mr-2 text-primary-600 focus:ring-primary-500"
             />
-            <span class="text-sm text-gray-700 dark:text-gray-300">{{
+            <span class="reauth-choice-label text-sm">{{
               t('admin.accounts.setupTokenLongLived')
             }}</span>
           </label>
@@ -75,27 +65,20 @@
       </fieldset>
 
       <!-- Gemini OAuth Type Display (read-only) -->
-      <div v-if="isGemini" class="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-dark-600 dark:bg-dark-700">
-        <div class="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+      <div v-if="isGemini" class="reauth-panel p-4">
+        <div class="reauth-label mb-2 text-sm font-medium">
           {{ t('admin.accounts.oauth.gemini.oauthTypeLabel') }}
         </div>
         <div class="flex items-center gap-3">
           <div
-            :class="[
-              'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg',
-              geminiOAuthType === 'google_one'
-                ? 'bg-purple-500 text-white'
-                : geminiOAuthType === 'code_assist'
-                  ? 'bg-blue-500 text-white'
-                  : 'bg-amber-500 text-white'
-            ]"
+            :class="['reauth-avatar flex h-8 w-8 shrink-0 items-center justify-center', geminiToneClass]"
           >
             <Icon v-if="geminiOAuthType === 'google_one'" name="user" size="sm" />
             <Icon v-else-if="geminiOAuthType === 'code_assist'" name="cloud" size="sm" />
             <Icon v-else name="sparkles" size="sm" />
           </div>
           <div>
-            <span class="block text-sm font-medium text-gray-900 dark:text-white">
+            <span class="reauth-account-name block text-sm font-medium">
               {{
                 geminiOAuthType === 'google_one'
                   ? 'Google One'
@@ -104,7 +87,7 @@
                     : t('admin.accounts.gemini.oauthType.customTitle')
               }}
             </span>
-            <span class="text-xs text-gray-500 dark:text-gray-400">
+            <span class="reauth-account-meta text-xs">
               {{
                 geminiOAuthType === 'google_one'
                   ? '个人账号'
@@ -242,6 +225,15 @@ const isOpenAILike = computed(() => isOpenAI.value)
 const isGemini = computed(() => props.account?.platform === 'gemini')
 const isAnthropic = computed(() => props.account?.platform === 'anthropic')
 const isAntigravity = computed(() => props.account?.platform === 'antigravity')
+const platformToneClass = computed(() => {
+  if (isAnthropic.value) return 'reauth-avatar-warning'
+  if (isGemini.value) return 'reauth-avatar-info'
+  return 'reauth-avatar-primary'
+})
+const geminiToneClass = computed(() => {
+  if (geminiOAuthType.value === 'ai_studio') return 'reauth-avatar-warning'
+  return geminiOAuthType.value === 'code_assist' ? 'reauth-avatar-info' : 'reauth-avatar-primary'
+})
 
 // Computed - current OAuth state based on platform
 const currentAuthUrl = computed(() => {
@@ -529,3 +521,41 @@ const handleCookieAuth = async (sessionKey: string) => {
   }
 }
 </script>
+
+<style scoped>
+.reauth-panel {
+  border: 1px solid var(--nm-border);
+  border-radius: var(--nm-radius);
+  background: var(--nm-surface-soft);
+}
+
+.reauth-avatar {
+  border: 1px solid var(--nm-border-light);
+  border-radius: var(--nm-radius);
+}
+
+.reauth-avatar-primary {
+  background: var(--nm-accent-soft);
+  color: var(--nm-accent-text);
+}
+
+.reauth-avatar-info {
+  background: var(--nm-info-soft);
+  color: var(--nm-info-text);
+}
+
+.reauth-avatar-warning {
+  background: var(--nm-warning-soft);
+  color: var(--nm-warning-text);
+}
+
+.reauth-account-name {
+  color: var(--nm-ink);
+}
+
+.reauth-account-meta,
+.reauth-label,
+.reauth-choice-label {
+  color: var(--nm-ink-muted);
+}
+</style>
