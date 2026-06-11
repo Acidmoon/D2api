@@ -70,15 +70,15 @@ function getTimezoneOffsetLabel(tz: string): string {
   <div>
     <!-- Title row (only when global notify is enabled) -->
     <div v-if="quotaNotifyGlobalEnabled" class="flex items-center gap-2 mb-1">
-      <span class="text-xs font-medium text-gray-700 dark:text-gray-300 flex-1 min-w-0">{{ label }}</span>
-      <span v-if="limit && limit > 0" class="text-xs font-medium text-gray-700 dark:text-gray-300 flex-1 min-w-0">{{ t('admin.accounts.quotaNotify.alert') }}</span>
+      <span class="quota-row-title flex-1 min-w-0">{{ label }}</span>
+      <span v-if="limit && limit > 0" class="quota-row-title flex-1 min-w-0">{{ t('admin.accounts.quotaNotify.alert') }}</span>
     </div>
-    <label v-else class="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1 block">{{ label }}</label>
+    <label v-else class="quota-row-title mb-1 block">{{ label }}</label>
 
     <!-- Input row -->
     <div class="flex items-center gap-2">
       <div :class="['relative', quotaNotifyGlobalEnabled ? 'flex-1 min-w-0' : 'flex-1']">
-        <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 text-sm">$</span>
+        <span class="quota-row-prefix">$</span>
         <input :value="limit" @input="onLimitInput" type="number" min="0" step="0.01" class="input pl-6 py-1.5 text-sm" :placeholder="t('admin.accounts.quotaLimitPlaceholder')" />
       </div>
       <QuotaNotifyToggle
@@ -91,7 +91,7 @@ function getTimezoneOffsetLabel(tz: string): string {
 
     <!-- Reset mode row (daily/weekly only) -->
     <div v-if="hasResetMode" class="mt-1 flex items-center gap-2 flex-wrap">
-      <label class="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">{{ t('admin.accounts.quotaResetMode') }}</label>
+      <label class="quota-row-label whitespace-nowrap">{{ t('admin.accounts.quotaResetMode') }}</label>
       <select :value="resetMode || 'rolling'" @change="onModeChange" class="input py-1 text-xs w-auto">
         <option value="rolling">{{ t('admin.accounts.quotaResetModeRolling') }}</option>
         <option value="fixed">{{ t('admin.accounts.quotaResetModeFixed') }}</option>
@@ -99,12 +99,12 @@ function getTimezoneOffsetLabel(tz: string): string {
       <template v-if="resetMode === 'fixed'">
         <!-- Weekly: day of week selector -->
         <template v-if="dim === 'weekly'">
-          <label class="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">{{ t('admin.accounts.quotaWeeklyResetDay') }}</label>
+          <label class="quota-row-label whitespace-nowrap">{{ t('admin.accounts.quotaWeeklyResetDay') }}</label>
           <select :value="resetDay ?? 1" @change="emit('update:resetDay', Number(($event.target as HTMLSelectElement).value))" class="input py-1 text-xs w-28">
             <option v-for="d in dayOptions" :key="d.value" :value="d.value">{{ t('admin.accounts.dayOfWeek.' + d.key) }}</option>
           </select>
         </template>
-        <label class="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">{{ t('admin.accounts.quotaResetHour') }}</label>
+        <label class="quota-row-label whitespace-nowrap">{{ t('admin.accounts.quotaResetHour') }}</label>
         <select :value="resetHour ?? 0" @change="emit('update:resetHour', Number(($event.target as HTMLSelectElement).value))" class="input py-1 text-xs w-24">
           <option v-for="h in hourOptions" :key="h" :value="h">{{ String(h).padStart(2, '0') }}:00</option>
         </select>
@@ -114,7 +114,7 @@ function getTimezoneOffsetLabel(tz: string): string {
           </select>
         </template>
       </template>
-      <span class="text-[11px] text-gray-500 dark:text-gray-400">
+      <span class="quota-row-hint">
         <template v-if="resetMode === 'fixed'">{{ hintFixed }}</template>
         <template v-else>{{ hintRolling }}</template>
       </span>
@@ -124,3 +124,33 @@ function getTimezoneOffsetLabel(tz: string): string {
     <p v-if="!hasResetMode" class="input-hint mb-0 text-[11px]">{{ hintRolling }}</p>
   </div>
 </template>
+
+<style scoped>
+.quota-row-title {
+  color: var(--nm-ink-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.quota-row-prefix {
+  position: absolute;
+  left: 0.625rem;
+  top: 50%;
+  color: var(--nm-ink-faint);
+  font-size: 0.875rem;
+  line-height: 1;
+  transform: translateY(-50%);
+}
+
+.quota-row-label,
+.quota-row-hint {
+  color: var(--nm-ink-faint);
+  font-size: 0.75rem;
+  line-height: 1.35;
+}
+
+.quota-row-hint {
+  font-size: 0.6875rem;
+}
+</style>
