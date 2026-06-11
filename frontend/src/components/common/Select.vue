@@ -59,7 +59,7 @@
         >
           <!-- Search input -->
           <div v-if="isSearchable" class="select-search">
-            <Icon name="search" size="sm" class="text-gray-400" />
+            <Icon name="search" size="sm" class="select-search-icon" />
             <input
               ref="searchInputRef"
               v-model="searchQuery"
@@ -93,14 +93,14 @@
                   v-if="option._creatable"
                   name="search"
                   size="sm"
-                  class="flex-shrink-0 text-gray-400"
+                  class="select-search-icon flex-shrink-0"
                 />
-                <span class="select-option-label" :class="option._creatable && 'italic text-gray-500 dark:text-dark-300'">{{ getOptionLabel(option) }}</span>
+                <span class="select-option-label" :class="option._creatable && 'select-option-creatable'">{{ getOptionLabel(option) }}</span>
                 <Icon
                   v-if="isSelected(option)"
                   name="check"
                   size="sm"
-                  class="text-primary-500"
+                  class="select-option-check"
                   :stroke-width="2"
                 />
               </slot>
@@ -455,111 +455,176 @@ onUnmounted(() => {
 
 <style scoped>
 .select-trigger {
-  @apply flex w-full items-center justify-between gap-2;
-  @apply rounded-xl px-4 py-2.5 text-sm;
-  @apply bg-white dark:bg-dark-800;
-  @apply border border-gray-200 dark:border-dark-600;
-  @apply text-gray-900 dark:text-gray-100;
-  @apply transition-all duration-200;
-  @apply focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/30;
-  @apply hover:border-gray-300 dark:hover:border-dark-500;
-  @apply cursor-pointer;
+  display: flex;
+  width: 100%;
+  cursor: pointer;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-height: 2.75rem;
+  padding: 0.625rem 1rem;
+  border: 1px solid var(--nm-border);
+  border-radius: var(--nm-radius);
+  background: var(--nm-surface);
+  color: var(--nm-ink);
+  font-size: 0.875rem;
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease;
 }
 
 .select-trigger-open {
-  @apply border-primary-500 ring-2 ring-primary-500/30;
+  border-color: var(--nm-accent);
+  background: var(--nm-accent-soft);
 }
 
 .select-trigger-error {
-  @apply border-red-500 focus:border-red-500 focus:ring-red-500/30;
+  border-color: var(--nm-danger);
 }
 
 .select-trigger-disabled {
-  @apply cursor-not-allowed bg-gray-100 opacity-60 dark:bg-dark-900;
+  cursor: not-allowed;
+  background: var(--nm-surface-soft);
+  opacity: 0.6;
 }
 
 .select-value {
-  @apply flex-1 truncate text-left;
+  flex: 1 1 0%;
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .select-icon {
-  @apply flex-shrink-0 text-gray-400 dark:text-dark-400;
+  flex-shrink: 0;
+  color: var(--nm-ink-faint);
 }
 
 .select-clear {
-  @apply flex flex-shrink-0 cursor-pointer items-center justify-center;
-  @apply rounded text-gray-400 transition-colors;
-  @apply hover:text-gray-600 dark:hover:text-gray-200;
+  display: flex;
+  flex-shrink: 0;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  color: var(--nm-ink-faint);
+  border-radius: var(--nm-radius-sm);
+  transition: color 160ms ease;
+}
+
+.select-clear:hover {
+  color: var(--nm-ink);
 }
 </style>
 
 <style>
 .select-dropdown-portal {
-  @apply w-max min-w-[200px];
-  @apply bg-white dark:bg-dark-800;
-  @apply rounded-xl;
-  @apply border border-gray-200 dark:border-dark-700;
-  @apply shadow-lg shadow-black/10 dark:shadow-black/30;
-  @apply overflow-hidden;
+  width: max-content;
+  min-width: 200px;
+  overflow: hidden;
+  background: var(--nm-surface);
+  border: 1px solid var(--nm-border);
+  border-radius: var(--nm-radius-lg);
   pointer-events: auto !important;
 }
 
 .select-dropdown-portal .select-search {
-  @apply flex items-center gap-2 px-3 py-2;
-  @apply border-b border-gray-100 dark:border-dark-700;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--nm-border-light);
+}
+
+.select-dropdown-portal .select-search-icon,
+.select-option-check {
+  color: var(--nm-accent-text);
 }
 
 .select-dropdown-portal .select-search-input {
-  @apply flex-1 bg-transparent text-sm;
-  @apply text-gray-900 dark:text-gray-100;
-  @apply placeholder:text-gray-400 dark:placeholder:text-dark-400;
-  @apply focus:outline-none;
+  flex: 1 1 0%;
+  background: transparent;
+  color: var(--nm-ink);
+  font-size: 0.875rem;
+  outline: none;
+}
+
+.select-dropdown-portal .select-search-input::placeholder {
+  color: var(--nm-ink-faint);
 }
 
 .select-dropdown-portal .select-options {
-  @apply max-h-80 overflow-y-auto py-1 outline-none;
+  max-height: 20rem;
+  overflow-y: auto;
+  padding: 0.25rem 0;
+  outline: none;
 }
 
 .select-dropdown-portal .select-option {
-  @apply flex items-center justify-between gap-2;
-  @apply px-4 py-2.5 text-sm;
-  @apply text-gray-700 dark:text-gray-300;
-  @apply cursor-pointer transition-colors duration-150;
-  @apply hover:bg-gray-50 dark:hover:bg-dark-700;
+  display: flex;
+  cursor: pointer;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.625rem 1rem;
+  color: var(--nm-ink-muted);
+  font-size: 0.875rem;
+  transition: background-color 150ms ease, color 150ms ease;
   pointer-events: auto !important;
 }
 
+.select-dropdown-portal .select-option:hover {
+  background: var(--nm-surface-soft);
+  color: var(--nm-ink);
+}
+
 .select-dropdown-portal .select-option-selected {
-  @apply bg-primary-50 dark:bg-primary-900/20;
-  @apply text-primary-700 dark:text-primary-300;
+  background: var(--nm-accent-soft);
+  color: var(--nm-accent-text);
 }
 
 .select-dropdown-portal .select-option-focused {
-  @apply bg-gray-100 dark:bg-dark-700;
+  background: var(--nm-surface-soft);
+  color: var(--nm-ink);
 }
 
 .select-dropdown-portal .select-option-disabled {
-  @apply cursor-not-allowed opacity-40;
+  cursor: not-allowed;
+  opacity: 0.4;
 }
 
 .select-dropdown-portal .select-option-group {
-  @apply cursor-default select-none;
-  @apply bg-gray-50 dark:bg-dark-900;
-  @apply text-[11px] font-bold uppercase tracking-wider;
-  @apply text-gray-500 dark:text-gray-400;
+  cursor: default;
+  user-select: none;
+  background: var(--nm-surface-soft);
+  color: var(--nm-ink-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: uppercase;
 }
 
 .select-dropdown-portal .select-option-group:hover {
-  @apply bg-gray-50 dark:bg-dark-900;
+  background: var(--nm-surface-soft);
 }
 
 .select-dropdown-portal .select-option-label {
-  @apply flex-1 min-w-0 truncate text-left;
+  min-width: 0;
+  flex: 1 1 0%;
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.select-dropdown-portal .select-option-creatable {
+  color: var(--nm-ink-muted);
+  font-style: italic;
 }
 
 .select-dropdown-portal .select-empty {
-  @apply px-4 py-8 text-center text-sm;
-  @apply text-gray-500 dark:text-dark-400;
+  padding: 2rem 1rem;
+  color: var(--nm-ink-muted);
+  text-align: center;
+  font-size: 0.875rem;
 }
 
 .select-dropdown-enter-active,
