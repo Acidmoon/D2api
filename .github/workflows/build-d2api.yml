@@ -42,8 +42,10 @@ jobs:
         run: npx vite build
         working-directory: frontend
 
-      - name: Copy frontend dist for embed
-        run: cp -r frontend/dist backend/internal/web/dist
+      - name: Verify frontend dist for embed
+        # vite.config.ts 的 outDir 已指向 ../backend/internal/web/dist，
+        # vite build 直接输出到此，无需再 cp。这里仅校验产物存在。
+        run: test -f backend/internal/web/dist/index.html
 
       - name: Setup Go
         uses: actions/setup-go@v6
