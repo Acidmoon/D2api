@@ -609,7 +609,7 @@
         </div>
 
         <!-- Model Restriction Section for Service Account -->
-        <div class="border-t border-gray-200 pt-4 dark:border-dark-600">
+        <div class="edit-section">
           <label class="input-label">{{ t('admin.accounts.modelRestriction') }}</label>
 
           <!-- Mode Toggle -->
@@ -618,10 +618,8 @@
               type="button"
               @click="modelRestrictionMode = 'whitelist'"
               :class="[
-                'flex-1 rounded-lg px-4 py-2 text-sm font-medium transition-all',
-                modelRestrictionMode === 'whitelist'
-                  ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500'
+                'edit-mode-tab',
+                modelRestrictionMode === 'whitelist' ? 'edit-mode-tab--active' : ''
               ]"
             >
               <svg
@@ -643,10 +641,8 @@
               type="button"
               @click="modelRestrictionMode = 'mapping'"
               :class="[
-                'flex-1 rounded-lg px-4 py-2 text-sm font-medium transition-all',
-                modelRestrictionMode === 'mapping'
-                  ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500'
+                'edit-mode-tab',
+                modelRestrictionMode === 'mapping' ? 'edit-mode-tab--active' : ''
               ]"
             >
               <svg
@@ -669,7 +665,7 @@
           <!-- Whitelist Mode -->
           <div v-if="modelRestrictionMode === 'whitelist'">
             <ModelWhitelistSelector v-model="allowedModels" :platform="account?.platform || 'anthropic'" :account-id="account?.id" />
-            <p class="text-xs text-gray-500 dark:text-gray-400">
+            <p class="edit-hint">
               {{ t('admin.accounts.selectedModels', { count: allowedModels.length }) }}
               <span v-if="allowedModels.length === 0 && modelMappings.length === 0">{{
                 t('admin.accounts.supportsAllModels')
@@ -679,8 +675,8 @@
 
           <!-- Mapping Mode -->
           <div v-else>
-            <div class="mb-3 rounded-lg bg-purple-50 p-3 dark:bg-purple-900/20">
-              <p class="text-xs text-purple-700 dark:text-purple-400">
+            <div class="edit-callout edit-callout--info">
+              <p class="edit-callout-text">
                 <svg
                   class="mr-1 inline h-4 w-4"
                   fill="none"
@@ -712,7 +708,7 @@
                   :placeholder="t('admin.accounts.requestModel')"
                 />
                 <svg
-                  class="h-4 w-4 flex-shrink-0 text-gray-400"
+                  class="edit-mapping-arrow"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
@@ -733,7 +729,7 @@
                 <button
                   type="button"
                   @click="removeModelMapping(index)"
-                  class="rounded-lg p-2 text-red-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
+                  class="edit-icon-danger"
                 >
                   <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path
@@ -750,7 +746,7 @@
             <button
               type="button"
               @click="addModelMapping"
-              class="mb-3 w-full rounded-lg border-2 border-dashed border-gray-300 px-4 py-2 text-gray-600 transition-colors hover:border-gray-400 hover:text-gray-700 dark:border-dark-500 dark:text-gray-400 dark:hover:border-dark-400 dark:hover:text-gray-300"
+              class="edit-add-row-button"
             >
               <svg
                 class="mr-1 inline h-4 w-4"
@@ -775,7 +771,7 @@
                 :key="preset.label"
                 type="button"
                 @click="addPresetMapping(preset.from, preset.to)"
-                :class="['rounded-lg px-3 py-1 text-xs transition-colors', preset.color]"
+                class="edit-preset-chip"
               >
                 + {{ preset.label }}
               </button>
@@ -849,15 +845,15 @@
             <input
               v-model="editBedrockForceGlobal"
               type="checkbox"
-              class="rounded border-gray-300 text-primary-600 focus:ring-primary-500 dark:border-dark-500"
+              class="edit-checkbox"
             />
-            <span class="text-sm text-gray-700 dark:text-gray-300">{{ t('admin.accounts.bedrockForceGlobal') }}</span>
+            <span class="edit-option-label">{{ t('admin.accounts.bedrockForceGlobal') }}</span>
           </label>
           <p class="input-hint mt-1">{{ t('admin.accounts.bedrockForceGlobalHint') }}</p>
         </div>
 
         <!-- Model Restriction for Bedrock -->
-        <div class="border-t border-gray-200 pt-4 dark:border-dark-600">
+        <div class="edit-section">
           <label class="input-label">{{ t('admin.accounts.modelRestriction') }}</label>
 
           <!-- Mode Toggle -->
@@ -866,10 +862,8 @@
               type="button"
               @click="modelRestrictionMode = 'whitelist'"
               :class="[
-                'flex-1 rounded-lg px-4 py-2 text-sm font-medium transition-all',
-                modelRestrictionMode === 'whitelist'
-                  ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500'
+                'edit-mode-tab',
+                modelRestrictionMode === 'whitelist' ? 'edit-mode-tab--active' : ''
               ]"
             >
               {{ t('admin.accounts.modelWhitelist') }}
@@ -878,10 +872,8 @@
               type="button"
               @click="modelRestrictionMode = 'mapping'"
               :class="[
-                'flex-1 rounded-lg px-4 py-2 text-sm font-medium transition-all',
-                modelRestrictionMode === 'mapping'
-                  ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500'
+                'edit-mode-tab',
+                modelRestrictionMode === 'mapping' ? 'edit-mode-tab--active' : ''
               ]"
             >
               {{ t('admin.accounts.modelMapping') }}
@@ -891,7 +883,7 @@
           <!-- Whitelist Mode -->
           <div v-if="modelRestrictionMode === 'whitelist'">
             <ModelWhitelistSelector v-model="allowedModels" platform="anthropic" />
-            <p class="text-xs text-gray-500 dark:text-gray-400">
+            <p class="edit-hint">
               {{ t('admin.accounts.selectedModels', { count: allowedModels.length }) }}
               <span v-if="allowedModels.length === 0 && modelMappings.length === 0">{{ t('admin.accounts.supportsAllModels') }}</span>
             </p>
@@ -901,13 +893,15 @@
           <div v-else class="space-y-3">
             <div v-for="(mapping, index) in modelMappings" :key="getModelMappingKey(mapping)" class="flex items-center gap-2">
               <input v-model="mapping.from" type="text" class="input flex-1" :placeholder="t('admin.accounts.fromModel')" />
-              <span class="text-gray-400">→</span>
+              <svg class="edit-mapping-arrow" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+              </svg>
               <input v-model="mapping.to" type="text" class="input flex-1" :placeholder="t('admin.accounts.toModel')" />
-              <button type="button" @click="modelMappings.splice(index, 1)" class="text-red-500 hover:text-red-700">
+              <button type="button" @click="modelMappings.splice(index, 1)" class="edit-icon-danger">
                 <Icon name="trash" size="sm" />
               </button>
             </div>
-            <button type="button" @click="modelMappings.push({ from: '', to: '' })" class="btn btn-secondary text-sm">
+            <button type="button" @click="modelMappings.push({ from: '', to: '' })" class="edit-add-row-button">
               + {{ t('admin.accounts.addMapping') }}
             </button>
             <!-- Bedrock Preset Mappings -->
@@ -917,7 +911,7 @@
                 :key="preset.from"
                 type="button"
                 @click="modelMappings.push({ from: preset.from, to: preset.to })"
-                :class="['rounded-lg px-3 py-1 text-xs transition-colors', preset.color]"
+                class="edit-preset-chip"
               >
                 + {{ preset.label }}
               </button>
@@ -926,11 +920,11 @@
         </div>
 
         <!-- Pool Mode Section for Bedrock -->
-        <div class="border-t border-gray-200 pt-4 dark:border-dark-600">
+        <div class="edit-section">
           <div class="mb-3 flex items-center justify-between">
             <div>
               <label class="input-label mb-0">{{ t('admin.accounts.poolMode') }}</label>
-              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              <p class="edit-hint">
                 {{ t('admin.accounts.poolModeHint') }}
               </p>
             </div>
@@ -938,20 +932,20 @@
               type="button"
               @click="poolModeEnabled = !poolModeEnabled"
               :class="[
-                'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2',
-                poolModeEnabled ? 'bg-primary-600' : 'bg-gray-200 dark:bg-dark-600'
+                'edit-switch',
+                poolModeEnabled ? 'edit-switch--on' : 'edit-switch--off'
               ]"
             >
               <span
                 :class="[
-                  'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out',
+                  'edit-switch-thumb',
                   poolModeEnabled ? 'translate-x-5' : 'translate-x-0'
                 ]"
               />
             </button>
           </div>
-          <div v-if="poolModeEnabled" class="rounded-lg bg-blue-50 p-3 dark:bg-blue-900/20">
-            <p class="text-xs text-blue-700 dark:text-blue-400">
+          <div v-if="poolModeEnabled" class="edit-callout edit-callout--info">
+            <p class="edit-callout-text">
               <Icon name="exclamationCircle" size="sm" class="mr-1 inline" :stroke-width="2" />
               {{ t('admin.accounts.poolModeInfo') }}
             </p>
@@ -966,7 +960,7 @@
               step="1"
               class="input"
             />
-            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            <p class="edit-hint">
               {{
                 t('admin.accounts.poolModeRetryCountHint', {
                   default: DEFAULT_POOL_MODE_RETRY_COUNT,
@@ -983,7 +977,7 @@
               class="input"
               :placeholder="DEFAULT_POOL_MODE_RETRY_STATUS_CODES.join(', ')"
             />
-            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            <p class="edit-hint">
               {{ t('admin.accounts.poolModeRetryStatusCodesHint', { default: DEFAULT_POOL_MODE_RETRY_STATUS_CODES.join(', ') }) }}
             </p>
           </div>
@@ -4377,6 +4371,25 @@ const handleMixedChannelCancel = () => {
   color: var(--nm-ink-faint);
   font-size: 0.75rem;
   line-height: 1.4;
+}
+
+.edit-checkbox {
+  height: 1rem;
+  width: 1rem;
+  border: 1px solid var(--nm-border);
+  border-radius: var(--nm-radius-sm);
+  color: var(--nm-accent);
+}
+
+.edit-checkbox:focus-visible {
+  outline: 3px solid var(--nm-accent);
+  outline-offset: 2px;
+}
+
+.edit-option-label {
+  color: var(--nm-ink-muted);
+  font-size: 0.875rem;
+  line-height: 1.5;
 }
 
 .edit-switch {
