@@ -1,8 +1,8 @@
 <template>
-  <div class="min-h-screen bg-gray-50 px-4 py-10 dark:bg-dark-900">
+  <div class="min-h-screen px-4 py-10" style="background: var(--nm-bg)">
     <div class="mx-auto max-w-2xl">
       <div v-if="isProcessing" class="card p-6 text-center">
-        <div class="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-primary-500 border-t-transparent"></div>
+        <div class="oauth-spinner mx-auto"></div>
         <h1 class="mt-4 text-lg font-semibold text-gray-900 dark:text-white">
           {{ t('auth.oauth.callbackTitle') }}
         </h1>
@@ -65,7 +65,7 @@
               @keyup.enter="handleSubmitRegistration"
             />
           </div>
-          <p v-if="registrationError" class="text-sm text-red-600 dark:text-red-400">
+          <p v-if="registrationError" class="text-sm text-semantic-danger">
             {{ registrationError }}
           </p>
           <button
@@ -144,6 +144,23 @@
     </div>
   </div>
 </template>
+
+<style scoped>
+.oauth-spinner {
+  width: 2rem;
+  height: 2rem;
+  border: 2px solid var(--nm-border);
+  border-top-color: var(--nm-accent);
+  border-radius: 50%;
+  animation: oauth-spin 0.8s linear infinite;
+}
+
+@keyframes oauth-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+</style>
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'

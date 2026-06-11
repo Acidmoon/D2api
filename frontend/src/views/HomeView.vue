@@ -23,7 +23,7 @@
       <nav class="mx-auto flex max-w-6xl items-center justify-between">
         <!-- Logo -->
         <div class="flex items-center">
-          <div class="h-10 w-10 overflow-hidden rounded-xl shadow-md">
+          <div class="h-10 w-10 overflow-hidden border p-1" style="border-color: var(--nm-border); border-radius: var(--nm-radius)">
             <img :src="siteLogo || '/logo.png'" alt="Logo" class="h-full w-full object-contain" />
           </div>
         </div>
@@ -39,7 +39,7 @@
             :href="docUrl"
             target="_blank"
             rel="noopener noreferrer"
-            class="rounded-lg p-2 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:text-dark-400 dark:hover:bg-dark-800 dark:hover:text-white"
+            class="btn btn-ghost btn-icon"
             :title="t('home.viewDocs')"
           >
             <Icon name="book" size="md" />
@@ -48,7 +48,7 @@
           <!-- Theme Toggle -->
           <button
             @click="toggleTheme"
-            class="rounded-lg p-2 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:text-dark-400 dark:hover:bg-dark-800 dark:hover:text-white"
+            class="btn btn-ghost btn-icon"
             :title="isDark ? t('home.switchToLight') : t('home.switchToDark')"
           >
             <Icon v-if="isDark" name="sun" size="md" />
@@ -59,11 +59,11 @@
           <router-link
             v-if="isAuthenticated"
             :to="dashboardPath"
-            class="inline-flex items-center gap-1.5 rounded-full bg-gray-900 py-1 pl-1 pr-2.5 transition-colors hover:bg-gray-800 dark:bg-gray-800 dark:hover:bg-gray-700"
+            class="btn btn-primary btn-sm"
           >
             <span
-              class="flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-semibold"
-              style="background: var(--nm-accent); color: var(--nm-on-accent)"
+              class="flex h-5 w-5 items-center justify-center text-[10px] font-semibold"
+              style="background: var(--nm-on-accent); color: var(--nm-accent); border-radius: var(--nm-radius-sm)"
             >
               {{ userInitial }}
             </span>
@@ -82,11 +82,7 @@
               />
             </svg>
           </router-link>
-          <router-link
-            v-else
-            to="/login"
-            class="inline-flex items-center rounded-full bg-gray-900 px-3 py-1 text-xs font-medium text-white transition-colors hover:bg-gray-800 dark:bg-gray-800 dark:hover:bg-gray-700"
-          >
+          <router-link v-else to="/login" class="btn btn-primary btn-sm">
             {{ t('home.login') }}
           </router-link>
         </div>
@@ -162,8 +158,7 @@
         <!-- Feature Tags - Centered -->
         <div class="mb-12 flex flex-wrap items-center justify-center gap-4 md:gap-6">
           <div
-            class="inline-flex items-center gap-2.5 rounded-full px-5 py-2.5"
-            style="background: var(--nm-bg); box-shadow: var(--nm-shadow-raised-sm); border-radius: var(--nm-radius-xl)"
+            class="swiss-panel inline-flex items-center gap-2.5 px-4 py-2"
           >
             <Icon name="swap" size="sm" style="color: var(--nm-accent-text)" />
             <span class="text-sm font-medium" style="color: var(--nm-ink)">{{
@@ -171,8 +166,7 @@
             }}</span>
           </div>
           <div
-            class="inline-flex items-center gap-2.5 rounded-full px-5 py-2.5"
-            style="background: var(--nm-bg); box-shadow: var(--nm-shadow-raised-sm); border-radius: var(--nm-radius-xl)"
+            class="swiss-panel inline-flex items-center gap-2.5 px-4 py-2"
           >
             <Icon name="shield" size="sm" style="color: var(--nm-accent-text)" />
             <span class="text-sm font-medium" style="color: var(--nm-ink)">{{
@@ -180,8 +174,7 @@
             }}</span>
           </div>
           <div
-            class="inline-flex items-center gap-2.5 rounded-full px-5 py-2.5"
-            style="background: var(--nm-bg); box-shadow: var(--nm-shadow-raised-sm); border-radius: var(--nm-radius-xl)"
+            class="swiss-panel inline-flex items-center gap-2.5 px-4 py-2"
           >
             <Icon name="chart" size="sm" style="color: var(--nm-accent-text)" />
             <span class="text-sm font-medium" style="color: var(--nm-ink)">{{
@@ -197,10 +190,9 @@
             class="card group p-6 transition-all duration-300"
           >
             <div
-              class="mb-4 flex h-12 w-12 items-center justify-center rounded-xl transition-transform group-hover:scale-110"
-              style="background: var(--nm-accent); box-shadow: var(--nm-shadow-raised-sm)"
+              class="swiss-stat-icon mb-4"
             >
-              <Icon name="server" size="lg" style="color: var(--nm-on-accent)" />
+              <Icon name="server" size="lg" style="color: var(--nm-accent-text)" />
             </div>
             <h3 class="mb-2 text-lg font-semibold text-gray-900 dark:text-white">
               {{ t('home.features.unifiedGateway') }}
@@ -215,12 +207,11 @@
             class="card group p-6 transition-all duration-300"
           >
             <div
-              class="mb-4 flex h-12 w-12 items-center justify-center rounded-xl transition-transform group-hover:scale-110"
-              style="background: var(--nm-accent); box-shadow: var(--nm-shadow-raised-sm)"
+              class="swiss-stat-icon mb-4"
             >
               <svg
                 class="h-6 w-6"
-                style="color: var(--nm-on-accent)"
+                style="color: var(--nm-accent-text)"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -246,12 +237,11 @@
             class="card group p-6 transition-all duration-300"
           >
             <div
-              class="mb-4 flex h-12 w-12 items-center justify-center rounded-xl transition-transform group-hover:scale-110"
-              style="background: var(--nm-accent); box-shadow: var(--nm-shadow-raised-sm)"
+              class="swiss-stat-icon mb-4"
             >
               <svg
                 class="h-6 w-6"
-                style="color: var(--nm-on-accent)"
+                style="color: var(--nm-accent-text)"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -286,8 +276,7 @@
         <div class="mb-16 flex flex-wrap items-center justify-center gap-4">
           <!-- Claude - Supported -->
           <div
-            class="flex items-center gap-2 px-5 py-3"
-            style="background: var(--nm-bg); box-shadow: var(--nm-shadow-raised-sm); border-radius: var(--nm-radius)"
+            class="swiss-panel flex items-center gap-2 px-4 py-3"
           >
             <div
               class="flex h-8 w-8 items-center justify-center rounded-lg"
@@ -304,8 +293,7 @@
           </div>
           <!-- GPT - Supported -->
           <div
-            class="flex items-center gap-2 px-5 py-3"
-            style="background: var(--nm-bg); box-shadow: var(--nm-shadow-raised-sm); border-radius: var(--nm-radius)"
+            class="swiss-panel flex items-center gap-2 px-4 py-3"
           >
             <div
               class="flex h-8 w-8 items-center justify-center rounded-lg"
@@ -322,8 +310,7 @@
           </div>
           <!-- Gemini - Supported -->
           <div
-            class="flex items-center gap-2 px-5 py-3"
-            style="background: var(--nm-bg); box-shadow: var(--nm-shadow-raised-sm); border-radius: var(--nm-radius)"
+            class="swiss-panel flex items-center gap-2 px-4 py-3"
           >
             <div
               class="flex h-8 w-8 items-center justify-center rounded-lg"
@@ -340,8 +327,7 @@
           </div>
           <!-- Antigravity - Supported -->
           <div
-            class="flex items-center gap-2 px-5 py-3"
-            style="background: var(--nm-bg); box-shadow: var(--nm-shadow-raised-sm); border-radius: var(--nm-radius)"
+            class="swiss-panel flex items-center gap-2 px-4 py-3"
           >
             <div
               class="flex h-8 w-8 items-center justify-center rounded-lg"
@@ -358,8 +344,7 @@
           </div>
           <!-- More - Coming Soon -->
           <div
-            class="flex items-center gap-2 px-5 py-3 opacity-60"
-            style="background: var(--nm-bg); box-shadow: var(--nm-shadow-raised-sm); border-radius: var(--nm-radius)"
+            class="swiss-panel flex items-center gap-2 px-4 py-3 opacity-60"
           >
             <div
               class="flex h-8 w-8 items-center justify-center rounded-lg"
@@ -496,19 +481,10 @@ onMounted(() => {
 /* Terminal Window */
 .terminal-window {
   width: 420px;
-  background: linear-gradient(145deg, #1e293b 0%, #0f172a 100%);
-  border-radius: 14px;
-  box-shadow:
-    0 25px 50px -12px rgba(0, 0, 0, 0.4),
-    0 0 0 1px rgba(255, 255, 255, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  background: #111111;
+  border: 1px solid var(--nm-border);
+  border-radius: var(--nm-radius-xl);
   overflow: hidden;
-  transform: perspective(1000px) rotateX(2deg) rotateY(-2deg);
-  transition: transform 0.3s ease;
-}
-
-.terminal-window:hover {
-  transform: perspective(1000px) rotateX(0deg) rotateY(0deg) translateY(-4px);
 }
 
 /* Terminal Header */
@@ -516,8 +492,8 @@ onMounted(() => {
   display: flex;
   align-items: center;
   padding: 12px 16px;
-  background: rgba(30, 41, 59, 0.8);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  background: #171717;
+  border-bottom: 1px solid #34342f;
 }
 
 .terminal-buttons {
@@ -528,17 +504,17 @@ onMounted(() => {
 .terminal-buttons span {
   width: 12px;
   height: 12px;
-  border-radius: 50%;
+  border-radius: 2px;
 }
 
 .btn-close {
-  background: #ef4444;
+  background: var(--nm-danger);
 }
 .btn-minimize {
-  background: #eab308;
+  background: var(--nm-warning);
 }
 .btn-maximize {
-  background: #22c55e;
+  background: var(--nm-success);
 }
 
 .terminal-title {
@@ -609,8 +585,8 @@ onMounted(() => {
   font-style: italic;
 }
 .code-success {
-  color: #22c55e;
-  background: rgba(34, 197, 94, 0.15);
+  color: var(--nm-success-text);
+  background: var(--nm-success-soft);
   padding: 2px 8px;
   border-radius: 4px;
   font-weight: 600;
@@ -624,7 +600,7 @@ onMounted(() => {
   display: inline-block;
   width: 8px;
   height: 16px;
-  background: #22c55e;
+  background: var(--nm-accent);
   animation: blink 1s step-end infinite;
 }
 
@@ -639,12 +615,4 @@ onMounted(() => {
   }
 }
 
-/* Dark mode adjustments */
-:deep(.dark) .terminal-window {
-  box-shadow:
-    0 25px 50px -12px rgba(0, 0, 0, 0.6),
-    0 0 0 1px rgba(20, 184, 166, 0.2),
-    0 0 40px rgba(20, 184, 166, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
-}
 </style>

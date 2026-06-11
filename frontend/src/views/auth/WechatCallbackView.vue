@@ -28,7 +28,7 @@
         >
           <div
             v-if="adoptionRequired && (suggestedDisplayName || suggestedAvatarUrl)"
-            class="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-dark-600 dark:bg-dark-800/60"
+            class="swiss-panel p-4"
           >
             <div class="space-y-3">
               <div class="space-y-1">
@@ -42,7 +42,7 @@
 
               <label
                 v-if="suggestedDisplayName"
-                class="flex items-start gap-3 rounded-lg border border-gray-200 bg-white p-3 text-sm dark:border-dark-600 dark:bg-dark-900/50"
+                class="swiss-panel flex items-start gap-3 p-3 text-sm"
               >
                 <input v-model="adoptDisplayName" type="checkbox" class="mt-1 h-4 w-4" />
                 <span class="space-y-1">
@@ -57,13 +57,14 @@
 
               <label
                 v-if="suggestedAvatarUrl"
-                class="flex items-start gap-3 rounded-lg border border-gray-200 bg-white p-3 text-sm dark:border-dark-600 dark:bg-dark-900/50"
+                class="swiss-panel flex items-start gap-3 p-3 text-sm"
               >
                 <input v-model="adoptAvatar" type="checkbox" class="mt-1 h-4 w-4" />
                 <img
                   :src="suggestedAvatarUrl"
                   :alt="t('auth.oauthFlow.avatarAlt', { providerName })"
-                  class="h-10 w-10 rounded-full border border-gray-200 object-cover dark:border-dark-600"
+                  class="h-10 w-10 border object-cover"
+                  style="border-color: var(--nm-border); border-radius: var(--nm-radius)"
                 />
                 <span class="space-y-1">
                   <span class="block font-medium text-gray-900 dark:text-white">
@@ -104,7 +105,7 @@
             </button>
 
             <div
-              class="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-dark-600 dark:bg-dark-800/60"
+              class="swiss-panel p-4"
             >
               <div class="space-y-3">
                 <div class="space-y-1">
@@ -145,7 +146,7 @@
 
           <template v-else-if="needsChooser">
             <div
-              class="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-dark-600 dark:bg-dark-800/60"
+              class="swiss-panel p-4"
             >
               <div class="space-y-4">
                 <div class="space-y-1">
@@ -217,7 +218,7 @@
             </p>
             <div
               v-if="hasCurrentAuthToken"
-              class="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-dark-600 dark:bg-dark-800/60"
+              class="swiss-panel p-4"
             >
               <div class="space-y-3">
                 <div class="space-y-1">

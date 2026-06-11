@@ -7,15 +7,15 @@
   >
     <div class="space-y-4">
       <!-- No Group Assigned Warning -->
-      <div v-if="!platform" class="flex items-start gap-3 p-4 rounded-lg bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800">
-        <svg class="w-5 h-5 text-yellow-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+      <div v-if="!platform" class="swiss-panel flex items-start gap-3 p-4" style="background: var(--nm-warning-soft)">
+        <svg class="w-5 h-5 text-semantic-warning flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
           <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
         </svg>
         <div>
-          <p class="text-sm font-medium text-yellow-800 dark:text-yellow-200">
+          <p class="text-sm font-medium text-semantic-warning">
             {{ t('keys.useKeyModal.noGroupTitle') }}
           </p>
-          <p class="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
+          <p class="text-sm text-semantic-warning mt-1">
             {{ t('keys.useKeyModal.noGroupDescription') }}
           </p>
         </div>
@@ -80,11 +80,11 @@
             class="relative"
           >
             <!-- File Hint (if exists) -->
-            <p v-if="file.hint" class="text-xs text-amber-600 dark:text-amber-400 mb-1.5 flex items-center gap-1">
+            <p v-if="file.hint" class="mb-1.5 flex items-center gap-1 text-xs text-semantic-warning">
               <Icon name="exclamationCircle" size="sm" class="flex-shrink-0" />
               {{ file.hint }}
             </p>
-            <div class="bg-gray-900 dark:bg-dark-900 rounded-xl overflow-hidden">
+            <div class="overflow-hidden border border-[color:var(--nm-border)] bg-gray-900 dark:bg-dark-900" style="border-radius: var(--nm-radius-lg)">
               <!-- Code Header -->
               <div class="flex items-center justify-between px-4 py-2 bg-gray-800 dark:bg-dark-800 border-b border-gray-700 dark:border-dark-700">
                 <span class="text-xs text-gray-400 font-mono">{{ file.path }}</span>
@@ -92,7 +92,7 @@
                   @click="copyContent(file.content, index)"
                   class="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-lg transition-colors"
                   :class="copiedIndex === index
-                    ? 'bg-green-500/20 text-green-400'
+                    ? 'bg-[color:var(--nm-success-soft)] text-semantic-success'
                     : 'bg-gray-700 hover:bg-gray-600 text-gray-300 hover:text-white'"
                 >
                   <svg v-if="copiedIndex === index" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
@@ -111,9 +111,9 @@
         </div>
 
         <!-- Usage Note -->
-        <div v-if="showPlatformNote" class="flex items-start gap-3 p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800">
-          <Icon name="infoCircle" size="md" class="text-blue-500 flex-shrink-0 mt-0.5" />
-          <p class="text-sm text-blue-700 dark:text-blue-300">
+        <div v-if="showPlatformNote" class="swiss-panel flex items-start gap-3 p-3" style="background: var(--nm-info-soft)">
+          <Icon name="infoCircle" size="md" class="text-semantic-info flex-shrink-0 mt-0.5" />
+          <p class="text-sm text-semantic-info">
             {{ platformNote }}
           </p>
         </div>
@@ -367,10 +367,10 @@ const escapeHtml = (value: string) => value
 const wrapToken = (className: string, value: string) =>
   `<span class="${className}">${escapeHtml(value)}</span>`
 
-const keyword = (value: string) => wrapToken('text-emerald-300', value)
-const variable = (value: string) => wrapToken('text-sky-200', value)
+const keyword = (value: string) => wrapToken('text-semantic-success', value)
+const variable = (value: string) => wrapToken('text-semantic-info', value)
 const operator = (value: string) => wrapToken('text-slate-400', value)
-const string = (value: string) => wrapToken('text-amber-200', value)
+const string = (value: string) => wrapToken('text-semantic-warning', value)
 const comment = (value: string) => wrapToken('text-slate-500', value)
 
 // Syntax highlighting helpers
