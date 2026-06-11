@@ -12,8 +12,13 @@
   }
 
   body {
-    @apply bg-gray-50 text-gray-900 dark:bg-dark-950 dark:text-gray-100;
+    @apply text-gray-900 dark:text-gray-100;
     @apply min-h-screen;
+    background-color: #e4e8ef;
+  }
+
+  .dark body {
+    background-color: #1c1f26;
   }
 
   /* 自定义滚动条 - 仅针对 Firefox，避免 Chrome 取消 webkit 的全局定制 */
