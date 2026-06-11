@@ -5,19 +5,19 @@
       v-if="windowStats && (windowStats.requests > 0 || windowStats.tokens > 0)"
       class="mb-0.5 flex items-center"
     >
-      <div class="flex items-center gap-1.5 text-[9px] text-gray-500 dark:text-gray-400">
-        <span class="rounded bg-gray-100 px-1.5 py-0.5 dark:bg-gray-800">
+      <div class="usage-stats-row flex items-center gap-1.5 text-[9px]">
+        <span class="usage-stat-chip px-1.5 py-0.5">
           {{ formatRequests }} req
         </span>
-        <span class="rounded bg-gray-100 px-1.5 py-0.5 dark:bg-gray-800">
+        <span class="usage-stat-chip px-1.5 py-0.5">
           {{ formatTokens }}
         </span>
-        <span class="rounded bg-gray-100 px-1.5 py-0.5 dark:bg-gray-800" :title="t('usage.accountBilled')">
+        <span class="usage-stat-chip px-1.5 py-0.5" :title="t('usage.accountBilled')">
           A ${{ formatAccountCost }}
         </span>
         <span
           v-if="windowStats?.user_cost != null"
-          class="rounded bg-gray-100 px-1.5 py-0.5 dark:bg-gray-800"
+          class="usage-stat-chip px-1.5 py-0.5"
           :title="t('usage.userBilled')"
         >
           U ${{ formatUserCost }}
@@ -29,15 +29,15 @@
     <div class="flex items-center gap-1">
       <!-- Label badge (fixed width for alignment) -->
       <span
-        :class="['w-[32px] shrink-0 rounded px-1 text-center text-[10px] font-medium', labelClass]"
+        :class="['usage-label w-[32px] shrink-0 px-1 text-center text-[10px] font-medium', labelClass]"
       >
         {{ label }}
       </span>
 
       <!-- Progress bar container -->
-      <div class="h-1.5 w-8 shrink-0 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+      <div class="usage-track h-1.5 w-8 shrink-0 overflow-hidden">
         <div
-          :class="['h-full transition-all duration-300', barClass]"
+          :class="['usage-fill h-full transition-all duration-300', barClass]"
           :style="{ width: barWidth }"
         ></div>
       </div>
@@ -48,7 +48,7 @@
       </span>
 
       <!-- Reset time -->
-      <span v-if="shouldShowResetTime" class="shrink-0 text-[10px] text-gray-400">
+      <span v-if="shouldShowResetTime" class="usage-reset shrink-0 text-[10px]">
         {{ formatResetTime }}
       </span>
     </div>
@@ -99,10 +99,10 @@ watch(
 // Label background colors
 const labelClass = computed(() => {
   const colors = {
-    indigo: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300',
-    emerald: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300',
-    purple: 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300',
-    amber: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300'
+    indigo: 'usage-label-info',
+    emerald: 'usage-label-success',
+    purple: 'usage-label-accent',
+    amber: 'usage-label-warning'
   }
   return colors[props.color]
 })
@@ -110,22 +110,22 @@ const labelClass = computed(() => {
 // Progress bar color based on utilization
 const barClass = computed(() => {
   if (props.utilization >= 100) {
-    return 'bg-red-500'
+    return 'usage-fill-danger'
   } else if (props.utilization >= 80) {
-    return 'bg-amber-500'
+    return 'usage-fill-warning'
   } else {
-    return 'bg-green-500'
+    return 'usage-fill-success'
   }
 })
 
 // Text color based on utilization
 const textClass = computed(() => {
   if (props.utilization >= 100) {
-    return 'text-red-600 dark:text-red-400'
+    return 'usage-text-danger'
   } else if (props.utilization >= 80) {
-    return 'text-amber-600 dark:text-amber-400'
+    return 'usage-text-warning'
   } else {
-    return 'text-gray-600 dark:text-gray-400'
+    return 'usage-text-muted'
   }
 })
 
@@ -198,3 +198,86 @@ const formatUserCost = computed(() => {
 })
 
 </script>
+
+<style scoped>
+.usage-stats-row {
+  color: var(--nm-ink-faint);
+}
+
+.usage-stat-chip,
+.usage-label,
+.usage-track {
+  border-radius: var(--nm-radius-sm);
+}
+
+.usage-stat-chip {
+  border: 1px solid var(--nm-border-light);
+  background: var(--nm-surface-soft);
+  color: var(--nm-ink-muted);
+}
+
+.usage-label {
+  border: 1px solid transparent;
+}
+
+.usage-label-info {
+  border-color: color-mix(in srgb, var(--nm-info-text) 22%, var(--nm-border-light));
+  background: var(--nm-info-soft);
+  color: var(--nm-info-text);
+}
+
+.usage-label-success {
+  border-color: color-mix(in srgb, var(--nm-success-text) 22%, var(--nm-border-light));
+  background: var(--nm-success-soft);
+  color: var(--nm-success-text);
+}
+
+.usage-label-accent {
+  border-color: color-mix(in srgb, var(--nm-accent-text) 22%, var(--nm-border-light));
+  background: var(--nm-accent-soft);
+  color: var(--nm-accent-text);
+}
+
+.usage-label-warning {
+  border-color: color-mix(in srgb, var(--nm-warning-text) 22%, var(--nm-border-light));
+  background: var(--nm-warning-soft);
+  color: var(--nm-warning-text);
+}
+
+.usage-track {
+  background: var(--nm-surface-soft);
+  border: 1px solid var(--nm-border-light);
+}
+
+.usage-fill {
+  min-width: 1px;
+}
+
+.usage-fill-success {
+  background: var(--nm-success);
+}
+
+.usage-fill-warning {
+  background: var(--nm-warning);
+}
+
+.usage-fill-danger {
+  background: var(--nm-danger);
+}
+
+.usage-text-muted {
+  color: var(--nm-ink-muted);
+}
+
+.usage-text-warning {
+  color: var(--nm-warning-text);
+}
+
+.usage-text-danger {
+  color: var(--nm-danger-text);
+}
+
+.usage-reset {
+  color: var(--nm-ink-faint);
+}
+</style>
