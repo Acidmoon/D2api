@@ -249,6 +249,7 @@ export default {
 
   // Common
   common: {
+    skipToContent: 'Skip to main content',
     loading: 'Loading...',
     submitting: 'Submitting...',
     justNow: 'just now',

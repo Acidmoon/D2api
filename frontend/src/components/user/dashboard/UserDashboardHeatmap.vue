@@ -1,7 +1,7 @@
 <template>
   <div class="card p-4">
-    <div class="mb-4 flex items-center justify-between">
-      <h3 class="text-sm font-semibold" style="color: var(--nm-ink)">
+    <div class="mb-4 flex items-center justify-between border-b pb-2" style="border-color: var(--nm-border)">
+      <h3 class="text-xs font-bold uppercase" style="color: var(--nm-ink); letter-spacing: 0">
         {{ t('dashboard.activityHeatmap') }}
       </h3>
       <span class="text-xs" style="color: var(--nm-ink-faint)">{{ t('dashboard.last7Days') }}</span>
@@ -142,7 +142,7 @@ const formatTokens = (value: number): string => {
   display: flex;
   gap: 0.375rem;
   overflow-x: auto;
-  padding-bottom: 0.25rem;
+  padding-bottom: 0.5rem;
 }
 
 .heatmap-weekdays {
@@ -174,8 +174,9 @@ const formatTokens = (value: number): string => {
 .heatmap-cell {
   width: 14px;
   height: 14px;
-  border-radius: 3px;
+  border-radius: 2px;
   flex-shrink: 0;
+  border: 1px solid color-mix(in srgb, var(--nm-border) 70%, transparent);
 }
 
 /* 用量分档：nm accent 透明度梯度 */

@@ -1,6 +1,6 @@
 <template>
   <div class="card p-4">
-    <h3 class="mb-4 text-sm font-semibold text-gray-900 dark:text-white">
+    <h3 class="mb-4 border-b pb-2 text-xs font-bold uppercase" style="color: var(--nm-ink); border-color: var(--nm-border); letter-spacing: 0">
       {{ t('admin.dashboard.tokenUsageTrend') }}
     </h3>
     <div v-if="loading" class="flex h-48 items-center justify-center">
@@ -59,13 +59,13 @@ const isDarkMode = computed(() => {
 })
 
 const chartColors = computed(() => ({
-  text: isDarkMode.value ? '#aab8b3' : '#52616f',
-  grid: isDarkMode.value ? '#304540' : '#cfd8d5',
-  input: '#236b66',
-  output: '#2d6a4f',
+  text: isDarkMode.value ? '#c7c7bd' : '#4b4b45',
+  grid: isDarkMode.value ? '#34342f' : '#ddddd6',
+  input: '#0f766e',
+  output: '#111111',
   cacheCreation: '#9a6700',
-  cacheRead: '#2d4055',
-  cacheHitRate: '#6d5c7a'
+  cacheRead: '#315f88',
+  cacheHitRate: '#77776f'
 }))
 
 const chartData = computed(() => {

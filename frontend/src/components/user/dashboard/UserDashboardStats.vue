@@ -1,7 +1,7 @@
 <template>
   <section>
     <h2 class="section-title">{{ t('dashboard.overview') }}</h2>
-    <div class="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-6">
+    <div class="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
       <!-- 余额（简单模式隐藏） -->
       <div v-if="!isSimple" class="kpi-cell card">
         <p class="kpi-label">{{ t('dashboard.balance') }}</p>
@@ -80,19 +80,29 @@ const formatTokens = (t: number) => {
 
 <style scoped>
 .section-title {
-  font-size: 1.125rem;
+  font-size: 0.8125rem;
   font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0;
   color: var(--nm-ink);
-  margin-bottom: 1rem;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--nm-border);
 }
 
 .kpi-cell {
-  padding: 1.125rem 1.25rem;
+  padding: 0.875rem 1rem;
+  min-height: 7rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
 }
 
 .kpi-label {
   font-size: 0.75rem;
-  font-weight: 500;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0;
   color: var(--nm-ink-muted);
   white-space: nowrap;
   overflow: hidden;
@@ -100,16 +110,16 @@ const formatTokens = (t: number) => {
 }
 
 .kpi-value {
-  margin-top: 0.375rem;
-  font-size: 1.375rem;
-  font-weight: 700;
+  margin-top: 0.5rem;
+  font-size: 1.5rem;
+  font-weight: 600;
   color: var(--nm-ink);
   font-variant-numeric: tabular-nums;
-  line-height: 1.2;
+  line-height: 1.1;
 }
 
 .kpi-sub {
-  margin-top: 0.25rem;
+  margin-top: 0.5rem;
   font-size: 0.6875rem;
   color: var(--nm-ink-faint);
   white-space: nowrap;

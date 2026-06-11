@@ -3,102 +3,99 @@
 @tailwind utilities;
 
 /* ==========================================================================
-   Neumorphism design tokens — single source of truth.
-   The Tailwind boxShadow tokens (shadow-nm*, shadow-card, shadow-glass) and
-   the semantic component classes below all reference these variables, so
-   light/dark mode switches by re-declaring the variables under `.dark` only.
+   Swiss minimal design tokens.
+   Keep the historic --nm-* names as a compatibility layer for existing
+   components, but map them to flat surfaces, sharp borders, compact spacing,
+   and one functional accent.
    ========================================================================== */
 :root {
   /* Surfaces */
-  --nm-bg: #e4e8ef;
-  --nm-surface: #e8ecf2;
-  --nm-surface-soft: #eef1f6;
-  --nm-surface-alt: #dde1e8;
+  --nm-bg: #f7f7f4;
+  --nm-surface: #ffffff;
+  --nm-surface-soft: #f0f0ec;
+  --nm-surface-alt: #e7e7e1;
 
   /* Text — calibrated for WCAG AA on the surfaces above */
-  --nm-ink: #2c313a; /* 11:1  — body / headings */
-  --nm-ink-muted: #565e6e; /* 4.7:1 — secondary text */
-  --nm-ink-faint: #818897; /* decorative / icons only */
+  --nm-ink: #111111;
+  --nm-ink-muted: #4b4b45;
+  --nm-ink-faint: #77776f;
 
-  /* Accent — lavender-blue.
-     -accent     : fills (white text sits on it; uses the 600 tone, 6.1:1)
-     -accent-text: accent used AS text on light surfaces (darker, 5.3:1)
-     -accent-soft: tinted chip / hover background */
-  --nm-accent: #576089;
-  --nm-accent-strong: #48506f;
-  --nm-accent-text: #4d567a;
-  --nm-accent-soft: #d7dcec;
-  --nm-on-accent: #ffffff; /* text/icon color on an accent fill */
+  /* Single Swiss signal accent. */
+  --nm-accent: #0f766e;
+  --nm-accent-strong: #0b5d57;
+  --nm-accent-text: #0b5d57;
+  --nm-accent-soft: #d9efeb;
+  --nm-on-accent: #ffffff;
 
   /* Semantic — `-fill` meets AA with white text; `-text` meets AA on `-soft`. */
-  --nm-success: #3f7d5d;
-  --nm-success-soft: #d9f0e3;
-  --nm-success-text: #2c5b42;
-  --nm-warning: #80591b;
-  --nm-warning-soft: #f7ecd2;
-  --nm-warning-text: #785416;
-  --nm-danger: #b1504f;
-  --nm-danger-soft: #f7e0e0;
-  --nm-danger-text: #923b3a;
-  --nm-info: #4c6a96;
-  --nm-info-soft: #e1eaf6;
-  --nm-info-text: #3c567c;
+  --nm-success: #12805c;
+  --nm-success-soft: #ddf3e8;
+  --nm-success-text: #0f684b;
+  --nm-warning: #9a6700;
+  --nm-warning-soft: #f6ead0;
+  --nm-warning-text: #6f4b00;
+  --nm-danger: #b4232a;
+  --nm-danger-soft: #f8dddd;
+  --nm-danger-text: #8f1d23;
+  --nm-info: #315f88;
+  --nm-info-soft: #dfeaf2;
+  --nm-info-text: #254b6c;
 
   /* Borders / dividers */
-  --nm-border: #cdd2da;
-  --nm-border-light: #d7dbe2;
+  --nm-border: #cfcfc8;
+  --nm-border-light: #ddddd6;
 
-  /* Neumorphic shadows */
-  --nm-shadow-raised: 8px 8px 16px rgba(163, 170, 185, 0.5), -6px -6px 12px rgba(255, 255, 255, 0.85);
-  --nm-shadow-raised-sm: 5px 5px 10px rgba(163, 170, 185, 0.42), -3px -3px 6px rgba(255, 255, 255, 0.78);
-  --nm-shadow-raised-lg: 12px 12px 24px rgba(163, 170, 185, 0.55), -8px -8px 16px rgba(255, 255, 255, 0.92);
-  --nm-shadow-pressed: inset 4px 4px 8px rgba(163, 170, 185, 0.42), inset -3px -3px 6px rgba(255, 255, 255, 0.78);
-  --nm-shadow-inset: inset 3px 3px 6px rgba(163, 170, 185, 0.38), inset -2px -2px 4px rgba(255, 255, 255, 0.72);
+  /* Flat Swiss surfaces: shadows only for elevated overlays. */
+  --nm-shadow-raised: 0 0 0 1px var(--nm-border);
+  --nm-shadow-raised-sm: 0 0 0 1px var(--nm-border-light);
+  --nm-shadow-raised-lg: 0 18px 48px rgba(17, 17, 17, 0.14), 0 0 0 1px var(--nm-border);
+  --nm-shadow-pressed: inset 0 0 0 1px var(--nm-ink);
+  --nm-shadow-inset: inset 0 0 0 1px var(--nm-border);
 
   /* Radii */
-  --nm-radius-sm: 8px;
-  --nm-radius: 12px;
-  --nm-radius-lg: 16px;
-  --nm-radius-xl: 20px;
+  --nm-radius-sm: 2px;
+  --nm-radius: 4px;
+  --nm-radius-lg: 6px;
+  --nm-radius-xl: 8px;
 }
 
 .dark {
-  --nm-bg: #1c1f26;
-  --nm-surface: #22252d;
-  --nm-surface-soft: #272b34;
-  --nm-surface-alt: #16181e;
+  --nm-bg: #111111;
+  --nm-surface: #171717;
+  --nm-surface-soft: #20201e;
+  --nm-surface-alt: #0b0b0b;
 
-  --nm-ink: #e1e4ec;
-  --nm-ink-muted: #a8aebc;
-  --nm-ink-faint: #6b7180;
+  --nm-ink: #f4f4ef;
+  --nm-ink-muted: #c7c7bd;
+  --nm-ink-faint: #85857b;
 
-  --nm-accent: #99a3c4;
-  --nm-accent-strong: #b3bcd8;
-  --nm-accent-text: #aab4d4;
-  --nm-accent-soft: #2d3344;
-  --nm-on-accent: #16181e; /* dark text on the light-toned accent fill */
+  --nm-accent: #45c3b5;
+  --nm-accent-strong: #68d4c8;
+  --nm-accent-text: #80ded4;
+  --nm-accent-soft: #153b37;
+  --nm-on-accent: #071311;
 
-  --nm-success: #6fbf90;
-  --nm-success-soft: #1e3a2c;
-  --nm-success-text: #6fbf90;
-  --nm-warning: #d4a94e;
-  --nm-warning-soft: #3a2f17;
-  --nm-warning-text: #d4a94e;
-  --nm-danger: #df9090;
-  --nm-danger-soft: #3d2222;
-  --nm-danger-text: #df9090;
-  --nm-info: #88a4d0;
-  --nm-info-soft: #1f2b3d;
-  --nm-info-text: #88a4d0;
+  --nm-success: #67d39b;
+  --nm-success-soft: #173827;
+  --nm-success-text: #7de0ac;
+  --nm-warning: #f0be57;
+  --nm-warning-soft: #3b2c0d;
+  --nm-warning-text: #f0c46a;
+  --nm-danger: #ff8f90;
+  --nm-danger-soft: #3e1719;
+  --nm-danger-text: #ffa3a4;
+  --nm-info: #84b6e2;
+  --nm-info-soft: #132b3d;
+  --nm-info-text: #9cc6e9;
 
-  --nm-border: #323840;
-  --nm-border-light: #2c3139;
+  --nm-border: #34342f;
+  --nm-border-light: #292925;
 
-  --nm-shadow-raised: 8px 8px 16px rgba(12, 13, 17, 0.65), -6px -6px 12px rgba(58, 62, 73, 0.3);
-  --nm-shadow-raised-sm: 5px 5px 10px rgba(12, 13, 17, 0.58), -3px -3px 6px rgba(58, 62, 73, 0.25);
-  --nm-shadow-raised-lg: 12px 12px 24px rgba(12, 13, 17, 0.7), -8px -8px 16px rgba(58, 62, 73, 0.35);
-  --nm-shadow-pressed: inset 4px 4px 8px rgba(12, 13, 17, 0.5), inset -3px -3px 6px rgba(58, 62, 73, 0.2);
-  --nm-shadow-inset: inset 3px 3px 6px rgba(12, 13, 17, 0.45), inset -2px -2px 4px rgba(58, 62, 73, 0.18);
+  --nm-shadow-raised: 0 0 0 1px var(--nm-border);
+  --nm-shadow-raised-sm: 0 0 0 1px var(--nm-border-light);
+  --nm-shadow-raised-lg: 0 18px 48px rgba(0, 0, 0, 0.52), 0 0 0 1px var(--nm-border);
+  --nm-shadow-pressed: inset 0 0 0 1px var(--nm-ink);
+  --nm-shadow-inset: inset 0 0 0 1px var(--nm-border);
 }
 
 @layer base {
@@ -116,9 +113,28 @@
     background-color: var(--nm-bg);
     color: var(--nm-ink);
     font-family:
-      system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
       'Helvetica Neue', Arial, 'PingFang SC', 'Hiragino Sans GB',
       'Microsoft YaHei', sans-serif;
+    letter-spacing: 0;
+  }
+
+  a,
+  button,
+  [role='button'],
+  input,
+  select,
+  textarea {
+    touch-action: manipulation;
+  }
+
+  a:focus-visible,
+  button:focus-visible,
+  [role='button']:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible {
+    outline: 3px solid var(--nm-accent);
+    outline-offset: 2px;
   }
 
   #app {
@@ -162,8 +178,19 @@
 
   /* Selection */
   ::selection {
-    background: var(--nm-accent-soft);
-    color: var(--nm-accent-text);
+    background: var(--nm-ink);
+    color: var(--nm-bg);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 1ms !important;
+      animation-iteration-count: 1 !important;
+      scroll-behavior: auto !important;
+      transition-duration: 1ms !important;
+    }
   }
 }
 
@@ -171,42 +198,57 @@
   /* ============ Buttons — neumorphic raised / pressed ============ */
   .btn {
     @apply inline-flex items-center justify-center gap-2;
-    @apply px-4 py-2.5 text-sm font-medium;
+    @apply px-4 py-2.5 text-sm font-semibold;
     @apply focus:outline-none;
     @apply disabled:cursor-not-allowed disabled:opacity-50;
-    min-height: 2.5rem;
-    border: none;
+    min-height: 2.75rem;
+    border: 1px solid var(--nm-ink);
     border-radius: var(--nm-radius);
-    background: var(--nm-bg);
+    background: transparent;
     color: var(--nm-ink);
-    box-shadow: var(--nm-shadow-raised-sm);
-    transition: box-shadow 160ms ease, transform 160ms ease, background-color 160ms ease;
+    box-shadow: none;
+    letter-spacing: 0;
+    transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease, transform 160ms ease;
   }
 
   .btn:hover {
-    box-shadow: var(--nm-shadow-raised);
-    transform: translateY(-1px);
+    background: var(--nm-ink);
+    color: var(--nm-bg);
+    box-shadow: none;
+    transform: none;
   }
 
   .btn:active {
-    box-shadow: var(--nm-shadow-pressed);
+    background: var(--nm-accent);
+    border-color: var(--nm-accent);
+    color: var(--nm-on-accent);
     transform: translateY(0);
   }
 
   .btn:focus-visible {
-    outline: 2px solid var(--nm-accent);
+    outline: 3px solid var(--nm-accent);
     outline-offset: 2px;
   }
 
   .btn:disabled,
   .btn[disabled] {
-    box-shadow: var(--nm-shadow-inset);
+    border-color: var(--nm-border);
+    background: transparent;
+    color: var(--nm-ink-faint);
+    box-shadow: none;
     transform: none;
   }
 
   /* Filled variants keep brand identity; text colors meet AA on each fill. */
   .btn-primary {
     background: var(--nm-accent);
+    border-color: var(--nm-accent);
+    color: var(--nm-on-accent);
+  }
+
+  .btn-primary:hover {
+    background: var(--nm-accent-strong);
+    border-color: var(--nm-accent-strong);
     color: var(--nm-on-accent);
   }
 
@@ -216,30 +258,36 @@
 
   .btn-secondary,
   .btn-ghost {
-    background: var(--nm-bg);
+    background: transparent;
     color: var(--nm-ink);
   }
 
   .btn-ghost {
+    border-color: transparent;
     box-shadow: none;
   }
 
   .btn-ghost:hover {
-    box-shadow: var(--nm-shadow-raised-sm);
+    background: var(--nm-surface-soft);
+    color: var(--nm-ink);
+    box-shadow: none;
   }
 
   .btn-danger {
     background: var(--nm-danger);
+    border-color: var(--nm-danger);
     color: #fff;
   }
 
   .btn-success {
     background: var(--nm-success);
+    border-color: var(--nm-success);
     color: #fff;
   }
 
   .btn-warning {
     background: var(--nm-warning);
+    border-color: var(--nm-warning);
     color: #fff;
   }
 
@@ -271,7 +319,7 @@
 
   .btn-sm {
     @apply px-3 py-1.5 text-xs;
-    min-height: 2rem;
+    min-height: 2.25rem;
     border-radius: var(--nm-radius-sm);
   }
 
@@ -291,12 +339,13 @@
   /* ============ Inputs — neumorphic sunken ============ */
   .input {
     @apply w-full px-4 py-2.5 text-sm;
-    border: none;
+    min-height: 2.75rem;
+    border: 1px solid var(--nm-border);
     border-radius: var(--nm-radius);
-    background-color: var(--nm-bg);
+    background-color: var(--nm-surface);
     color: var(--nm-ink);
-    box-shadow: var(--nm-shadow-inset);
-    transition: box-shadow 160ms ease;
+    box-shadow: none;
+    transition: border-color 160ms ease, background-color 160ms ease;
   }
 
   .input::placeholder {
@@ -305,7 +354,8 @@
 
   .input:focus {
     outline: none;
-    box-shadow: var(--nm-shadow-inset), 0 0 0 2px color-mix(in srgb, var(--nm-accent) 45%, transparent);
+    border-color: var(--nm-accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--nm-accent) 22%, transparent);
   }
 
   .input:disabled {
@@ -313,7 +363,8 @@
   }
 
   .input-error {
-    box-shadow: var(--nm-shadow-inset), 0 0 0 2px color-mix(in srgb, var(--nm-danger) 50%, transparent);
+    border-color: var(--nm-danger);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--nm-danger) 18%, transparent);
   }
 
   .input-label {
@@ -344,28 +395,29 @@
 
   /* ============ Cards & surfaces — neumorphic raised ============ */
   .card {
-    background-color: var(--nm-bg);
-    border: none;
+    background-color: var(--nm-surface);
+    border: 1px solid var(--nm-border);
     border-radius: var(--nm-radius-lg);
-    box-shadow: var(--nm-shadow-raised-sm);
-    transition: box-shadow 200ms ease, transform 200ms ease;
+    box-shadow: none;
+    transition: border-color 180ms ease, background-color 180ms ease;
   }
 
   .card-hover:hover {
-    box-shadow: var(--nm-shadow-raised-lg);
-    transform: translateY(-2px);
+    border-color: var(--nm-ink);
+    box-shadow: none;
+    transform: none;
   }
 
   /* Glass variants degrade to flat neumorphic surfaces (no backdrop blur). */
   .glass,
   .glass-card,
   .card-glass {
-    background-color: var(--nm-bg);
-    border: none;
+    background-color: color-mix(in srgb, var(--nm-bg) 92%, transparent);
+    border: 1px solid var(--nm-border-light);
     border-radius: var(--nm-radius-lg);
-    box-shadow: var(--nm-shadow-raised-sm);
-    backdrop-filter: none;
-    transition: box-shadow 200ms ease;
+    box-shadow: none;
+    backdrop-filter: blur(12px);
+    transition: border-color 180ms ease, background-color 180ms ease;
   }
 
   .card-header {
@@ -384,19 +436,19 @@
 
   /* ============ Stat cards ============ */
   .stat-card {
-    @apply flex items-start gap-4 p-5;
-    background-color: var(--nm-bg);
-    border: none;
+    @apply flex items-start gap-4 p-4;
+    background-color: var(--nm-surface);
+    border: 1px solid var(--nm-border);
     border-radius: var(--nm-radius-lg);
-    box-shadow: var(--nm-shadow-raised-sm);
-    transition: box-shadow 200ms ease, transform 200ms ease;
+    box-shadow: none;
+    transition: border-color 180ms ease;
   }
 
   .stat-icon {
-    @apply flex h-12 w-12 items-center justify-center text-xl;
+    @apply flex h-10 w-10 items-center justify-center text-xl;
     border-radius: var(--nm-radius);
-    background: var(--nm-bg);
-    box-shadow: var(--nm-shadow-raised-sm);
+    background: var(--nm-surface-soft);
+    box-shadow: none;
   }
 
   .stat-icon-primary {
@@ -416,7 +468,7 @@
   }
 
   .stat-value {
-    @apply truncate text-2xl font-bold;
+    @apply truncate text-2xl font-semibold;
     color: var(--nm-ink);
     font-variant-numeric: tabular-nums;
   }
@@ -441,10 +493,10 @@
   /* ============ Tables ============ */
   .table-container {
     @apply overflow-x-auto;
-    border: none;
+    border: 1px solid var(--nm-border);
     border-radius: var(--nm-radius-lg);
-    box-shadow: var(--nm-shadow-raised-sm);
-    background: var(--nm-bg);
+    box-shadow: none;
+    background: var(--nm-surface);
   }
 
   .table {
@@ -454,10 +506,11 @@
   }
 
   .table th {
-    @apply px-4 py-3 text-left font-semibold;
+    @apply px-4 py-3 text-left text-xs font-semibold uppercase;
     color: var(--nm-ink-muted);
-    background-color: var(--nm-bg);
+    background-color: var(--nm-surface-soft);
     border-bottom: 1px solid var(--nm-border);
+    letter-spacing: 0;
   }
 
   .table td {
@@ -475,17 +528,18 @@
   }
 
   .table tbody tr:hover {
-    background-color: var(--nm-surface);
+    background-color: var(--nm-surface-soft);
   }
 
   /* ============ Badges ============ */
   .badge {
     @apply inline-flex items-center gap-1 text-xs font-medium;
-    border-radius: 9999px;
-    padding: 2px 10px;
+    border-radius: var(--nm-radius-sm);
+    padding: 2px 8px;
     background-color: var(--nm-surface);
+    border: 1px solid var(--nm-border);
     color: var(--nm-ink-muted);
-    box-shadow: var(--nm-shadow-raised-sm);
+    box-shadow: none;
   }
 
   .badge-primary {
@@ -521,8 +575,8 @@
   /* ============ Dropdown menu ============ */
   .dropdown {
     @apply absolute z-50 origin-top-right animate-scale-in;
-    background-color: var(--nm-bg);
-    border: none;
+    background-color: var(--nm-surface);
+    border: 1px solid var(--nm-border);
     border-radius: var(--nm-radius-lg);
     box-shadow: var(--nm-shadow-raised-lg);
     padding: 4px;
@@ -532,25 +586,26 @@
     @apply flex cursor-pointer items-center gap-2 px-4 py-2 text-sm transition-colors;
     color: var(--nm-ink-muted);
     border-radius: var(--nm-radius-sm);
+    min-height: 2.5rem;
   }
 
   .dropdown-item:hover {
-    background-color: var(--nm-surface);
+    background-color: var(--nm-surface-soft);
     color: var(--nm-ink);
-    box-shadow: var(--nm-shadow-raised-sm);
+    box-shadow: none;
   }
 
   /* ============ Modal ============ */
   .modal-overlay {
     @apply fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4;
-    background-color: rgba(28, 31, 38, 0.45);
+    background-color: rgba(17, 17, 17, 0.58);
   }
 
   .modal-content {
     @apply flex w-full flex-col;
     @apply max-h-[95vh] sm:max-h-[90vh];
-    background-color: var(--nm-bg);
-    border: none;
+    background-color: var(--nm-surface);
+    border: 1px solid var(--nm-border);
     border-radius: var(--nm-radius-lg);
     box-shadow: var(--nm-shadow-raised-lg);
   }
@@ -631,14 +686,14 @@
   /* ============ Dialog ============ */
   .dialog-overlay {
     @apply fixed inset-0 z-50 flex items-center justify-center p-4;
-    background-color: rgba(28, 31, 38, 0.45);
+    background-color: rgba(17, 17, 17, 0.58);
   }
 
   .dialog-container {
     @apply flex w-full flex-col;
     @apply max-h-[90vh];
-    background-color: var(--nm-bg);
-    border: none;
+    background-color: var(--nm-surface);
+    border: 1px solid var(--nm-border);
     border-radius: var(--nm-radius-lg);
     box-shadow: var(--nm-shadow-raised-lg);
   }
@@ -662,8 +717,8 @@
     @apply fixed right-4 top-4 z-[100] animate-slide-in-right p-4;
     min-width: 320px;
     max-width: 420px;
-    background-color: var(--nm-bg);
-    border: none;
+    background-color: var(--nm-surface);
+    border: 1px solid var(--nm-border);
     border-left: 4px solid transparent;
     border-radius: var(--nm-radius-lg);
     box-shadow: var(--nm-shadow-raised-lg);
@@ -690,54 +745,55 @@
     @apply fixed inset-y-0 left-0 z-40 flex w-64 flex-col;
     @apply transition-transform duration-300;
     background-color: var(--nm-surface);
-    border-right: 1px solid var(--nm-border-light);
-    box-shadow: 4px 0 8px rgba(163, 170, 185, 0.18);
+    border-right: 1px solid var(--nm-border);
+    box-shadow: none;
     transition-property: width, transform;
   }
 
   .dark .sidebar {
-    box-shadow: 4px 0 8px rgba(12, 13, 17, 0.4);
+    box-shadow: none;
   }
 
   .sidebar-header {
-    @apply flex h-16 items-center gap-3 px-6;
+    @apply flex h-16 items-center gap-3 px-5;
     border-bottom: 1px solid var(--nm-border-light);
     transition: padding 0.2s ease, gap 0.2s ease;
   }
 
   .sidebar-nav {
-    @apply flex-1 overflow-y-auto px-3 py-4;
+    @apply flex-1 overflow-y-auto px-2 py-4;
   }
 
   .sidebar-link {
     @apply flex items-center gap-3 overflow-hidden py-2.5;
     @apply text-sm font-medium;
-    @apply transition-all duration-200;
+    @apply transition-colors duration-200;
     border-radius: var(--nm-radius);
     color: var(--nm-ink-muted);
-    padding-left: 1.0625rem;
-    padding-right: 0.875rem;
+    min-height: 2.75rem;
+    padding-left: 0.875rem;
+    padding-right: 0.75rem;
   }
 
   .sidebar-link:hover {
-    background-color: var(--nm-bg);
-    box-shadow: var(--nm-shadow-raised-sm);
+    background-color: var(--nm-surface-soft);
+    box-shadow: none;
     color: var(--nm-ink);
   }
 
   .sidebar-link-active {
-    background-color: var(--nm-accent);
-    box-shadow: var(--nm-shadow-raised-sm);
-    color: var(--nm-on-accent);
+    background-color: var(--nm-ink);
+    box-shadow: none;
+    color: var(--nm-bg);
   }
 
   .sidebar-link-active:hover {
-    background-color: var(--nm-accent);
-    color: var(--nm-on-accent);
+    background-color: var(--nm-ink);
+    color: var(--nm-bg);
   }
 
   .sidebar-link-active svg {
-    color: var(--nm-on-accent);
+    color: var(--nm-bg);
   }
 
   .sidebar-section {
@@ -746,17 +802,19 @@
 
   .sidebar-section-title {
     @apply mb-2 px-3;
-    @apply text-xs font-semibold uppercase tracking-wider;
+    @apply text-xs font-semibold uppercase;
     color: var(--nm-ink-faint);
+    letter-spacing: 0;
   }
 
   /* ============ Page header ============ */
   .page-header {
-    @apply mb-6;
+    @apply mb-6 border-b pb-4;
+    border-color: var(--nm-border-light);
   }
 
   .page-title {
-    @apply text-2xl font-bold;
+    @apply text-2xl font-semibold;
     color: var(--nm-ink);
   }
 
@@ -795,7 +853,7 @@
     @apply animate-pulse;
     border-radius: var(--nm-radius-sm);
     background: var(--nm-surface-soft);
-    box-shadow: var(--nm-shadow-inset);
+    box-shadow: none;
   }
 
   /* ============ Divider ============ */
@@ -809,8 +867,9 @@
   .tabs {
     @apply flex gap-1 p-1;
     border-radius: var(--nm-radius-lg);
-    background: var(--nm-bg);
-    box-shadow: var(--nm-shadow-inset);
+    background: var(--nm-surface);
+    border: 1px solid var(--nm-border);
+    box-shadow: none;
     padding: 4px;
   }
 
@@ -826,43 +885,46 @@
   }
 
   .tab-active {
-    background: var(--nm-bg);
-    color: var(--nm-ink);
-    box-shadow: var(--nm-shadow-raised-sm);
+    background: var(--nm-ink);
+    color: var(--nm-bg);
+    box-shadow: none;
   }
 
   /* ============ Progress ============ */
   .progress {
     @apply h-2 overflow-hidden;
-    border-radius: 9999px;
-    background-color: var(--nm-bg);
-    box-shadow: var(--nm-shadow-inset);
+    border-radius: var(--nm-radius-sm);
+    background-color: var(--nm-surface-soft);
+    box-shadow: none;
   }
 
   .progress-bar {
     @apply h-full transition-all duration-300;
     background: var(--nm-accent);
-    border-radius: 9999px;
+    border-radius: var(--nm-radius-sm);
   }
 
   /* ============ Switch ============ */
   .switch {
     @apply relative h-6 w-11 cursor-pointer;
-    border-radius: 9999px;
-    background: var(--nm-bg);
-    box-shadow: var(--nm-shadow-inset);
+    border-radius: var(--nm-radius);
+    background: var(--nm-surface-soft);
+    border: 1px solid var(--nm-border);
+    box-shadow: none;
     transition: background-color 200ms ease, box-shadow 200ms ease;
   }
 
   .switch-active {
     background: var(--nm-accent);
-    box-shadow: var(--nm-shadow-raised-sm);
+    border-color: var(--nm-accent);
+    box-shadow: none;
   }
 
   .switch-thumb {
-    @apply absolute left-0.5 top-0.5 h-5 w-5 rounded-full;
-    background: var(--nm-surface-soft);
-    box-shadow: 2px 2px 4px rgba(163, 170, 185, 0.4), -1px -1px 2px rgba(255, 255, 255, 0.7);
+    @apply absolute left-0.5 top-0.5 h-5 w-5;
+    border-radius: var(--nm-radius-sm);
+    background: var(--nm-surface);
+    box-shadow: none;
     transition: transform 200ms ease;
   }
 
@@ -946,6 +1008,32 @@
 }
 
 @layer utilities {
+  .swiss-grid {
+    background-image:
+      linear-gradient(to right, color-mix(in srgb, var(--nm-border-light) 54%, transparent) 1px, transparent 1px),
+      linear-gradient(to bottom, color-mix(in srgb, var(--nm-border-light) 54%, transparent) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+
+  .skip-link {
+    position: fixed;
+    left: 1rem;
+    top: 1rem;
+    z-index: 1000;
+    transform: translateY(-150%);
+    border: 1px solid var(--nm-ink);
+    border-radius: var(--nm-radius);
+    background: var(--nm-surface);
+    color: var(--nm-ink);
+    padding: 0.75rem 1rem;
+    font-weight: 700;
+    transition: transform 160ms ease;
+  }
+
+  .skip-link:focus {
+    transform: translateY(0);
+  }
+
   /* Accent text gradient degrades to a flat accent color. */
   .text-gradient {
     color: var(--nm-accent-text);

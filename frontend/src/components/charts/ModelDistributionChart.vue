@@ -1,7 +1,7 @@
 <template>
   <div class="card p-4">
-    <div class="mb-4 flex items-center justify-between gap-3">
-      <h3 class="text-sm font-semibold text-gray-900 dark:text-white">
+    <div class="mb-4 flex items-center justify-between gap-3 border-b pb-2" style="border-color: var(--nm-border)">
+      <h3 class="text-xs font-bold uppercase" style="color: var(--nm-ink); letter-spacing: 0">
         {{ !enableRankingView || activeView === 'model_distribution'
           ? t('admin.dashboard.modelDistribution')
           : t('admin.dashboard.spendingRankingTitle') }}
@@ -9,13 +9,14 @@
       <div class="flex flex-wrap items-center justify-end gap-2">
         <div
           v-if="showSourceToggle"
-          class="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-0.5 dark:border-gray-700 dark:bg-dark-800"
+          class="inline-flex border p-0.5"
+          style="border-color: var(--nm-border); border-radius: var(--nm-radius); background: var(--nm-surface)"
         >
           <button
             type="button"
             class="rounded-md px-2.5 py-1 text-xs font-medium transition-colors"
             :class="source === 'requested'
-              ? 'bg-white text-gray-900 shadow-sm dark:bg-dark-700 dark:text-white'
+              ? 'bg-accent-950 text-white dark:bg-dark-50 dark:text-dark-950'
               : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'"
             @click="emit('update:source', 'requested')"
           >
@@ -25,7 +26,7 @@
             type="button"
             class="rounded-md px-2.5 py-1 text-xs font-medium transition-colors"
             :class="source === 'upstream'
-              ? 'bg-white text-gray-900 shadow-sm dark:bg-dark-700 dark:text-white'
+              ? 'bg-accent-950 text-white dark:bg-dark-50 dark:text-dark-950'
               : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'"
             @click="emit('update:source', 'upstream')"
           >
@@ -35,7 +36,7 @@
             type="button"
             class="rounded-md px-2.5 py-1 text-xs font-medium transition-colors"
             :class="source === 'mapping'
-              ? 'bg-white text-gray-900 shadow-sm dark:bg-dark-700 dark:text-white'
+              ? 'bg-accent-950 text-white dark:bg-dark-50 dark:text-dark-950'
               : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'"
             @click="emit('update:source', 'mapping')"
           >
@@ -44,13 +45,14 @@
         </div>
         <div
           v-if="showMetricToggle"
-          class="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-0.5 dark:border-gray-700 dark:bg-dark-800"
+          class="inline-flex border p-0.5"
+          style="border-color: var(--nm-border); border-radius: var(--nm-radius); background: var(--nm-surface)"
         >
           <button
             type="button"
             class="rounded-md px-2.5 py-1 text-xs font-medium transition-colors"
             :class="metric === 'tokens'
-              ? 'bg-white text-gray-900 shadow-sm dark:bg-dark-700 dark:text-white'
+              ? 'bg-accent-950 text-white dark:bg-dark-50 dark:text-dark-950'
               : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'"
             @click="emit('update:metric', 'tokens')"
           >
@@ -60,20 +62,20 @@
             type="button"
             class="rounded-md px-2.5 py-1 text-xs font-medium transition-colors"
             :class="metric === 'actual_cost'
-              ? 'bg-white text-gray-900 shadow-sm dark:bg-dark-700 dark:text-white'
+              ? 'bg-accent-950 text-white dark:bg-dark-50 dark:text-dark-950'
               : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'"
             @click="emit('update:metric', 'actual_cost')"
           >
             {{ t('admin.dashboard.metricActualCost') }}
           </button>
         </div>
-        <div v-if="enableRankingView" class="inline-flex rounded-lg bg-gray-100 p-1 dark:bg-dark-800">
+        <div v-if="enableRankingView" class="inline-flex border p-0.5" style="border-color: var(--nm-border); border-radius: var(--nm-radius); background: var(--nm-surface)">
           <button
             type="button"
             class="rounded-md px-2.5 py-1 text-xs font-medium transition-colors"
             :class="
               activeView === 'model_distribution'
-                ? 'bg-white text-gray-900 shadow-sm dark:bg-dark-700 dark:text-white'
+                ? 'bg-accent-950 text-white dark:bg-dark-50 dark:text-dark-950'
                 : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
             "
             @click="activeView = 'model_distribution'"
@@ -85,7 +87,7 @@
             class="rounded-md px-2.5 py-1 text-xs font-medium transition-colors"
             :class="
               activeView === 'spending_ranking'
-                ? 'bg-white text-gray-900 shadow-sm dark:bg-dark-700 dark:text-white'
+                ? 'bg-accent-950 text-white dark:bg-dark-50 dark:text-dark-950'
                 : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
             "
             @click="activeView = 'spending_ranking'"
@@ -331,18 +333,18 @@ const enableRankingView = computed(() => props.enableRankingView)
 const activeView = ref<'model_distribution' | 'spending_ranking'>('model_distribution')
 
 const chartColors = [
-  '#236b66',
-  '#2d4055',
+  '#0f766e',
+  '#111111',
   '#9a6700',
   '#b4232a',
-  '#52616f',
-  '#6d5c7a',
-  '#2d6a4f',
+  '#4b4b45',
+  '#77776f',
+  '#12805c',
   '#8c5a3c',
-  '#7890a6',
+  '#315f88',
   '#6b7a40',
-  '#4f6a86',
-  '#9fb2ad'
+  '#254b6c',
+  '#cfcfc8'
 ]
 
 const displayModelStats = computed(() => {

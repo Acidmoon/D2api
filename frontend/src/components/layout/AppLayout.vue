@@ -1,5 +1,6 @@
 <template>
-  <div class="min-h-screen">
+  <div class="min-h-screen swiss-grid">
+    <a href="#main-content" class="skip-link">{{ $t('common.skipToContent') }}</a>
     <!-- Sidebar -->
     <AppSidebar />
 
@@ -12,7 +13,7 @@
       <AppHeader />
 
       <!-- Main Content -->
-      <main class="p-4 md:p-6 lg:p-8">
+      <main id="main-content" class="p-4 md:p-6 lg:p-8" tabindex="-1">
         <slot />
       </main>
     </div>

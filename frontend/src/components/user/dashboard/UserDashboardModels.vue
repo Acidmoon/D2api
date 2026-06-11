@@ -1,6 +1,6 @@
 <template>
   <div class="card flex h-full flex-col p-4">
-    <h3 class="mb-4 text-sm font-semibold" style="color: var(--nm-ink)">{{ t('dashboard.modelRanking') }}</h3>
+    <h3 class="mb-4 border-b pb-2 text-xs font-bold uppercase" style="color: var(--nm-ink); border-color: var(--nm-border); letter-spacing: 0">{{ t('dashboard.modelRanking') }}</h3>
 
     <div v-if="loading" class="flex flex-1 items-center justify-center py-8">
       <LoadingSpinner size="md" />
@@ -10,7 +10,7 @@
       {{ t('dashboard.noDataAvailable') }}
     </div>
 
-    <ol v-else class="flex-1 space-y-3 overflow-y-auto">
+    <ol v-else class="flex-1 divide-y overflow-y-auto" style="border-color: var(--nm-border-light)">
       <li v-for="(m, i) in ranked" :key="m.model" class="rank-row">
         <span class="rank-no" :class="`rank-${i + 1}`">{{ i + 1 }}</span>
         <div class="min-w-0 flex-1">
@@ -57,6 +57,7 @@ const pct = (v: number) => Math.max(2, Math.round((v / maxTokens.value) * 100))
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  padding: 0.75rem 0;
 }
 
 .rank-no {
@@ -67,10 +68,11 @@ const pct = (v: number) => Math.max(2, Math.round((v / maxTokens.value) * 100))
   align-items: center;
   justify-content: center;
   border-radius: var(--nm-radius-sm);
-  background: var(--nm-bg);
-  box-shadow: var(--nm-shadow-raised-sm);
+  background: var(--nm-surface-soft);
+  border: 1px solid var(--nm-border);
+  box-shadow: none;
   font-size: 0.75rem;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--nm-ink-muted);
 }
 
@@ -80,16 +82,16 @@ const pct = (v: number) => Math.max(2, Math.round((v / maxTokens.value) * 100))
 
 .rank-bar-track {
   flex: 1;
-  height: 6px;
-  border-radius: 9999px;
-  background: var(--nm-bg);
-  box-shadow: var(--nm-shadow-inset);
+  height: 4px;
+  border-radius: var(--nm-radius-sm);
+  background: var(--nm-surface-soft);
+  box-shadow: none;
   overflow: hidden;
 }
 
 .rank-bar-fill {
   height: 100%;
-  border-radius: 9999px;
+  border-radius: var(--nm-radius-sm);
   background: var(--nm-accent);
   transition: width 300ms ease;
 }

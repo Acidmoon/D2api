@@ -1,6 +1,6 @@
 <template>
   <AppLayout>
-    <div class="space-y-6">
+    <div class="admin-dashboard space-y-6">
       <!-- Loading State -->
       <div v-if="loading" class="flex items-center justify-center py-12">
         <LoadingSpinner />
@@ -393,8 +393,8 @@ const isDarkMode = computed(() => {
 
 // Chart colors
 const chartColors = computed(() => ({
-  text: isDarkMode.value ? '#e5e7eb' : '#374151',
-  grid: isDarkMode.value ? '#374151' : '#e5e7eb'
+  text: isDarkMode.value ? '#c7c7bd' : '#4b4b45',
+  grid: isDarkMode.value ? '#34342f' : '#ddddd6'
 }))
 
 // Line chart options (for user trend chart)
@@ -491,18 +491,18 @@ const userTrendChartData = computed(() => {
 
   const sortedDates = Array.from(allDates).sort()
   const colors = [
-    '#236b66',
-    '#2d4055',
+    '#0f766e',
+    '#111111',
     '#9a6700',
     '#b4232a',
-    '#52616f',
-    '#6d5c7a',
-    '#2d6a4f',
+    '#4b4b45',
+    '#77776f',
+    '#12805c',
     '#8c5a3c',
-    '#7890a6',
+    '#315f88',
     '#6b7a40',
-    '#4f6a86',
-    '#9fb2ad'
+    '#254b6c',
+    '#cfcfc8'
   ]
 
   const datasets = Array.from(userGroups.values()).map((group, idx) => ({
@@ -698,4 +698,46 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.admin-dashboard {
+  --kpi-icon-size: 2.25rem;
+}
+
+.admin-dashboard .grid .card {
+  min-height: 7rem;
+}
+
+.admin-dashboard .grid .card > .flex > div:first-child {
+  display: flex;
+  width: var(--kpi-icon-size);
+  height: var(--kpi-icon-size);
+  flex: 0 0 var(--kpi-icon-size);
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--nm-border);
+  border-radius: var(--nm-radius) !important;
+  background: var(--nm-surface-soft) !important;
+  color: var(--nm-ink) !important;
+}
+
+.admin-dashboard .grid .card svg {
+  color: var(--nm-ink) !important;
+}
+
+.admin-dashboard .grid .card p:first-child {
+  color: var(--nm-ink-muted) !important;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.admin-dashboard .grid .card p.text-xl {
+  color: var(--nm-ink) !important;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.admin-dashboard :deep(.card h3) {
+  letter-spacing: 0;
+}
 </style>

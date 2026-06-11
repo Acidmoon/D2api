@@ -3,8 +3,8 @@
     <h2 class="section-title">{{ t('dashboard.activityAnalysis') }}</h2>
 
     <!-- Date Range Filter -->
-    <div class="card mb-6 p-4">
-      <div class="flex flex-wrap items-center gap-4">
+    <div class="card mb-4 p-4">
+      <div class="flex flex-wrap items-center gap-3">
         <div class="flex items-center gap-2">
           <span class="text-sm font-medium" style="color: var(--nm-ink-muted)">{{ t('dashboard.timeRange') }}:</span>
           <DateRangePicker :start-date="startDate" :end-date="endDate" @update:startDate="$emit('update:startDate', $event)" @update:endDate="$emit('update:endDate', $event)" @change="$emit('dateRangeChange', $event)" />
@@ -22,7 +22,7 @@
     </div>
 
     <!-- 左请求趋势(2/3) + 右模型排行(1/3) -->
-    <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+    <div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
       <div class="lg:col-span-2">
         <TokenUsageTrend :trend-data="trend" :loading="loading" />
       </div>
@@ -48,9 +48,13 @@ const { t } = useI18n()
 
 <style scoped>
 .section-title {
-  font-size: 1.125rem;
+  font-size: 0.8125rem;
   font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0;
   color: var(--nm-ink);
-  margin-bottom: 1rem;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--nm-border);
 }
 </style>

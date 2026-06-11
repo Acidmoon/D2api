@@ -46,7 +46,7 @@ onUnmounted(() => {
 <style scoped>
 /* 桌面端：Flexbox 布局 */
 .table-page-layout {
-  @apply flex flex-col gap-6;
+  @apply flex flex-col gap-4;
   height: calc(100vh - 64px - 4rem); /* 减去 header + lg:p-8 的上下padding */
 }
 
@@ -76,7 +76,7 @@ onUnmounted(() => {
 }
 
 .table-scroll-container :deep(thead) {
-  background-color: var(--nm-bg);
+  background-color: var(--nm-surface-soft);
 }
 
 .table-scroll-container :deep(tbody) {
@@ -84,13 +84,14 @@ onUnmounted(() => {
 }
 
 .table-scroll-container :deep(th) {
-  @apply px-5 py-4 text-left text-sm font-medium;
+  @apply px-4 py-3 text-left text-xs font-semibold uppercase;
   color: var(--nm-ink-muted);
   border-bottom: 1px solid var(--nm-border);
+  letter-spacing: 0;
 }
 
 .table-scroll-container :deep(td) {
-  @apply px-5 py-4 text-sm;
+  @apply px-4 py-3 text-sm;
   color: var(--nm-ink);
   border-bottom: 1px solid var(--nm-border-light);
 }
