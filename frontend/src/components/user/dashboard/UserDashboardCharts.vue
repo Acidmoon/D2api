@@ -21,19 +21,25 @@
       </div>
     </div>
 
-    <div class="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.55fr)_minmax(320px,0.85fr)]">
-      <div class="min-w-0">
-        <TokenUsageTrend :trend-data="trend" :loading="loading" />
+    <div class="card usage-detail-panel p-4">
+      <div class="usage-detail-grid">
+        <div class="trend-pane">
+          <TokenUsageTrend :trend-data="trend" :loading="loading" embedded />
+        </div>
+        <div class="heatmap-pane">
+          <UserDashboardHeatmap
+            :trend-data="heatmapTrend"
+            :loading="heatmapLoading"
+            :month="heatmapMonth"
+            embedded
+            @monthChange="$emit('heatmapMonthChange', $event)"
+          />
+        </div>
       </div>
-      <div class="min-w-0 space-y-4">
-        <UserDashboardHeatmap
-          :trend-data="heatmapTrend"
-          :loading="heatmapLoading"
-          :month="heatmapMonth"
-          @monthChange="$emit('heatmapMonthChange', $event)"
-        />
-        <UserDashboardModels :models="models" :loading="loading" />
-      </div>
+    </div>
+
+    <div class="mt-4">
+      <UserDashboardModels :models="models" :loading="loading" />
     </div>
   </section>
 </template>
@@ -84,5 +90,39 @@ const { t } = useI18n()
   margin-bottom: 0.75rem;
   padding-bottom: 0.5rem;
   border-bottom: 1px solid var(--nm-border);
+}
+
+.usage-detail-panel {
+  overflow: hidden;
+}
+
+.usage-detail-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.08fr) minmax(430px, 0.92fr);
+  gap: 1.25rem;
+  align-items: stretch;
+}
+
+.trend-pane,
+.heatmap-pane {
+  min-width: 0;
+}
+
+.heatmap-pane {
+  border-left: 1px solid var(--nm-border);
+  padding-left: 1.25rem;
+}
+
+@media (max-width: 1180px) {
+  .usage-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .heatmap-pane {
+    border-left: 0;
+    border-top: 1px solid var(--nm-border);
+    padding-left: 0;
+    padding-top: 1.25rem;
+  }
 }
 </style>

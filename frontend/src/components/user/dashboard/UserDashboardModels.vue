@@ -1,7 +1,7 @@
 <template>
   <div class="card model-rank-card flex flex-col p-4">
     <h3 class="mb-3 border-b pb-2 text-xs font-bold uppercase" style="color: var(--nm-ink); border-color: var(--nm-border); letter-spacing: 0">
-      {{ t('dashboard.modelRanking') }} Top 3
+      {{ t('dashboard.modelRankingTop3') }}
     </h3>
 
     <div v-if="loading" class="flex flex-1 items-center justify-center py-8">
@@ -12,7 +12,7 @@
       {{ t('dashboard.noDataAvailable') }}
     </div>
 
-    <ol v-else class="divide-y" style="border-color: var(--nm-border-light)">
+    <ol v-else class="rank-list">
       <li v-for="(m, i) in ranked" :key="m.model" class="rank-row">
         <span class="rank-no" :class="`rank-${i + 1}`">{{ i + 1 }}</span>
         <div class="min-w-0 flex-1">
@@ -62,7 +62,17 @@ const pct = (v: number) => Math.max(2, Math.round((v / maxTokens.value) * 100))
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 0.625rem 0;
+  min-width: 0;
+  border-radius: var(--nm-radius-sm);
+  border: 1px solid var(--nm-border);
+  background: var(--nm-surface-soft);
+  padding: 0.75rem;
+}
+
+.rank-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
 }
 
 .rank-no {
@@ -99,5 +109,11 @@ const pct = (v: number) => Math.max(2, Math.round((v / maxTokens.value) * 100))
   border-radius: var(--nm-radius-sm);
   background: var(--nm-accent);
   transition: width 300ms ease;
+}
+
+@media (max-width: 900px) {
+  .rank-list {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

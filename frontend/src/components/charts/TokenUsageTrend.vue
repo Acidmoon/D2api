@@ -1,17 +1,17 @@
 <template>
-  <div class="card p-4">
+  <div :class="['token-usage-trend', embedded ? 'token-usage-trend--embedded' : 'card p-4']">
     <h3 class="mb-4 border-b pb-2 text-xs font-bold uppercase" style="color: var(--nm-ink); border-color: var(--nm-border); letter-spacing: 0">
       {{ t('admin.dashboard.tokenUsageTrend') }}
     </h3>
-    <div v-if="loading" class="flex h-48 items-center justify-center">
+    <div v-if="loading" :class="['flex items-center justify-center', chartHeightClass]">
       <LoadingSpinner />
     </div>
-    <div v-else-if="trendData.length > 0 && chartData" class="h-48">
+    <div v-else-if="trendData.length > 0 && chartData" :class="chartHeightClass">
       <Line :data="chartData" :options="lineOptions" />
     </div>
     <div
       v-else
-      class="flex h-48 items-center justify-center text-sm text-gray-500 dark:text-gray-400"
+      :class="['flex items-center justify-center text-sm text-gray-500 dark:text-gray-400', chartHeightClass]"
     >
       {{ t('admin.dashboard.noDataAvailable') }}
     </div>
@@ -52,7 +52,11 @@ const { t } = useI18n()
 const props = defineProps<{
   trendData: TrendDataPoint[]
   loading?: boolean
+  embedded?: boolean
 }>()
+
+const embedded = computed(() => props.embedded ?? false)
+const chartHeightClass = computed(() => embedded.value ? 'h-[250px]' : 'h-48')
 
 const isDarkMode = computed(() => {
   return document.documentElement.classList.contains('dark')
@@ -226,3 +230,9 @@ const formatCost = (value: number): string => {
   return value.toFixed(4)
 }
 </script>
+
+<style scoped>
+.token-usage-trend--embedded {
+  height: 100%;
+}
+</style>

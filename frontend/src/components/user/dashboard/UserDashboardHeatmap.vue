@@ -1,5 +1,5 @@
 <template>
-  <div class="card heatmap-card p-4">
+  <div :class="['heatmap-card', embedded ? 'heatmap-card--embedded' : 'card p-4']">
     <div class="mb-4 flex items-center justify-between gap-3 border-b pb-2" style="border-color: var(--nm-border)">
       <h3 class="text-xs font-bold uppercase" style="color: var(--nm-ink); letter-spacing: 0">
         {{ t('dashboard.activityHeatmap') }}
@@ -26,21 +26,38 @@
     </div>
 
     <div v-else class="heatmap-wrap">
-      <div class="heatmap-body">
-        <div class="heatmap-weekdays">
-          <span v-for="(wd, i) in weekdayLabels" :key="i" class="heatmap-wd">{{ i % 2 === 1 ? wd : '' }}</span>
+      <div class="heatmap-content">
+        <div class="heatmap-body">
+          <div class="heatmap-weekdays">
+            <span v-for="wd in weekdayLabels" :key="wd" class="heatmap-wd">{{ wd }}</span>
+          </div>
+          <div class="heatmap-grid">
+            <div v-for="(week, wi) in weeks" :key="wi" class="heatmap-col">
+              <button
+                v-for="(cell, ci) in week"
+                :key="ci"
+                type="button"
+                class="heatmap-cell"
+                :class="cell ? [`lvl-${cell.level}`, { 'lvl-future': cell.isFuture }] : 'lvl-empty'"
+                :title="cell ? `${cell.date}: ${formatTokens(cell.value)} tokens` : ''"
+                :disabled="!cell"
+              ></button>
+            </div>
+          </div>
         </div>
-        <div class="heatmap-grid">
-          <div v-for="(week, wi) in weeks" :key="wi" class="heatmap-col">
-            <button
-              v-for="(cell, ci) in week"
-              :key="ci"
-              type="button"
-              class="heatmap-cell"
-              :class="cell ? [`lvl-${cell.level}`, { 'lvl-future': cell.isFuture }] : 'lvl-empty'"
-              :title="cell ? `${cell.date}: ${formatTokens(cell.value)} tokens` : ''"
-              :disabled="!cell"
-            ></button>
+
+        <div class="heatmap-summary">
+          <div class="summary-item">
+            <span class="summary-value">{{ formatTokens(totalTokens) }}</span>
+            <span class="summary-label">{{ t('dashboard.heatmapTotal') }}</span>
+          </div>
+          <div class="summary-item">
+            <span class="summary-value">{{ formatTokens(peakTokens) }}</span>
+            <span class="summary-label">{{ t('dashboard.heatmapPeak') }}</span>
+          </div>
+          <div class="summary-item">
+            <span class="summary-value">{{ activeDays }}</span>
+            <span class="summary-label">{{ t('dashboard.heatmapActiveDays') }}</span>
           </div>
         </div>
       </div>
@@ -64,19 +81,28 @@ import { useI18n } from 'vue-i18n'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import type { TrendDataPoint } from '@/types'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   trendData: TrendDataPoint[]
   loading?: boolean
   month: Date
-}>()
+  embedded?: boolean
+}>(), {
+  embedded: false
+})
+
+const embedded = computed(() => props.embedded)
 
 const emit = defineEmits<{
   monthChange: [month: Date]
 }>()
 
-const weekdayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+const weekdayLabels = computed(() => {
+  return locale.value === 'zh'
+    ? ['一', '二', '三', '四', '五', '六', '日']
+    : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+})
 
 interface Cell {
   date: string
@@ -97,6 +123,8 @@ function levelOf(value: number, max: number): number {
 const formatDateKey = (date: Date): string => {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 }
+
+const mondayIndex = (date: Date): number => (date.getDay() + 6) % 7
 
 const monthLabel = computed(() => {
   return `${props.month.getFullYear()}-${String(props.month.getMonth() + 1).padStart(2, '0')}`
@@ -121,9 +149,9 @@ const weeks = computed<(Cell | null)[][]>(() => {
   const todayKey = formatDateKey(now)
 
   const gridStart = new Date(monthStart)
-  gridStart.setDate(gridStart.getDate() - gridStart.getDay())
+  gridStart.setDate(gridStart.getDate() - mondayIndex(gridStart))
   const gridEnd = new Date(monthEnd)
-  gridEnd.setDate(gridEnd.getDate() + (6 - gridEnd.getDay()))
+  gridEnd.setDate(gridEnd.getDate() + (6 - mondayIndex(gridEnd)))
 
   const cols: (Cell | null)[][] = []
   let col: (Cell | null)[] = []
@@ -153,6 +181,15 @@ const weeks = computed<(Cell | null)[][]>(() => {
   return cols
 })
 
+const currentMonthPoints = computed(() => {
+  const monthKey = `${props.month.getFullYear()}-${String(props.month.getMonth() + 1).padStart(2, '0')}`
+  return (props.trendData ?? []).filter((d) => d.date.slice(0, 7) === monthKey)
+})
+
+const totalTokens = computed(() => currentMonthPoints.value.reduce((sum, d) => sum + d.total_tokens, 0))
+const peakTokens = computed(() => Math.max(...currentMonthPoints.value.map((d) => d.total_tokens), 0))
+const activeDays = computed(() => currentMonthPoints.value.filter((d) => d.total_tokens > 0).length)
+
 const shiftMonth = (delta: number) => {
   const next = new Date(props.month.getFullYear(), props.month.getMonth() + delta, 1)
   emit('monthChange', next)
@@ -167,7 +204,11 @@ const formatTokens = (value: number): string => {
 
 <style scoped>
 .heatmap-card {
-  min-height: 286px;
+  min-height: 100%;
+}
+
+.heatmap-card--embedded {
+  height: 100%;
 }
 
 .month-switcher {
@@ -215,6 +256,13 @@ const formatTokens = (value: number): string => {
   gap: 1rem;
 }
 
+.heatmap-content {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 8.5rem;
+  align-items: center;
+  gap: 1rem;
+}
+
 .heatmap-body {
   display: flex;
   justify-content: center;
@@ -251,7 +299,7 @@ const formatTokens = (value: number): string => {
   flex-direction: column;
   gap: clamp(4px, 0.9vw, 7px);
   flex: 1 1 0;
-  max-width: 34px;
+  max-width: 32px;
 }
 
 .heatmap-cell {
@@ -288,6 +336,36 @@ button.heatmap-cell:hover:not(:disabled) {
   opacity: 0.62;
 }
 
+.heatmap-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.summary-item {
+  display: flex;
+  min-height: 3.6rem;
+  flex-direction: column;
+  justify-content: center;
+  border-radius: var(--nm-radius-sm);
+  background: var(--nm-surface-soft);
+  border: 1px solid color-mix(in srgb, var(--nm-border) 70%, transparent);
+  padding: 0.625rem 0.75rem;
+}
+
+.summary-value {
+  color: var(--nm-ink);
+  font-size: 1.125rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.summary-label {
+  margin-top: 0.125rem;
+  color: var(--nm-ink-faint);
+  font-size: 0.6875rem;
+}
+
 .heatmap-legend {
   display: flex;
   align-items: center;
@@ -313,4 +391,15 @@ button.heatmap-cell:hover:not(:disabled) {
 :global(.dark) .lvl-2 { background: #006d32; }
 :global(.dark) .lvl-3 { background: #26a641; }
 :global(.dark) .lvl-4 { background: #39d353; }
+
+@media (max-width: 720px) {
+  .heatmap-content {
+    grid-template-columns: 1fr;
+  }
+
+  .heatmap-summary {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
 </style>
