@@ -26,7 +26,12 @@
         <TokenUsageTrend :trend-data="trend" :loading="loading" />
       </div>
       <div class="min-w-0 space-y-4">
-        <UserDashboardHeatmap :trend-data="heatmapTrend" :loading="heatmapLoading" />
+        <UserDashboardHeatmap
+          :trend-data="heatmapTrend"
+          :loading="heatmapLoading"
+          :month="heatmapMonth"
+          @monthChange="$emit('heatmapMonthChange', $event)"
+        />
         <UserDashboardModels :models="models" :loading="loading" />
       </div>
     </div>
@@ -50,12 +55,22 @@ withDefaults(defineProps<{
   trend: TrendDataPoint[]
   heatmapTrend?: TrendDataPoint[]
   heatmapLoading?: boolean
+  heatmapMonth?: Date
   models: ModelStat[]
 }>(), {
   heatmapTrend: () => [],
-  heatmapLoading: false
+  heatmapLoading: false,
+  heatmapMonth: () => new Date()
 })
-defineEmits(['update:startDate', 'update:endDate', 'update:granularity', 'dateRangeChange', 'granularityChange', 'refresh'])
+defineEmits([
+  'update:startDate',
+  'update:endDate',
+  'update:granularity',
+  'dateRangeChange',
+  'granularityChange',
+  'heatmapMonthChange',
+  'refresh'
+])
 const { t } = useI18n()
 </script>
 

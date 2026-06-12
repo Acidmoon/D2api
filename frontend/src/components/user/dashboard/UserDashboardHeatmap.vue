@@ -1,15 +1,27 @@
 <template>
-  <div class="card p-4">
-    <div class="mb-4 flex items-center justify-between border-b pb-2" style="border-color: var(--nm-border)">
+  <div class="card heatmap-card p-4">
+    <div class="mb-4 flex items-center justify-between gap-3 border-b pb-2" style="border-color: var(--nm-border)">
       <h3 class="text-xs font-bold uppercase" style="color: var(--nm-ink); letter-spacing: 0">
         {{ t('dashboard.activityHeatmap') }}
       </h3>
-      <span class="text-xs" style="color: var(--nm-ink-faint)">
-        {{ t('dates.thisMonth') }} - {{ monthLabel }}
-      </span>
+      <div class="month-switcher">
+        <button type="button" class="month-btn" :disabled="loading" :title="t('dates.lastMonth')" @click="shiftMonth(-1)">
+          ‹
+        </button>
+        <span class="month-label">{{ monthLabel }}</span>
+        <button
+          type="button"
+          class="month-btn"
+          :disabled="loading || isCurrentOrFutureMonth"
+          :title="t('dates.nextMonth')"
+          @click="shiftMonth(1)"
+        >
+          ›
+        </button>
+      </div>
     </div>
 
-    <div v-if="loading" class="flex h-48 items-center justify-center">
+    <div v-if="loading" class="flex h-[210px] items-center justify-center">
       <LoadingSpinner />
     </div>
 
@@ -20,13 +32,15 @@
         </div>
         <div class="heatmap-grid">
           <div v-for="(week, wi) in weeks" :key="wi" class="heatmap-col">
-            <div
+            <button
               v-for="(cell, ci) in week"
               :key="ci"
+              type="button"
               class="heatmap-cell"
               :class="cell ? [`lvl-${cell.level}`, { 'lvl-future': cell.isFuture }] : 'lvl-empty'"
               :title="cell ? `${cell.date}: ${formatTokens(cell.value)} tokens` : ''"
-            />
+              :disabled="!cell"
+            ></button>
           </div>
         </div>
       </div>
@@ -55,6 +69,11 @@ const { t } = useI18n()
 const props = defineProps<{
   trendData: TrendDataPoint[]
   loading?: boolean
+  month: Date
+}>()
+
+const emit = defineEmits<{
+  monthChange: [month: Date]
 }>()
 
 const weekdayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -80,8 +99,14 @@ const formatDateKey = (date: Date): string => {
 }
 
 const monthLabel = computed(() => {
+  return `${props.month.getFullYear()}-${String(props.month.getMonth() + 1).padStart(2, '0')}`
+})
+
+const isCurrentOrFutureMonth = computed(() => {
   const now = new Date()
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+  const selected = props.month.getFullYear() * 12 + props.month.getMonth()
+  const current = now.getFullYear() * 12 + now.getMonth()
+  return selected >= current
 })
 
 const weeks = computed<(Cell | null)[][]>(() => {
@@ -91,8 +116,8 @@ const weeks = computed<(Cell | null)[][]>(() => {
   for (const d of data ?? []) byDate.set(d.date.slice(0, 10), d)
 
   const now = new Date()
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
-  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+  const monthStart = new Date(props.month.getFullYear(), props.month.getMonth(), 1)
+  const monthEnd = new Date(props.month.getFullYear(), props.month.getMonth() + 1, 0)
   const todayKey = formatDateKey(now)
 
   const gridStart = new Date(monthStart)
@@ -128,6 +153,11 @@ const weeks = computed<(Cell | null)[][]>(() => {
   return cols
 })
 
+const shiftMonth = (delta: number) => {
+  const next = new Date(props.month.getFullYear(), props.month.getMonth() + delta, 1)
+  emit('monthChange', next)
+}
+
 const formatTokens = (value: number): string => {
   if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`
   if (value >= 1_000) return `${(value / 1_000).toFixed(1)}K`
@@ -136,61 +166,117 @@ const formatTokens = (value: number): string => {
 </script>
 
 <style scoped>
+.heatmap-card {
+  min-height: 286px;
+}
+
+.month-switcher {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  flex-shrink: 0;
+}
+
+.month-btn {
+  display: inline-flex;
+  width: 1.5rem;
+  height: 1.5rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--nm-radius-sm);
+  border: 1px solid var(--nm-border);
+  background: var(--nm-surface-soft);
+  color: var(--nm-ink);
+  font-size: 1.125rem;
+  line-height: 1;
+}
+
+.month-btn:hover:not(:disabled) {
+  border-color: var(--nm-accent);
+  color: var(--nm-accent-text);
+}
+
+.month-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.month-label {
+  min-width: 4.75rem;
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--nm-ink-muted);
+}
+
 .heatmap-wrap {
   display: flex;
   flex-direction: column;
-  gap: 0.875rem;
+  gap: 1rem;
 }
 
 .heatmap-body {
   display: flex;
   justify-content: center;
-  gap: 0.5rem;
+  gap: 0.625rem;
   overflow-x: hidden;
-  padding: 0.25rem 0 0.125rem;
+  padding: 0.125rem 0 0.25rem;
 }
 
 .heatmap-weekdays {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: clamp(4px, 0.9vw, 7px);
   flex-shrink: 0;
   padding-top: 0;
 }
 
 .heatmap-wd {
-  height: 18px;
+  height: clamp(18px, 2.6vw, 24px);
   font-size: 9px;
-  line-height: 18px;
+  line-height: clamp(18px, 2.6vw, 24px);
   color: var(--nm-ink-faint);
 }
 
 .heatmap-grid {
   display: flex;
-  gap: 4px;
+  gap: clamp(4px, 0.9vw, 7px);
+  flex: 1;
+  justify-content: center;
+  max-width: 100%;
 }
 
 .heatmap-col {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: clamp(4px, 0.9vw, 7px);
+  flex: 1 1 0;
+  max-width: 34px;
 }
 
 .heatmap-cell {
-  width: 18px;
-  height: 18px;
-  border-radius: 3px;
+  width: 100%;
+  aspect-ratio: 1;
+  min-width: 18px;
+  min-height: 18px;
+  border-radius: 4px;
   flex-shrink: 0;
-  border: 1px solid color-mix(in srgb, var(--nm-border) 80%, transparent);
-  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.16);
+  border: 1px solid color-mix(in srgb, var(--nm-border) 72%, transparent);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.12);
+  transition: transform 120ms ease, border-color 120ms ease;
+}
+
+button.heatmap-cell:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--nm-ink) 45%, var(--nm-border));
 }
 
 .lvl-empty { background: transparent; }
-.lvl-0 { background: #e8ece7; }
-.lvl-1 { background: #7dd3fc; }
-.lvl-2 { background: #22c55e; }
-.lvl-3 { background: #f59e0b; }
-.lvl-4 { background: #dc2626; }
+.lvl-0 { background: var(--nm-surface-alt); }
+.lvl-1 { background: #9be9a8; }
+.lvl-2 { background: #40c463; }
+.lvl-3 { background: #30a14e; }
+.lvl-4 { background: #216e39; }
 .lvl-future {
   background: repeating-linear-gradient(
     135deg,
@@ -206,7 +292,14 @@ const formatTokens = (value: number): string => {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 4px;
+  gap: 5px;
+}
+
+.heatmap-legend .heatmap-cell {
+  width: 15px;
+  height: 15px;
+  min-width: 15px;
+  min-height: 15px;
 }
 
 .heatmap-legend-label {
@@ -215,9 +308,9 @@ const formatTokens = (value: number): string => {
   margin: 0 2px;
 }
 
-:global(.dark) .lvl-0 { background: #2d332f; }
-:global(.dark) .lvl-1 { background: #0284c7; }
-:global(.dark) .lvl-2 { background: #16a34a; }
-:global(.dark) .lvl-3 { background: #d97706; }
-:global(.dark) .lvl-4 { background: #ef4444; }
+:global(.dark) .lvl-0 { background: #161b22; }
+:global(.dark) .lvl-1 { background: #0e4429; }
+:global(.dark) .lvl-2 { background: #006d32; }
+:global(.dark) .lvl-3 { background: #26a641; }
+:global(.dark) .lvl-4 { background: #39d353; }
 </style>

@@ -1,6 +1,8 @@
 <template>
-  <div class="card flex h-full flex-col p-4">
-    <h3 class="mb-4 border-b pb-2 text-xs font-bold uppercase" style="color: var(--nm-ink); border-color: var(--nm-border); letter-spacing: 0">{{ t('dashboard.modelRanking') }}</h3>
+  <div class="card model-rank-card flex flex-col p-4">
+    <h3 class="mb-3 border-b pb-2 text-xs font-bold uppercase" style="color: var(--nm-ink); border-color: var(--nm-border); letter-spacing: 0">
+      {{ t('dashboard.modelRanking') }} Top 3
+    </h3>
 
     <div v-if="loading" class="flex flex-1 items-center justify-center py-8">
       <LoadingSpinner size="md" />
@@ -10,7 +12,7 @@
       {{ t('dashboard.noDataAvailable') }}
     </div>
 
-    <ol v-else class="flex-1 divide-y overflow-y-auto" style="border-color: var(--nm-border-light)">
+    <ol v-else class="divide-y" style="border-color: var(--nm-border-light)">
       <li v-for="(m, i) in ranked" :key="m.model" class="rank-row">
         <span class="rank-no" :class="`rank-${i + 1}`">{{ i + 1 }}</span>
         <div class="min-w-0 flex-1">
@@ -43,9 +45,8 @@ const props = defineProps<{
 }>()
 const { t } = useI18n()
 
-// 按 token 量降序取前 8
 const ranked = computed(() =>
-  [...(props.models ?? [])].sort((a, b) => b.total_tokens - a.total_tokens).slice(0, 8)
+  [...(props.models ?? [])].sort((a, b) => b.total_tokens - a.total_tokens).slice(0, 3)
 )
 
 const maxTokens = computed(() => Math.max(...ranked.value.map((m) => m.total_tokens), 1))
@@ -53,11 +54,15 @@ const pct = (v: number) => Math.max(2, Math.round((v / maxTokens.value) * 100))
 </script>
 
 <style scoped>
+.model-rank-card {
+  height: auto;
+}
+
 .rank-row {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 0.75rem 0;
+  padding: 0.625rem 0;
 }
 
 .rank-no {
