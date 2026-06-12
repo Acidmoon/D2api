@@ -4,19 +4,16 @@
       <h3 class="text-xs font-bold uppercase" style="color: var(--nm-ink); letter-spacing: 0">
         {{ t('dashboard.activityHeatmap') }}
       </h3>
-      <span class="text-xs" style="color: var(--nm-ink-faint)">{{ t('dashboard.last7Days') }}</span>
+      <span class="text-xs" style="color: var(--nm-ink-faint)">
+        {{ t('dates.thisMonth') }} - {{ monthLabel }}
+      </span>
     </div>
 
     <div v-if="loading" class="flex h-48 items-center justify-center">
       <LoadingSpinner />
     </div>
 
-    <div v-else-if="weeks.length === 0" class="flex h-48 items-center justify-center text-sm" style="color: var(--nm-ink-faint)">
-      {{ t('dashboard.noDataAvailable') }}
-    </div>
-
     <div v-else class="heatmap-wrap">
-      <!-- 星期标签 + 网格 -->
       <div class="heatmap-body">
         <div class="heatmap-weekdays">
           <span v-for="(wd, i) in weekdayLabels" :key="i" class="heatmap-wd">{{ i % 2 === 1 ? wd : '' }}</span>
@@ -27,14 +24,13 @@
               v-for="(cell, ci) in week"
               :key="ci"
               class="heatmap-cell"
-              :class="cell ? `lvl-${cell.level}` : 'lvl-empty'"
+              :class="cell ? [`lvl-${cell.level}`, { 'lvl-future': cell.isFuture }] : 'lvl-empty'"
               :title="cell ? `${cell.date}: ${formatTokens(cell.value)} tokens` : ''"
             />
           </div>
         </div>
       </div>
 
-      <!-- 图例 -->
       <div class="heatmap-legend">
         <span class="heatmap-legend-label">{{ t('dashboard.heatmapLess') }}</span>
         <span class="heatmap-cell lvl-0" />
@@ -67,9 +63,9 @@ interface Cell {
   date: string
   value: number
   level: number
+  isFuture?: boolean
 }
 
-// 按 total_tokens 映射 0-4 档
 function levelOf(value: number, max: number): number {
   if (value <= 0 || max <= 0) return 0
   const ratio = value / max
@@ -79,47 +75,55 @@ function levelOf(value: number, max: number): number {
   return 1
 }
 
-// 把 trendData 排成「按周分列、每列 7 格（周日→周六）」的二维网格
+const formatDateKey = (date: Date): string => {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+}
+
+const monthLabel = computed(() => {
+  const now = new Date()
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+})
+
 const weeks = computed<(Cell | null)[][]>(() => {
   const data = props.trendData
-  if (!data?.length) return []
-
-  const max = Math.max(...data.map((d) => d.total_tokens), 0)
+  const max = Math.max(...(data ?? []).map((d) => d.total_tokens), 0)
   const byDate = new Map<string, TrendDataPoint>()
-  for (const d of data) byDate.set(d.date.slice(0, 10), d)
+  for (const d of data ?? []) byDate.set(d.date.slice(0, 10), d)
 
-  // 区间：第一条到最后一条
-  const dates = data.map((d) => d.date.slice(0, 10)).sort()
-  const start = new Date(dates[0] + 'T00:00:00')
-  const end = new Date(dates[dates.length - 1] + 'T00:00:00')
+  const now = new Date()
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+  const todayKey = formatDateKey(now)
 
-  // 对齐到周日起点
-  const gridStart = new Date(start)
+  const gridStart = new Date(monthStart)
   gridStart.setDate(gridStart.getDate() - gridStart.getDay())
+  const gridEnd = new Date(monthEnd)
+  gridEnd.setDate(gridEnd.getDate() + (6 - gridEnd.getDay()))
 
   const cols: (Cell | null)[][] = []
   let col: (Cell | null)[] = []
   const cursor = new Date(gridStart)
 
-  while (cursor <= end) {
-    const iso = cursor.toISOString().slice(0, 10)
-    const dp = byDate.get(iso)
-    if (dp) {
-      col.push({ date: iso, value: dp.total_tokens, level: levelOf(dp.total_tokens, max) })
-    } else if (cursor < start) {
-      col.push(null) // 区间前的占位
+  while (cursor <= gridEnd) {
+    const iso = formatDateKey(cursor)
+    const inMonth = cursor.getMonth() === monthStart.getMonth()
+    if (!inMonth) {
+      col.push(null)
     } else {
-      col.push({ date: iso, value: 0, level: 0 })
+      const dp = byDate.get(iso)
+      const value = dp?.total_tokens ?? 0
+      col.push({
+        date: iso,
+        value,
+        level: levelOf(value, max),
+        isFuture: iso > todayKey
+      })
     }
     if (col.length === 7) {
       cols.push(col)
       col = []
     }
     cursor.setDate(cursor.getDate() + 1)
-  }
-  if (col.length) {
-    while (col.length < 7) col.push(null)
-    cols.push(col)
   }
   return cols
 })
@@ -135,57 +139,68 @@ const formatTokens = (value: number): string => {
 .heatmap-wrap {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.875rem;
 }
 
 .heatmap-body {
   display: flex;
-  gap: 0.375rem;
-  overflow-x: auto;
-  padding-bottom: 0.5rem;
+  justify-content: center;
+  gap: 0.5rem;
+  overflow-x: hidden;
+  padding: 0.25rem 0 0.125rem;
 }
 
 .heatmap-weekdays {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
   flex-shrink: 0;
   padding-top: 0;
 }
 
 .heatmap-wd {
-  height: 14px;
+  height: 18px;
   font-size: 9px;
-  line-height: 14px;
+  line-height: 18px;
   color: var(--nm-ink-faint);
 }
 
 .heatmap-grid {
   display: flex;
-  gap: 3px;
+  gap: 4px;
 }
 
 .heatmap-col {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
 }
 
 .heatmap-cell {
-  width: 14px;
-  height: 14px;
-  border-radius: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 3px;
   flex-shrink: 0;
-  border: 1px solid color-mix(in srgb, var(--nm-border) 70%, transparent);
+  border: 1px solid color-mix(in srgb, var(--nm-border) 80%, transparent);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.16);
 }
 
-/* 用量分档：nm accent 透明度梯度 */
 .lvl-empty { background: transparent; }
-.lvl-0 { background: var(--nm-surface-alt); }
-.lvl-1 { background: color-mix(in srgb, var(--nm-accent) 30%, var(--nm-surface-alt)); }
-.lvl-2 { background: color-mix(in srgb, var(--nm-accent) 55%, var(--nm-surface-alt)); }
-.lvl-3 { background: color-mix(in srgb, var(--nm-accent) 78%, var(--nm-surface-alt)); }
-.lvl-4 { background: var(--nm-accent); }
+.lvl-0 { background: #e8ece7; }
+.lvl-1 { background: #7dd3fc; }
+.lvl-2 { background: #22c55e; }
+.lvl-3 { background: #f59e0b; }
+.lvl-4 { background: #dc2626; }
+.lvl-future {
+  background: repeating-linear-gradient(
+    135deg,
+    var(--nm-surface-alt),
+    var(--nm-surface-alt) 4px,
+    color-mix(in srgb, var(--nm-border) 55%, var(--nm-surface-alt)) 4px,
+    color-mix(in srgb, var(--nm-border) 55%, var(--nm-surface-alt)) 6px
+  );
+  opacity: 0.62;
+}
 
 .heatmap-legend {
   display: flex;
@@ -199,4 +214,10 @@ const formatTokens = (value: number): string => {
   color: var(--nm-ink-faint);
   margin: 0 2px;
 }
+
+:global(.dark) .lvl-0 { background: #2d332f; }
+:global(.dark) .lvl-1 { background: #0284c7; }
+:global(.dark) .lvl-2 { background: #16a34a; }
+:global(.dark) .lvl-3 { background: #d97706; }
+:global(.dark) .lvl-4 { background: #ef4444; }
 </style>

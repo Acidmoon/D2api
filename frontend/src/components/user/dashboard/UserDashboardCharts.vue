@@ -21,12 +21,12 @@
       </div>
     </div>
 
-    <!-- 左请求趋势(2/3) + 右模型排行(1/3) -->
-    <div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
-      <div class="lg:col-span-2">
+    <div class="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.55fr)_minmax(320px,0.85fr)]">
+      <div class="min-w-0">
         <TokenUsageTrend :trend-data="trend" :loading="loading" />
       </div>
-      <div class="lg:col-span-1">
+      <div class="min-w-0 space-y-4">
+        <UserDashboardHeatmap :trend-data="heatmapTrend" :loading="heatmapLoading" />
         <UserDashboardModels :models="models" :loading="loading" />
       </div>
     </div>
@@ -38,10 +38,23 @@ import { useI18n } from 'vue-i18n'
 import DateRangePicker from '@/components/common/DateRangePicker.vue'
 import Select from '@/components/common/Select.vue'
 import TokenUsageTrend from '@/components/charts/TokenUsageTrend.vue'
+import UserDashboardHeatmap from '@/components/user/dashboard/UserDashboardHeatmap.vue'
 import UserDashboardModels from '@/components/user/dashboard/UserDashboardModels.vue'
 import type { TrendDataPoint, ModelStat } from '@/types'
 
-defineProps<{ loading: boolean, startDate: string, endDate: string, granularity: string, trend: TrendDataPoint[], models: ModelStat[] }>()
+withDefaults(defineProps<{
+  loading: boolean
+  startDate: string
+  endDate: string
+  granularity: string
+  trend: TrendDataPoint[]
+  heatmapTrend?: TrendDataPoint[]
+  heatmapLoading?: boolean
+  models: ModelStat[]
+}>(), {
+  heatmapTrend: () => [],
+  heatmapLoading: false
+})
 defineEmits(['update:startDate', 'update:endDate', 'update:granularity', 'dateRangeChange', 'granularityChange', 'refresh'])
 const { t } = useI18n()
 </script>
