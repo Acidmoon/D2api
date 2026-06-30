@@ -116,16 +116,13 @@ func apiKeyAuthWithSubscription(apiKeyService *service.APIKeyService, subscripti
 			AbortWithError(c, 401, "USER_INACTIVE", "User account is not active")
 			return
 		}
-		if abortIfAPIKeyGroupUnavailable(c, apiKey) {
-			return
-		}
-		if abortIfAPIKeyGroupNotAllowed(c, apiKey) {
-			return
-		}
-
 		// ── 4. SimpleMode → early return ─────────────────────────────
 
 		if cfg.RunMode == config.RunModeSimple {
+			if groupErr := selectAPIKeyGroupForRequest(c.Request.Context(), apiKey, nil, true); groupErr != nil {
+				abortAPIKeyGroupSelectionError(c, groupErr)
+				return
+			}
 			c.Set(string(ContextKeyAPIKey), apiKey)
 			c.Set(string(ContextKeyUser), AuthSubject{
 				UserID:      apiKey.User.ID,
@@ -144,28 +141,17 @@ func apiKeyAuthWithSubscription(apiKeyService *service.APIKeyService, subscripti
 		skipBilling := c.Request.URL.Path == "/v1/usage"
 
 		var subscription *service.UserSubscription
-		isSubscriptionType := apiKey.Group != nil && apiKey.Group.IsSubscriptionType()
-
-		if isSubscriptionType && subscriptionService != nil {
-			sub, subErr := subscriptionService.GetActiveSubscription(
-				c.Request.Context(),
-				apiKey.User.ID,
-				apiKey.Group.ID,
-			)
-			if subErr != nil {
-				if !skipBilling {
-					AbortWithError(c, 403, "SUBSCRIPTION_NOT_FOUND", "No active subscription found for this group")
-					return
-				}
-				// skipBilling: 订阅不存在也放行，handler 会返回可用的数据
-			} else {
-				subscription = sub
-			}
-		}
 
 		// ── 6. 计费执行（skipBilling 时整块跳过） ────────────────────
 
 		if !skipBilling {
+			groupErr := selectAPIKeyGroupForRequest(c.Request.Context(), apiKey, subscriptionService, false)
+			if groupErr != nil {
+				abortAPIKeyGroupSelectionError(c, groupErr)
+				return
+			}
+			subscription = apiKey.SelectedSubscription
+
 			// Key 状态检查
 			switch apiKey.Status {
 			case service.StatusAPIKeyQuotaExhausted:
@@ -186,34 +172,18 @@ func apiKeyAuthWithSubscription(apiKeyService *service.APIKeyService, subscripti
 				return
 			}
 
-			// 订阅模式：验证订阅限额
-			if subscription != nil {
-				needsMaintenance, validateErr := subscriptionService.ValidateAndCheckLimits(subscription, apiKey.Group)
-				if validateErr != nil {
-					code := "SUBSCRIPTION_INVALID"
-					status := 403
-					if errors.Is(validateErr, service.ErrDailyLimitExceeded) ||
-						errors.Is(validateErr, service.ErrWeeklyLimitExceeded) ||
-						errors.Is(validateErr, service.ErrMonthlyLimitExceeded) {
-						code = "USAGE_LIMIT_EXCEEDED"
-						status = 429
-					}
-					AbortWithError(c, status, code, validateErr.Error())
-					return
-				}
-
-				// 窗口维护异步化（不阻塞请求）
-				if needsMaintenance {
-					maintenanceCopy := *subscription
-					subscriptionService.DoWindowMaintenance(&maintenanceCopy)
-				}
-			} else {
+			if subscription == nil {
 				// 非订阅模式 或 订阅模式但 subscriptionService 未注入：回退到余额检查
 				if apiKey.User.Balance <= 0 {
 					AbortWithError(c, 403, "INSUFFICIENT_BALANCE", "Insufficient account balance")
 					return
 				}
 			}
+		} else if groupErr := selectAPIKeyGroupForRequest(c.Request.Context(), apiKey, subscriptionService, true); groupErr != nil {
+			abortAPIKeyGroupSelectionError(c, groupErr)
+			return
+		} else {
+			subscription = apiKey.SelectedSubscription
 		}
 
 		// ── 7. 设置上下文 → Next ─────────────────────────────────────
@@ -327,4 +297,117 @@ func validateAPIKeyGroupAvailable(apiKey *service.APIKey) (string, string, bool)
 		return "GROUP_DISABLED", "API Key 所属分组已停用", false
 	}
 	return "", "", true
+}
+
+type apiKeyGroupSelectionError struct {
+	status  int
+	code    string
+	message string
+	markOps bool
+}
+
+func (e *apiKeyGroupSelectionError) Error() string {
+	return e.message
+}
+
+func newAPIKeyGroupSelectionError(status int, code, message string, markOps bool) *apiKeyGroupSelectionError {
+	return &apiKeyGroupSelectionError{status: status, code: code, message: message, markOps: markOps}
+}
+
+func abortAPIKeyGroupSelectionError(c *gin.Context, err error) {
+	var selectionErr *apiKeyGroupSelectionError
+	if !errors.As(err, &selectionErr) {
+		AbortWithError(c, 500, "INTERNAL_ERROR", "Failed to select API key group")
+		return
+	}
+	if selectionErr.markOps {
+		service.MarkOpsClientBusinessLimited(c, service.OpsClientBusinessLimitedReasonAPIKeyGroupUnavailable)
+	}
+	AbortWithError(c, selectionErr.status, selectionErr.code, selectionErr.message)
+}
+
+func selectAPIKeyGroupForRequest(ctx context.Context, apiKey *service.APIKey, subscriptionService *service.SubscriptionService, skipBilling bool) error {
+	candidates := []struct {
+		id    *int64
+		group *service.Group
+	}{
+		{id: apiKey.PrimaryGroupID, group: apiKey.PrimaryGroup},
+		{id: apiKey.GroupID, group: apiKey.Group},
+	}
+
+	var lastErr *apiKeyGroupSelectionError
+	for _, candidate := range candidates {
+		if candidate.id == nil && candidate.group == nil {
+			continue
+		}
+		group, subscription, err := validateAPIKeyGroupCandidate(ctx, apiKey, candidate.id, candidate.group, subscriptionService, skipBilling)
+		if err != nil {
+			lastErr = err
+			continue
+		}
+		apiKey.GroupID = &group.ID
+		apiKey.Group = group
+		apiKey.SelectedSubscription = subscription
+		applyGroupRPMOverride(apiKey.User, group.ID)
+		return nil
+	}
+
+	if lastErr != nil {
+		return lastErr
+	}
+	return newAPIKeyGroupSelectionError(403, "GROUP_NOT_SELECTED", "API Key 未绑定可用分组", true)
+}
+
+func validateAPIKeyGroupCandidate(ctx context.Context, apiKey *service.APIKey, groupID *int64, group *service.Group, subscriptionService *service.SubscriptionService, skipBilling bool) (*service.Group, *service.UserSubscription, *apiKeyGroupSelectionError) {
+	candidate := &service.APIKey{GroupID: groupID, Group: group, User: apiKey.User}
+	if code, message, ok := validateAPIKeyGroupAvailable(candidate); !ok {
+		return nil, nil, newAPIKeyGroupSelectionError(403, code, message, true)
+	}
+	if !validateAPIKeyGroupAllowed(candidate) {
+		return nil, nil, newAPIKeyGroupSelectionError(403, "GROUP_NOT_ALLOWED", "API Key 所属专属分组不再允许当前用户使用", true)
+	}
+	if group == nil {
+		return nil, nil, newAPIKeyGroupSelectionError(403, "GROUP_NOT_SELECTED", "API Key 未绑定可用分组", true)
+	}
+
+	if !group.IsSubscriptionType() {
+		return group, nil, nil
+	}
+	if subscriptionService == nil {
+		return group, nil, nil
+	}
+	subscription, subErr := subscriptionService.GetActiveSubscription(ctx, apiKey.User.ID, group.ID)
+	if subErr != nil {
+		if skipBilling {
+			return group, nil, nil
+		}
+		return nil, nil, newAPIKeyGroupSelectionError(403, "SUBSCRIPTION_NOT_FOUND", "No active subscription found for this group", false)
+	}
+	if skipBilling {
+		return group, subscription, nil
+	}
+	needsMaintenance, validateErr := subscriptionService.ValidateAndCheckLimits(subscription, group)
+	if validateErr != nil {
+		code := "SUBSCRIPTION_INVALID"
+		status := 403
+		if errors.Is(validateErr, service.ErrDailyLimitExceeded) ||
+			errors.Is(validateErr, service.ErrWeeklyLimitExceeded) ||
+			errors.Is(validateErr, service.ErrMonthlyLimitExceeded) {
+			code = "USAGE_LIMIT_EXCEEDED"
+			status = 429
+		}
+		return nil, nil, newAPIKeyGroupSelectionError(status, code, validateErr.Error(), false)
+	}
+	if needsMaintenance {
+		maintenanceCopy := *subscription
+		subscriptionService.DoWindowMaintenance(&maintenanceCopy)
+	}
+	return group, subscription, nil
+}
+
+func applyGroupRPMOverride(user *service.User, groupID int64) {
+	if user == nil || len(user.UserGroupRPMOverrides) == 0 {
+		return
+	}
+	user.UserGroupRPMOverride = user.UserGroupRPMOverrides[groupID]
 }

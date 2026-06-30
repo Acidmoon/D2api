@@ -85,6 +85,20 @@ func (_c *APIKeyCreate) SetName(v string) *APIKeyCreate {
 	return _c
 }
 
+// SetPrimaryGroupID sets the "primary_group_id" field.
+func (_c *APIKeyCreate) SetPrimaryGroupID(v int64) *APIKeyCreate {
+	_c.mutation.SetPrimaryGroupID(v)
+	return _c
+}
+
+// SetNillablePrimaryGroupID sets the "primary_group_id" field if the given value is not nil.
+func (_c *APIKeyCreate) SetNillablePrimaryGroupID(v *int64) *APIKeyCreate {
+	if v != nil {
+		_c.SetPrimaryGroupID(*v)
+	}
+	return _c
+}
+
 // SetGroupID sets the "group_id" field.
 func (_c *APIKeyCreate) SetGroupID(v int64) *APIKeyCreate {
 	_c.mutation.SetGroupID(v)
@@ -315,6 +329,11 @@ func (_c *APIKeyCreate) SetUser(v *User) *APIKeyCreate {
 // SetGroup sets the "group" edge to the Group entity.
 func (_c *APIKeyCreate) SetGroup(v *Group) *APIKeyCreate {
 	return _c.SetGroupID(v.ID)
+}
+
+// SetPrimaryGroup sets the "primary_group" edge to the Group entity.
+func (_c *APIKeyCreate) SetPrimaryGroup(v *Group) *APIKeyCreate {
+	return _c.SetPrimaryGroupID(v.ID)
 }
 
 // AddUsageLogIDs adds the "usage_logs" edge to the UsageLog entity by IDs.
@@ -629,6 +648,23 @@ func (_c *APIKeyCreate) createSpec() (*APIKey, *sqlgraph.CreateSpec) {
 		_node.GroupID = &nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
+	if nodes := _c.mutation.PrimaryGroupIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   apikey.PrimaryGroupTable,
+			Columns: []string{apikey.PrimaryGroupColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(group.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_node.PrimaryGroupID = &nodes[0]
+		_spec.Edges = append(_spec.Edges, edge)
+	}
 	if nodes := _c.mutation.UsageLogsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
@@ -760,6 +796,24 @@ func (u *APIKeyUpsert) SetName(v string) *APIKeyUpsert {
 // UpdateName sets the "name" field to the value that was provided on create.
 func (u *APIKeyUpsert) UpdateName() *APIKeyUpsert {
 	u.SetExcluded(apikey.FieldName)
+	return u
+}
+
+// SetPrimaryGroupID sets the "primary_group_id" field.
+func (u *APIKeyUpsert) SetPrimaryGroupID(v int64) *APIKeyUpsert {
+	u.Set(apikey.FieldPrimaryGroupID, v)
+	return u
+}
+
+// UpdatePrimaryGroupID sets the "primary_group_id" field to the value that was provided on create.
+func (u *APIKeyUpsert) UpdatePrimaryGroupID() *APIKeyUpsert {
+	u.SetExcluded(apikey.FieldPrimaryGroupID)
+	return u
+}
+
+// ClearPrimaryGroupID clears the value of the "primary_group_id" field.
+func (u *APIKeyUpsert) ClearPrimaryGroupID() *APIKeyUpsert {
+	u.SetNull(apikey.FieldPrimaryGroupID)
 	return u
 }
 
@@ -1182,6 +1236,27 @@ func (u *APIKeyUpsertOne) SetName(v string) *APIKeyUpsertOne {
 func (u *APIKeyUpsertOne) UpdateName() *APIKeyUpsertOne {
 	return u.Update(func(s *APIKeyUpsert) {
 		s.UpdateName()
+	})
+}
+
+// SetPrimaryGroupID sets the "primary_group_id" field.
+func (u *APIKeyUpsertOne) SetPrimaryGroupID(v int64) *APIKeyUpsertOne {
+	return u.Update(func(s *APIKeyUpsert) {
+		s.SetPrimaryGroupID(v)
+	})
+}
+
+// UpdatePrimaryGroupID sets the "primary_group_id" field to the value that was provided on create.
+func (u *APIKeyUpsertOne) UpdatePrimaryGroupID() *APIKeyUpsertOne {
+	return u.Update(func(s *APIKeyUpsert) {
+		s.UpdatePrimaryGroupID()
+	})
+}
+
+// ClearPrimaryGroupID clears the value of the "primary_group_id" field.
+func (u *APIKeyUpsertOne) ClearPrimaryGroupID() *APIKeyUpsertOne {
+	return u.Update(func(s *APIKeyUpsert) {
+		s.ClearPrimaryGroupID()
 	})
 }
 
@@ -1820,6 +1895,27 @@ func (u *APIKeyUpsertBulk) SetName(v string) *APIKeyUpsertBulk {
 func (u *APIKeyUpsertBulk) UpdateName() *APIKeyUpsertBulk {
 	return u.Update(func(s *APIKeyUpsert) {
 		s.UpdateName()
+	})
+}
+
+// SetPrimaryGroupID sets the "primary_group_id" field.
+func (u *APIKeyUpsertBulk) SetPrimaryGroupID(v int64) *APIKeyUpsertBulk {
+	return u.Update(func(s *APIKeyUpsert) {
+		s.SetPrimaryGroupID(v)
+	})
+}
+
+// UpdatePrimaryGroupID sets the "primary_group_id" field to the value that was provided on create.
+func (u *APIKeyUpsertBulk) UpdatePrimaryGroupID() *APIKeyUpsertBulk {
+	return u.Update(func(s *APIKeyUpsert) {
+		s.UpdatePrimaryGroupID()
+	})
+}
+
+// ClearPrimaryGroupID clears the value of the "primary_group_id" field.
+func (u *APIKeyUpsertBulk) ClearPrimaryGroupID() *APIKeyUpsertBulk {
+	return u.Update(func(s *APIKeyUpsert) {
+		s.ClearPrimaryGroupID()
 	})
 }
 

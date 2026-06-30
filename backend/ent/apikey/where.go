@@ -85,6 +85,11 @@ func Name(v string) predicate.APIKey {
 	return predicate.APIKey(sql.FieldEQ(FieldName, v))
 }
 
+// PrimaryGroupID applies equality check predicate on the "primary_group_id" field. It's identical to PrimaryGroupIDEQ.
+func PrimaryGroupID(v int64) predicate.APIKey {
+	return predicate.APIKey(sql.FieldEQ(FieldPrimaryGroupID, v))
+}
+
 // GroupID applies equality check predicate on the "group_id" field. It's identical to GroupIDEQ.
 func GroupID(v int64) predicate.APIKey {
 	return predicate.APIKey(sql.FieldEQ(FieldGroupID, v))
@@ -438,6 +443,36 @@ func NameEqualFold(v string) predicate.APIKey {
 // NameContainsFold applies the ContainsFold predicate on the "name" field.
 func NameContainsFold(v string) predicate.APIKey {
 	return predicate.APIKey(sql.FieldContainsFold(FieldName, v))
+}
+
+// PrimaryGroupIDEQ applies the EQ predicate on the "primary_group_id" field.
+func PrimaryGroupIDEQ(v int64) predicate.APIKey {
+	return predicate.APIKey(sql.FieldEQ(FieldPrimaryGroupID, v))
+}
+
+// PrimaryGroupIDNEQ applies the NEQ predicate on the "primary_group_id" field.
+func PrimaryGroupIDNEQ(v int64) predicate.APIKey {
+	return predicate.APIKey(sql.FieldNEQ(FieldPrimaryGroupID, v))
+}
+
+// PrimaryGroupIDIn applies the In predicate on the "primary_group_id" field.
+func PrimaryGroupIDIn(vs ...int64) predicate.APIKey {
+	return predicate.APIKey(sql.FieldIn(FieldPrimaryGroupID, vs...))
+}
+
+// PrimaryGroupIDNotIn applies the NotIn predicate on the "primary_group_id" field.
+func PrimaryGroupIDNotIn(vs ...int64) predicate.APIKey {
+	return predicate.APIKey(sql.FieldNotIn(FieldPrimaryGroupID, vs...))
+}
+
+// PrimaryGroupIDIsNil applies the IsNil predicate on the "primary_group_id" field.
+func PrimaryGroupIDIsNil() predicate.APIKey {
+	return predicate.APIKey(sql.FieldIsNull(FieldPrimaryGroupID))
+}
+
+// PrimaryGroupIDNotNil applies the NotNil predicate on the "primary_group_id" field.
+func PrimaryGroupIDNotNil() predicate.APIKey {
+	return predicate.APIKey(sql.FieldNotNull(FieldPrimaryGroupID))
 }
 
 // GroupIDEQ applies the EQ predicate on the "group_id" field.
@@ -1163,6 +1198,29 @@ func HasGroup() predicate.APIKey {
 func HasGroupWith(preds ...predicate.Group) predicate.APIKey {
 	return predicate.APIKey(func(s *sql.Selector) {
 		step := newGroupStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasPrimaryGroup applies the HasEdge predicate on the "primary_group" edge.
+func HasPrimaryGroup() predicate.APIKey {
+	return predicate.APIKey(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, PrimaryGroupTable, PrimaryGroupColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasPrimaryGroupWith applies the HasEdge predicate on the "primary_group" edge with a given conditions (other predicates).
+func HasPrimaryGroupWith(preds ...predicate.Group) predicate.APIKey {
+	return predicate.APIKey(func(s *sql.Selector) {
+		step := newPrimaryGroupStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)

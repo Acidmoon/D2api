@@ -41,6 +41,9 @@ func (APIKey) Fields() []ent.Field {
 		field.String("name").
 			MaxLen(100).
 			NotEmpty(),
+		field.Int64("primary_group_id").
+			Optional().
+			Nillable(),
 		field.Int64("group_id").
 			Optional().
 			Nillable(),
@@ -129,6 +132,10 @@ func (APIKey) Edges() []ent.Edge {
 			Ref("api_keys").
 			Field("group_id").
 			Unique(),
+		edge.From("primary_group", Group.Type).
+			Ref("primary_api_keys").
+			Field("primary_group_id").
+			Unique(),
 		edge.To("usage_logs", UsageLog.Type),
 	}
 }
@@ -137,6 +144,7 @@ func (APIKey) Indexes() []ent.Index {
 	return []ent.Index{
 		// key 字段已在 Fields() 中声明 Unique()，无需重复索引
 		index.Fields("user_id"),
+		index.Fields("primary_group_id"),
 		index.Fields("group_id"),
 		index.Fields("status"),
 		index.Fields("deleted_at"),

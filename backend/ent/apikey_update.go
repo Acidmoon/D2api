@@ -100,6 +100,26 @@ func (_u *APIKeyUpdate) SetNillableName(v *string) *APIKeyUpdate {
 	return _u
 }
 
+// SetPrimaryGroupID sets the "primary_group_id" field.
+func (_u *APIKeyUpdate) SetPrimaryGroupID(v int64) *APIKeyUpdate {
+	_u.mutation.SetPrimaryGroupID(v)
+	return _u
+}
+
+// SetNillablePrimaryGroupID sets the "primary_group_id" field if the given value is not nil.
+func (_u *APIKeyUpdate) SetNillablePrimaryGroupID(v *int64) *APIKeyUpdate {
+	if v != nil {
+		_u.SetPrimaryGroupID(*v)
+	}
+	return _u
+}
+
+// ClearPrimaryGroupID clears the value of the "primary_group_id" field.
+func (_u *APIKeyUpdate) ClearPrimaryGroupID() *APIKeyUpdate {
+	_u.mutation.ClearPrimaryGroupID()
+	return _u
+}
+
 // SetGroupID sets the "group_id" field.
 func (_u *APIKeyUpdate) SetGroupID(v int64) *APIKeyUpdate {
 	_u.mutation.SetGroupID(v)
@@ -448,6 +468,11 @@ func (_u *APIKeyUpdate) SetGroup(v *Group) *APIKeyUpdate {
 	return _u.SetGroupID(v.ID)
 }
 
+// SetPrimaryGroup sets the "primary_group" edge to the Group entity.
+func (_u *APIKeyUpdate) SetPrimaryGroup(v *Group) *APIKeyUpdate {
+	return _u.SetPrimaryGroupID(v.ID)
+}
+
 // AddUsageLogIDs adds the "usage_logs" edge to the UsageLog entity by IDs.
 func (_u *APIKeyUpdate) AddUsageLogIDs(ids ...int64) *APIKeyUpdate {
 	_u.mutation.AddUsageLogIDs(ids...)
@@ -477,6 +502,12 @@ func (_u *APIKeyUpdate) ClearUser() *APIKeyUpdate {
 // ClearGroup clears the "group" edge to the Group entity.
 func (_u *APIKeyUpdate) ClearGroup() *APIKeyUpdate {
 	_u.mutation.ClearGroup()
+	return _u
+}
+
+// ClearPrimaryGroup clears the "primary_group" edge to the Group entity.
+func (_u *APIKeyUpdate) ClearPrimaryGroup() *APIKeyUpdate {
+	_u.mutation.ClearPrimaryGroup()
 	return _u
 }
 
@@ -754,6 +785,35 @@ func (_u *APIKeyUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if _u.mutation.PrimaryGroupCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   apikey.PrimaryGroupTable,
+			Columns: []string{apikey.PrimaryGroupColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(group.FieldID, field.TypeInt64),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.PrimaryGroupIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   apikey.PrimaryGroupTable,
+			Columns: []string{apikey.PrimaryGroupColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(group.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if _u.mutation.UsageLogsCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
@@ -884,6 +944,26 @@ func (_u *APIKeyUpdateOne) SetNillableName(v *string) *APIKeyUpdateOne {
 	if v != nil {
 		_u.SetName(*v)
 	}
+	return _u
+}
+
+// SetPrimaryGroupID sets the "primary_group_id" field.
+func (_u *APIKeyUpdateOne) SetPrimaryGroupID(v int64) *APIKeyUpdateOne {
+	_u.mutation.SetPrimaryGroupID(v)
+	return _u
+}
+
+// SetNillablePrimaryGroupID sets the "primary_group_id" field if the given value is not nil.
+func (_u *APIKeyUpdateOne) SetNillablePrimaryGroupID(v *int64) *APIKeyUpdateOne {
+	if v != nil {
+		_u.SetPrimaryGroupID(*v)
+	}
+	return _u
+}
+
+// ClearPrimaryGroupID clears the value of the "primary_group_id" field.
+func (_u *APIKeyUpdateOne) ClearPrimaryGroupID() *APIKeyUpdateOne {
+	_u.mutation.ClearPrimaryGroupID()
 	return _u
 }
 
@@ -1235,6 +1315,11 @@ func (_u *APIKeyUpdateOne) SetGroup(v *Group) *APIKeyUpdateOne {
 	return _u.SetGroupID(v.ID)
 }
 
+// SetPrimaryGroup sets the "primary_group" edge to the Group entity.
+func (_u *APIKeyUpdateOne) SetPrimaryGroup(v *Group) *APIKeyUpdateOne {
+	return _u.SetPrimaryGroupID(v.ID)
+}
+
 // AddUsageLogIDs adds the "usage_logs" edge to the UsageLog entity by IDs.
 func (_u *APIKeyUpdateOne) AddUsageLogIDs(ids ...int64) *APIKeyUpdateOne {
 	_u.mutation.AddUsageLogIDs(ids...)
@@ -1264,6 +1349,12 @@ func (_u *APIKeyUpdateOne) ClearUser() *APIKeyUpdateOne {
 // ClearGroup clears the "group" edge to the Group entity.
 func (_u *APIKeyUpdateOne) ClearGroup() *APIKeyUpdateOne {
 	_u.mutation.ClearGroup()
+	return _u
+}
+
+// ClearPrimaryGroup clears the "primary_group" edge to the Group entity.
+func (_u *APIKeyUpdateOne) ClearPrimaryGroup() *APIKeyUpdateOne {
+	_u.mutation.ClearPrimaryGroup()
 	return _u
 }
 
@@ -1561,6 +1652,35 @@ func (_u *APIKeyUpdateOne) sqlSave(ctx context.Context) (_node *APIKey, err erro
 			Inverse: true,
 			Table:   apikey.GroupTable,
 			Columns: []string{apikey.GroupColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(group.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.PrimaryGroupCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   apikey.PrimaryGroupTable,
+			Columns: []string{apikey.PrimaryGroupColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(group.FieldID, field.TypeInt64),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.PrimaryGroupIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   apikey.PrimaryGroupTable,
+			Columns: []string{apikey.PrimaryGroupColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(group.FieldID, field.TypeInt64),

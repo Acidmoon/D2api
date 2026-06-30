@@ -235,6 +235,103 @@ func TestAPIKeyAuthSetsGroupContext(t *testing.T) {
 	require.Equal(t, http.StatusOK, w.Code)
 }
 
+func TestAPIKeyAuthFallsBackToSecondaryGroupWhenPrimarySubscriptionLimitExceeded(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	limit := 1.0
+	primaryGroup := &service.Group{
+		ID:               101,
+		Name:             "primary-sub",
+		Status:           service.StatusActive,
+		Platform:         service.PlatformAnthropic,
+		Hydrated:         true,
+		SubscriptionType: service.SubscriptionTypeSubscription,
+		DailyLimitUSD:    &limit,
+	}
+	secondaryGroup := &service.Group{
+		ID:               202,
+		Name:             "secondary-sub",
+		Status:           service.StatusActive,
+		Platform:         service.PlatformAnthropic,
+		Hydrated:         true,
+		SubscriptionType: service.SubscriptionTypeSubscription,
+		DailyLimitUSD:    &limit,
+	}
+	user := &service.User{
+		ID:          7,
+		Role:        service.RoleUser,
+		Status:      service.StatusActive,
+		Balance:     10,
+		Concurrency: 3,
+	}
+	now := time.Now()
+	primaryID := primaryGroup.ID
+	secondaryID := secondaryGroup.ID
+	apiKey := &service.APIKey{
+		ID:             100,
+		UserID:         user.ID,
+		Key:            "test-key",
+		Status:         service.StatusActive,
+		User:           user,
+		PrimaryGroupID: &primaryID,
+		PrimaryGroup:   primaryGroup,
+		GroupID:        &secondaryID,
+		Group:          secondaryGroup,
+	}
+
+	apiKeyRepo := &stubApiKeyRepo{
+		getByKey: func(ctx context.Context, key string) (*service.APIKey, error) {
+			if key != apiKey.Key {
+				return nil, service.ErrAPIKeyNotFound
+			}
+			clone := *apiKey
+			return &clone, nil
+		},
+	}
+	subscriptionRepo := &stubUserSubscriptionRepo{
+		getActive: func(ctx context.Context, userID, groupID int64) (*service.UserSubscription, error) {
+			sub := &service.UserSubscription{
+				ID:               groupID,
+				UserID:           userID,
+				GroupID:          groupID,
+				Status:           service.SubscriptionStatusActive,
+				ExpiresAt:        now.Add(24 * time.Hour),
+				DailyWindowStart: &now,
+			}
+			if groupID == primaryGroup.ID {
+				sub.DailyUsageUSD = 1
+			}
+			return sub, nil
+		},
+		updateStatus:   func(ctx context.Context, subscriptionID int64, status string) error { return nil },
+		activateWindow: func(ctx context.Context, id int64, start time.Time) error { return nil },
+		resetDaily:     func(ctx context.Context, id int64, start time.Time) error { return nil },
+		resetWeekly:    func(ctx context.Context, id int64, start time.Time) error { return nil },
+		resetMonthly:   func(ctx context.Context, id int64, start time.Time) error { return nil },
+	}
+
+	cfg := &config.Config{RunMode: config.RunModeStandard}
+	apiKeyService := service.NewAPIKeyService(apiKeyRepo, nil, nil, nil, nil, nil, cfg)
+	subscriptionService := service.NewSubscriptionService(nil, subscriptionRepo, nil, nil, cfg)
+	router := gin.New()
+	router.Use(gin.HandlerFunc(NewAPIKeyAuthMiddleware(apiKeyService, subscriptionService, cfg)))
+	router.GET("/t", func(c *gin.Context) {
+		group := c.Request.Context().Value(ctxkey.Group).(*service.Group)
+		sub, ok := GetSubscriptionFromContext(c)
+		require.True(t, ok)
+		c.JSON(http.StatusOK, gin.H{"group_id": group.ID, "subscription_group_id": sub.GroupID})
+	})
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/t", nil)
+	req.Header.Set("x-api-key", apiKey.Key)
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+	require.Contains(t, w.Body.String(), `"group_id":202`)
+	require.Contains(t, w.Body.String(), `"subscription_group_id":202`)
+}
+
 func TestAPIKeyAuthRejectsExclusiveGroupWhenUserNoLongerAllowed(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 

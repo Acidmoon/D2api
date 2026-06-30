@@ -100,51 +100,53 @@ const (
 // APIKeyMutation represents an operation that mutates the APIKey nodes in the graph.
 type APIKeyMutation struct {
 	config
-	op                 Op
-	typ                string
-	id                 *int64
-	created_at         *time.Time
-	updated_at         *time.Time
-	deleted_at         *time.Time
-	key                *string
-	name               *string
-	status             *string
-	last_used_at       *time.Time
-	ip_whitelist       *[]string
-	appendip_whitelist []string
-	ip_blacklist       *[]string
-	appendip_blacklist []string
-	quota              *float64
-	addquota           *float64
-	quota_used         *float64
-	addquota_used      *float64
-	expires_at         *time.Time
-	rate_limit_5h      *float64
-	addrate_limit_5h   *float64
-	rate_limit_1d      *float64
-	addrate_limit_1d   *float64
-	rate_limit_7d      *float64
-	addrate_limit_7d   *float64
-	usage_5h           *float64
-	addusage_5h        *float64
-	usage_1d           *float64
-	addusage_1d        *float64
-	usage_7d           *float64
-	addusage_7d        *float64
-	window_5h_start    *time.Time
-	window_1d_start    *time.Time
-	window_7d_start    *time.Time
-	clearedFields      map[string]struct{}
-	user               *int64
-	cleareduser        bool
-	group              *int64
-	clearedgroup       bool
-	usage_logs         map[int64]struct{}
-	removedusage_logs  map[int64]struct{}
-	clearedusage_logs  bool
-	done               bool
-	oldValue           func(context.Context) (*APIKey, error)
-	predicates         []predicate.APIKey
+	op                   Op
+	typ                  string
+	id                   *int64
+	created_at           *time.Time
+	updated_at           *time.Time
+	deleted_at           *time.Time
+	key                  *string
+	name                 *string
+	status               *string
+	last_used_at         *time.Time
+	ip_whitelist         *[]string
+	appendip_whitelist   []string
+	ip_blacklist         *[]string
+	appendip_blacklist   []string
+	quota                *float64
+	addquota             *float64
+	quota_used           *float64
+	addquota_used        *float64
+	expires_at           *time.Time
+	rate_limit_5h        *float64
+	addrate_limit_5h     *float64
+	rate_limit_1d        *float64
+	addrate_limit_1d     *float64
+	rate_limit_7d        *float64
+	addrate_limit_7d     *float64
+	usage_5h             *float64
+	addusage_5h          *float64
+	usage_1d             *float64
+	addusage_1d          *float64
+	usage_7d             *float64
+	addusage_7d          *float64
+	window_5h_start      *time.Time
+	window_1d_start      *time.Time
+	window_7d_start      *time.Time
+	clearedFields        map[string]struct{}
+	user                 *int64
+	cleareduser          bool
+	group                *int64
+	clearedgroup         bool
+	primary_group        *int64
+	clearedprimary_group bool
+	usage_logs           map[int64]struct{}
+	removedusage_logs    map[int64]struct{}
+	clearedusage_logs    bool
+	done                 bool
+	oldValue             func(context.Context) (*APIKey, error)
+	predicates           []predicate.APIKey
 }
 
 var _ ent.Mutation = (*APIKeyMutation)(nil)
@@ -472,6 +474,55 @@ func (m *APIKeyMutation) OldName(ctx context.Context) (v string, err error) {
 // ResetName resets all changes to the "name" field.
 func (m *APIKeyMutation) ResetName() {
 	m.name = nil
+}
+
+// SetPrimaryGroupID sets the "primary_group_id" field.
+func (m *APIKeyMutation) SetPrimaryGroupID(i int64) {
+	m.primary_group = &i
+}
+
+// PrimaryGroupID returns the value of the "primary_group_id" field in the mutation.
+func (m *APIKeyMutation) PrimaryGroupID() (r int64, exists bool) {
+	v := m.primary_group
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPrimaryGroupID returns the old "primary_group_id" field's value of the APIKey entity.
+// If the APIKey object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *APIKeyMutation) OldPrimaryGroupID(ctx context.Context) (v *int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPrimaryGroupID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPrimaryGroupID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPrimaryGroupID: %w", err)
+	}
+	return oldValue.PrimaryGroupID, nil
+}
+
+// ClearPrimaryGroupID clears the value of the "primary_group_id" field.
+func (m *APIKeyMutation) ClearPrimaryGroupID() {
+	m.primary_group = nil
+	m.clearedFields[apikey.FieldPrimaryGroupID] = struct{}{}
+}
+
+// PrimaryGroupIDCleared returns if the "primary_group_id" field was cleared in this mutation.
+func (m *APIKeyMutation) PrimaryGroupIDCleared() bool {
+	_, ok := m.clearedFields[apikey.FieldPrimaryGroupID]
+	return ok
+}
+
+// ResetPrimaryGroupID resets all changes to the "primary_group_id" field.
+func (m *APIKeyMutation) ResetPrimaryGroupID() {
+	m.primary_group = nil
+	delete(m.clearedFields, apikey.FieldPrimaryGroupID)
 }
 
 // SetGroupID sets the "group_id" field.
@@ -1436,6 +1487,33 @@ func (m *APIKeyMutation) ResetGroup() {
 	m.clearedgroup = false
 }
 
+// ClearPrimaryGroup clears the "primary_group" edge to the Group entity.
+func (m *APIKeyMutation) ClearPrimaryGroup() {
+	m.clearedprimary_group = true
+	m.clearedFields[apikey.FieldPrimaryGroupID] = struct{}{}
+}
+
+// PrimaryGroupCleared reports if the "primary_group" edge to the Group entity was cleared.
+func (m *APIKeyMutation) PrimaryGroupCleared() bool {
+	return m.PrimaryGroupIDCleared() || m.clearedprimary_group
+}
+
+// PrimaryGroupIDs returns the "primary_group" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// PrimaryGroupID instead. It exists only for internal usage by the builders.
+func (m *APIKeyMutation) PrimaryGroupIDs() (ids []int64) {
+	if id := m.primary_group; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetPrimaryGroup resets all changes to the "primary_group" edge.
+func (m *APIKeyMutation) ResetPrimaryGroup() {
+	m.primary_group = nil
+	m.clearedprimary_group = false
+}
+
 // AddUsageLogIDs adds the "usage_logs" edge to the UsageLog entity by ids.
 func (m *APIKeyMutation) AddUsageLogIDs(ids ...int64) {
 	if m.usage_logs == nil {
@@ -1524,7 +1602,7 @@ func (m *APIKeyMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *APIKeyMutation) Fields() []string {
-	fields := make([]string, 0, 23)
+	fields := make([]string, 0, 24)
 	if m.created_at != nil {
 		fields = append(fields, apikey.FieldCreatedAt)
 	}
@@ -1542,6 +1620,9 @@ func (m *APIKeyMutation) Fields() []string {
 	}
 	if m.name != nil {
 		fields = append(fields, apikey.FieldName)
+	}
+	if m.primary_group != nil {
+		fields = append(fields, apikey.FieldPrimaryGroupID)
 	}
 	if m.group != nil {
 		fields = append(fields, apikey.FieldGroupID)
@@ -1614,6 +1695,8 @@ func (m *APIKeyMutation) Field(name string) (ent.Value, bool) {
 		return m.Key()
 	case apikey.FieldName:
 		return m.Name()
+	case apikey.FieldPrimaryGroupID:
+		return m.PrimaryGroupID()
 	case apikey.FieldGroupID:
 		return m.GroupID()
 	case apikey.FieldStatus:
@@ -1669,6 +1752,8 @@ func (m *APIKeyMutation) OldField(ctx context.Context, name string) (ent.Value, 
 		return m.OldKey(ctx)
 	case apikey.FieldName:
 		return m.OldName(ctx)
+	case apikey.FieldPrimaryGroupID:
+		return m.OldPrimaryGroupID(ctx)
 	case apikey.FieldGroupID:
 		return m.OldGroupID(ctx)
 	case apikey.FieldStatus:
@@ -1753,6 +1838,13 @@ func (m *APIKeyMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetName(v)
+		return nil
+	case apikey.FieldPrimaryGroupID:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPrimaryGroupID(v)
 		return nil
 	case apikey.FieldGroupID:
 		v, ok := value.(int64)
@@ -2005,6 +2097,9 @@ func (m *APIKeyMutation) ClearedFields() []string {
 	if m.FieldCleared(apikey.FieldDeletedAt) {
 		fields = append(fields, apikey.FieldDeletedAt)
 	}
+	if m.FieldCleared(apikey.FieldPrimaryGroupID) {
+		fields = append(fields, apikey.FieldPrimaryGroupID)
+	}
 	if m.FieldCleared(apikey.FieldGroupID) {
 		fields = append(fields, apikey.FieldGroupID)
 	}
@@ -2045,6 +2140,9 @@ func (m *APIKeyMutation) ClearField(name string) error {
 	switch name {
 	case apikey.FieldDeletedAt:
 		m.ClearDeletedAt()
+		return nil
+	case apikey.FieldPrimaryGroupID:
+		m.ClearPrimaryGroupID()
 		return nil
 	case apikey.FieldGroupID:
 		m.ClearGroupID()
@@ -2095,6 +2193,9 @@ func (m *APIKeyMutation) ResetField(name string) error {
 		return nil
 	case apikey.FieldName:
 		m.ResetName()
+		return nil
+	case apikey.FieldPrimaryGroupID:
+		m.ResetPrimaryGroupID()
 		return nil
 	case apikey.FieldGroupID:
 		m.ResetGroupID()
@@ -2153,12 +2254,15 @@ func (m *APIKeyMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *APIKeyMutation) AddedEdges() []string {
-	edges := make([]string, 0, 3)
+	edges := make([]string, 0, 4)
 	if m.user != nil {
 		edges = append(edges, apikey.EdgeUser)
 	}
 	if m.group != nil {
 		edges = append(edges, apikey.EdgeGroup)
+	}
+	if m.primary_group != nil {
+		edges = append(edges, apikey.EdgePrimaryGroup)
 	}
 	if m.usage_logs != nil {
 		edges = append(edges, apikey.EdgeUsageLogs)
@@ -2178,6 +2282,10 @@ func (m *APIKeyMutation) AddedIDs(name string) []ent.Value {
 		if id := m.group; id != nil {
 			return []ent.Value{*id}
 		}
+	case apikey.EdgePrimaryGroup:
+		if id := m.primary_group; id != nil {
+			return []ent.Value{*id}
+		}
 	case apikey.EdgeUsageLogs:
 		ids := make([]ent.Value, 0, len(m.usage_logs))
 		for id := range m.usage_logs {
@@ -2190,7 +2298,7 @@ func (m *APIKeyMutation) AddedIDs(name string) []ent.Value {
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *APIKeyMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 3)
+	edges := make([]string, 0, 4)
 	if m.removedusage_logs != nil {
 		edges = append(edges, apikey.EdgeUsageLogs)
 	}
@@ -2213,12 +2321,15 @@ func (m *APIKeyMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *APIKeyMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 3)
+	edges := make([]string, 0, 4)
 	if m.cleareduser {
 		edges = append(edges, apikey.EdgeUser)
 	}
 	if m.clearedgroup {
 		edges = append(edges, apikey.EdgeGroup)
+	}
+	if m.clearedprimary_group {
+		edges = append(edges, apikey.EdgePrimaryGroup)
 	}
 	if m.clearedusage_logs {
 		edges = append(edges, apikey.EdgeUsageLogs)
@@ -2234,6 +2345,8 @@ func (m *APIKeyMutation) EdgeCleared(name string) bool {
 		return m.cleareduser
 	case apikey.EdgeGroup:
 		return m.clearedgroup
+	case apikey.EdgePrimaryGroup:
+		return m.clearedprimary_group
 	case apikey.EdgeUsageLogs:
 		return m.clearedusage_logs
 	}
@@ -2250,6 +2363,9 @@ func (m *APIKeyMutation) ClearEdge(name string) error {
 	case apikey.EdgeGroup:
 		m.ClearGroup()
 		return nil
+	case apikey.EdgePrimaryGroup:
+		m.ClearPrimaryGroup()
+		return nil
 	}
 	return fmt.Errorf("unknown APIKey unique edge %s", name)
 }
@@ -2263,6 +2379,9 @@ func (m *APIKeyMutation) ResetEdge(name string) error {
 		return nil
 	case apikey.EdgeGroup:
 		m.ResetGroup()
+		return nil
+	case apikey.EdgePrimaryGroup:
+		m.ResetPrimaryGroup()
 		return nil
 	case apikey.EdgeUsageLogs:
 		m.ResetUsageLogs()
@@ -15015,6 +15134,9 @@ type GroupMutation struct {
 	api_keys                                map[int64]struct{}
 	removedapi_keys                         map[int64]struct{}
 	clearedapi_keys                         bool
+	primary_api_keys                        map[int64]struct{}
+	removedprimary_api_keys                 map[int64]struct{}
+	clearedprimary_api_keys                 bool
 	redeem_codes                            map[int64]struct{}
 	removedredeem_codes                     map[int64]struct{}
 	clearedredeem_codes                     bool
@@ -16873,6 +16995,60 @@ func (m *GroupMutation) ResetAPIKeys() {
 	m.removedapi_keys = nil
 }
 
+// AddPrimaryAPIKeyIDs adds the "primary_api_keys" edge to the APIKey entity by ids.
+func (m *GroupMutation) AddPrimaryAPIKeyIDs(ids ...int64) {
+	if m.primary_api_keys == nil {
+		m.primary_api_keys = make(map[int64]struct{})
+	}
+	for i := range ids {
+		m.primary_api_keys[ids[i]] = struct{}{}
+	}
+}
+
+// ClearPrimaryAPIKeys clears the "primary_api_keys" edge to the APIKey entity.
+func (m *GroupMutation) ClearPrimaryAPIKeys() {
+	m.clearedprimary_api_keys = true
+}
+
+// PrimaryAPIKeysCleared reports if the "primary_api_keys" edge to the APIKey entity was cleared.
+func (m *GroupMutation) PrimaryAPIKeysCleared() bool {
+	return m.clearedprimary_api_keys
+}
+
+// RemovePrimaryAPIKeyIDs removes the "primary_api_keys" edge to the APIKey entity by IDs.
+func (m *GroupMutation) RemovePrimaryAPIKeyIDs(ids ...int64) {
+	if m.removedprimary_api_keys == nil {
+		m.removedprimary_api_keys = make(map[int64]struct{})
+	}
+	for i := range ids {
+		delete(m.primary_api_keys, ids[i])
+		m.removedprimary_api_keys[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedPrimaryAPIKeys returns the removed IDs of the "primary_api_keys" edge to the APIKey entity.
+func (m *GroupMutation) RemovedPrimaryAPIKeysIDs() (ids []int64) {
+	for id := range m.removedprimary_api_keys {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// PrimaryAPIKeysIDs returns the "primary_api_keys" edge IDs in the mutation.
+func (m *GroupMutation) PrimaryAPIKeysIDs() (ids []int64) {
+	for id := range m.primary_api_keys {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetPrimaryAPIKeys resets all changes to the "primary_api_keys" edge.
+func (m *GroupMutation) ResetPrimaryAPIKeys() {
+	m.primary_api_keys = nil
+	m.clearedprimary_api_keys = false
+	m.removedprimary_api_keys = nil
+}
+
 // AddRedeemCodeIDs adds the "redeem_codes" edge to the RedeemCode entity by ids.
 func (m *GroupMutation) AddRedeemCodeIDs(ids ...int64) {
 	if m.redeem_codes == nil {
@@ -18082,9 +18258,12 @@ func (m *GroupMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *GroupMutation) AddedEdges() []string {
-	edges := make([]string, 0, 6)
+	edges := make([]string, 0, 7)
 	if m.api_keys != nil {
 		edges = append(edges, group.EdgeAPIKeys)
+	}
+	if m.primary_api_keys != nil {
+		edges = append(edges, group.EdgePrimaryAPIKeys)
 	}
 	if m.redeem_codes != nil {
 		edges = append(edges, group.EdgeRedeemCodes)
@@ -18111,6 +18290,12 @@ func (m *GroupMutation) AddedIDs(name string) []ent.Value {
 	case group.EdgeAPIKeys:
 		ids := make([]ent.Value, 0, len(m.api_keys))
 		for id := range m.api_keys {
+			ids = append(ids, id)
+		}
+		return ids
+	case group.EdgePrimaryAPIKeys:
+		ids := make([]ent.Value, 0, len(m.primary_api_keys))
+		for id := range m.primary_api_keys {
 			ids = append(ids, id)
 		}
 		return ids
@@ -18150,9 +18335,12 @@ func (m *GroupMutation) AddedIDs(name string) []ent.Value {
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *GroupMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 6)
+	edges := make([]string, 0, 7)
 	if m.removedapi_keys != nil {
 		edges = append(edges, group.EdgeAPIKeys)
+	}
+	if m.removedprimary_api_keys != nil {
+		edges = append(edges, group.EdgePrimaryAPIKeys)
 	}
 	if m.removedredeem_codes != nil {
 		edges = append(edges, group.EdgeRedeemCodes)
@@ -18179,6 +18367,12 @@ func (m *GroupMutation) RemovedIDs(name string) []ent.Value {
 	case group.EdgeAPIKeys:
 		ids := make([]ent.Value, 0, len(m.removedapi_keys))
 		for id := range m.removedapi_keys {
+			ids = append(ids, id)
+		}
+		return ids
+	case group.EdgePrimaryAPIKeys:
+		ids := make([]ent.Value, 0, len(m.removedprimary_api_keys))
+		for id := range m.removedprimary_api_keys {
 			ids = append(ids, id)
 		}
 		return ids
@@ -18218,9 +18412,12 @@ func (m *GroupMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *GroupMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 6)
+	edges := make([]string, 0, 7)
 	if m.clearedapi_keys {
 		edges = append(edges, group.EdgeAPIKeys)
+	}
+	if m.clearedprimary_api_keys {
+		edges = append(edges, group.EdgePrimaryAPIKeys)
 	}
 	if m.clearedredeem_codes {
 		edges = append(edges, group.EdgeRedeemCodes)
@@ -18246,6 +18443,8 @@ func (m *GroupMutation) EdgeCleared(name string) bool {
 	switch name {
 	case group.EdgeAPIKeys:
 		return m.clearedapi_keys
+	case group.EdgePrimaryAPIKeys:
+		return m.clearedprimary_api_keys
 	case group.EdgeRedeemCodes:
 		return m.clearedredeem_codes
 	case group.EdgeSubscriptions:
@@ -18274,6 +18473,9 @@ func (m *GroupMutation) ResetEdge(name string) error {
 	switch name {
 	case group.EdgeAPIKeys:
 		m.ResetAPIKeys()
+		return nil
+	case group.EdgePrimaryAPIKeys:
+		m.ResetPrimaryAPIKeys()
 		return nil
 	case group.EdgeRedeemCodes:
 		m.ResetRedeemCodes()

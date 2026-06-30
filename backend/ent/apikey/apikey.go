@@ -27,6 +27,8 @@ const (
 	FieldKey = "key"
 	// FieldName holds the string denoting the name field in the database.
 	FieldName = "name"
+	// FieldPrimaryGroupID holds the string denoting the primary_group_id field in the database.
+	FieldPrimaryGroupID = "primary_group_id"
 	// FieldGroupID holds the string denoting the group_id field in the database.
 	FieldGroupID = "group_id"
 	// FieldStatus holds the string denoting the status field in the database.
@@ -65,6 +67,8 @@ const (
 	EdgeUser = "user"
 	// EdgeGroup holds the string denoting the group edge name in mutations.
 	EdgeGroup = "group"
+	// EdgePrimaryGroup holds the string denoting the primary_group edge name in mutations.
+	EdgePrimaryGroup = "primary_group"
 	// EdgeUsageLogs holds the string denoting the usage_logs edge name in mutations.
 	EdgeUsageLogs = "usage_logs"
 	// Table holds the table name of the apikey in the database.
@@ -83,6 +87,13 @@ const (
 	GroupInverseTable = "groups"
 	// GroupColumn is the table column denoting the group relation/edge.
 	GroupColumn = "group_id"
+	// PrimaryGroupTable is the table that holds the primary_group relation/edge.
+	PrimaryGroupTable = "api_keys"
+	// PrimaryGroupInverseTable is the table name for the Group entity.
+	// It exists in this package in order to avoid circular dependency with the "group" package.
+	PrimaryGroupInverseTable = "groups"
+	// PrimaryGroupColumn is the table column denoting the primary_group relation/edge.
+	PrimaryGroupColumn = "primary_group_id"
 	// UsageLogsTable is the table that holds the usage_logs relation/edge.
 	UsageLogsTable = "usage_logs"
 	// UsageLogsInverseTable is the table name for the UsageLog entity.
@@ -101,6 +112,7 @@ var Columns = []string{
 	FieldUserID,
 	FieldKey,
 	FieldName,
+	FieldPrimaryGroupID,
 	FieldGroupID,
 	FieldStatus,
 	FieldLastUsedAt,
@@ -208,6 +220,11 @@ func ByName(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldName, opts...).ToFunc()
 }
 
+// ByPrimaryGroupID orders the results by the primary_group_id field.
+func ByPrimaryGroupID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldPrimaryGroupID, opts...).ToFunc()
+}
+
 // ByGroupID orders the results by the group_id field.
 func ByGroupID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldGroupID, opts...).ToFunc()
@@ -297,6 +314,13 @@ func ByGroupField(field string, opts ...sql.OrderTermOption) OrderOption {
 	}
 }
 
+// ByPrimaryGroupField orders the results by primary_group field.
+func ByPrimaryGroupField(field string, opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newPrimaryGroupStep(), sql.OrderByField(field, opts...))
+	}
+}
+
 // ByUsageLogsCount orders the results by usage_logs count.
 func ByUsageLogsCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
@@ -322,6 +346,13 @@ func newGroupStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(GroupInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.M2O, true, GroupTable, GroupColumn),
+	)
+}
+func newPrimaryGroupStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(PrimaryGroupInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2O, true, PrimaryGroupTable, PrimaryGroupColumn),
 	)
 }
 func newUsageLogsStep() *sqlgraph.Step {

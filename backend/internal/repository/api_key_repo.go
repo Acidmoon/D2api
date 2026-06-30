@@ -44,6 +44,7 @@ func (r *apiKeyRepository) Create(ctx context.Context, key *service.APIKey) erro
 		SetKey(key.Key).
 		SetName(key.Name).
 		SetStatus(key.Status).
+		SetNillablePrimaryGroupID(key.PrimaryGroupID).
 		SetNillableGroupID(key.GroupID).
 		SetNillableLastUsedAt(key.LastUsedAt).
 		SetQuota(key.Quota).
@@ -74,6 +75,7 @@ func (r *apiKeyRepository) GetByID(ctx context.Context, id int64) (*service.APIK
 	m, err := r.activeQuery().
 		Where(apikey.IDEQ(id)).
 		WithUser().
+		WithPrimaryGroup().
 		WithGroup().
 		Only(ctx)
 	if err != nil {
@@ -113,6 +115,7 @@ func (r *apiKeyRepository) GetByKey(ctx context.Context, key string) (*service.A
 			})
 		}).
 		WithGroup().
+		WithPrimaryGroup().
 		Only(ctx)
 	if err != nil {
 		if dbent.IsNotFound(err) {
@@ -129,6 +132,7 @@ func (r *apiKeyRepository) GetByKeyForAuth(ctx context.Context, key string) (*se
 		Select(
 			apikey.FieldID,
 			apikey.FieldUserID,
+			apikey.FieldPrimaryGroupID,
 			apikey.FieldGroupID,
 			apikey.FieldName,
 			apikey.FieldStatus,
@@ -196,6 +200,38 @@ func (r *apiKeyRepository) GetByKeyForAuth(ctx context.Context, key string) (*se
 				group.FieldRpmLimit,
 			)
 		}).
+		WithPrimaryGroup(func(q *dbent.GroupQuery) {
+			q.Select(
+				group.FieldID,
+				group.FieldName,
+				group.FieldPlatform,
+				group.FieldIsExclusive,
+				group.FieldStatus,
+				group.FieldSubscriptionType,
+				group.FieldRateMultiplier,
+				group.FieldDailyLimitUsd,
+				group.FieldWeeklyLimitUsd,
+				group.FieldMonthlyLimitUsd,
+				group.FieldAllowImageGeneration,
+				group.FieldImageRateIndependent,
+				group.FieldImageRateMultiplier,
+				group.FieldImagePrice1k,
+				group.FieldImagePrice2k,
+				group.FieldImagePrice4k,
+				group.FieldClaudeCodeOnly,
+				group.FieldFallbackGroupID,
+				group.FieldFallbackGroupIDOnInvalidRequest,
+				group.FieldModelRoutingEnabled,
+				group.FieldModelRouting,
+				group.FieldMcpXMLInject,
+				group.FieldSupportedModelScopes,
+				group.FieldAllowMessagesDispatch,
+				group.FieldDefaultMappedModel,
+				group.FieldMessagesDispatchModelConfig,
+				group.FieldModelsListConfig,
+				group.FieldRpmLimit,
+			)
+		}).
 		Only(ctx)
 	if err != nil {
 		if dbent.IsNotFound(err) {
@@ -231,6 +267,11 @@ func (r *apiKeyRepository) Update(ctx context.Context, key *service.APIKey) erro
 		builder.SetGroupID(*key.GroupID)
 	} else {
 		builder.ClearGroupID()
+	}
+	if key.PrimaryGroupID != nil {
+		builder.SetPrimaryGroupID(*key.PrimaryGroupID)
+	} else {
+		builder.ClearPrimaryGroupID()
 	}
 
 	// Expiration time
@@ -398,9 +439,12 @@ func (r *apiKeyRepository) ListByUserID(ctx context.Context, userID int64, param
 	}
 	if filters.GroupID != nil {
 		if *filters.GroupID == 0 {
-			q = q.Where(apikey.GroupIDIsNil())
+			q = q.Where(apikey.GroupIDIsNil(), apikey.PrimaryGroupIDIsNil())
 		} else {
-			q = q.Where(apikey.GroupIDEQ(*filters.GroupID))
+			q = q.Where(apikey.Or(
+				apikey.GroupIDEQ(*filters.GroupID),
+				apikey.PrimaryGroupIDEQ(*filters.GroupID),
+			))
 		}
 	}
 
@@ -410,6 +454,7 @@ func (r *apiKeyRepository) ListByUserID(ctx context.Context, userID int64, param
 	}
 
 	keysQuery := q.
+		WithPrimaryGroup().
 		WithGroup().
 		Offset(params.Offset()).
 		Limit(params.Limit())
@@ -455,7 +500,7 @@ func (r *apiKeyRepository) ExistsByKey(ctx context.Context, key string) (bool, e
 }
 
 func (r *apiKeyRepository) ListByGroupID(ctx context.Context, groupID int64, params pagination.PaginationParams) ([]service.APIKey, *pagination.PaginationResult, error) {
-	q := r.activeQuery().Where(apikey.GroupIDEQ(groupID))
+	q := r.activeQuery().Where(apikey.Or(apikey.GroupIDEQ(groupID), apikey.PrimaryGroupIDEQ(groupID)))
 
 	total, err := q.Count(ctx)
 	if err != nil {
@@ -534,26 +579,51 @@ func (r *apiKeyRepository) SearchAPIKeys(ctx context.Context, userID int64, keyw
 
 // ClearGroupIDByGroupID 将指定分组的所有 API Key 的 group_id 设为 nil
 func (r *apiKeyRepository) ClearGroupIDByGroupID(ctx context.Context, groupID int64) (int64, error) {
-	n, err := r.client.APIKey.Update().
-		Where(apikey.GroupIDEQ(groupID), apikey.DeletedAtIsNil()).
-		ClearGroupID().
-		Save(ctx)
-	return int64(n), err
+	res, err := r.sql.ExecContext(ctx, `
+		UPDATE api_keys
+		SET
+			group_id = CASE WHEN group_id = $1 THEN NULL ELSE group_id END,
+			primary_group_id = CASE WHEN primary_group_id = $1 THEN NULL ELSE primary_group_id END,
+			updated_at = NOW()
+		WHERE deleted_at IS NULL AND (group_id = $1 OR primary_group_id = $1)`, groupID)
+	if err != nil {
+		return 0, err
+	}
+	n, err := res.RowsAffected()
+	return n, err
 }
 
 // UpdateGroupIDByUserAndGroup 将用户下绑定 oldGroupID 的所有 Key 迁移到 newGroupID
 func (r *apiKeyRepository) UpdateGroupIDByUserAndGroup(ctx context.Context, userID, oldGroupID, newGroupID int64) (int64, error) {
 	client := clientFromContext(ctx, r.client)
-	n, err := client.APIKey.Update().
-		Where(apikey.UserIDEQ(userID), apikey.GroupIDEQ(oldGroupID), apikey.DeletedAtIsNil()).
-		SetGroupID(newGroupID).
-		Save(ctx)
-	return int64(n), err
+	res, err := client.ExecContext(ctx, `
+		UPDATE api_keys
+		SET
+			primary_group_id = CASE
+				WHEN primary_group_id = $2 AND group_id = $3 THEN NULL
+				WHEN primary_group_id = $2 THEN $3
+				ELSE primary_group_id
+			END,
+			group_id = CASE
+				WHEN group_id = $2 AND primary_group_id = $2 THEN NULL
+				WHEN group_id = $2 AND primary_group_id = $3 THEN NULL
+				WHEN group_id = $2 THEN $3
+				ELSE group_id
+			END,
+			updated_at = NOW()
+		WHERE user_id = $1
+			AND deleted_at IS NULL
+			AND (primary_group_id = $2 OR group_id = $2)`, userID, oldGroupID, newGroupID)
+	if err != nil {
+		return 0, err
+	}
+	n, err := res.RowsAffected()
+	return n, err
 }
 
 // CountByGroupID 获取分组的 API Key 数量
 func (r *apiKeyRepository) CountByGroupID(ctx context.Context, groupID int64) (int64, error) {
-	count, err := r.activeQuery().Where(apikey.GroupIDEQ(groupID)).Count(ctx)
+	count, err := r.activeQuery().Where(apikey.Or(apikey.GroupIDEQ(groupID), apikey.PrimaryGroupIDEQ(groupID))).Count(ctx)
 	return int64(count), err
 }
 
@@ -570,7 +640,7 @@ func (r *apiKeyRepository) ListKeysByUserID(ctx context.Context, userID int64) (
 
 func (r *apiKeyRepository) ListKeysByGroupID(ctx context.Context, groupID int64) ([]string, error) {
 	keys, err := r.activeQuery().
-		Where(apikey.GroupIDEQ(groupID)).
+		Where(apikey.Or(apikey.GroupIDEQ(groupID), apikey.PrimaryGroupIDEQ(groupID))).
 		Select(apikey.FieldKey).
 		Strings(ctx)
 	if err != nil {
@@ -698,29 +768,30 @@ func apiKeyEntityToService(m *dbent.APIKey) *service.APIKey {
 		return nil
 	}
 	out := &service.APIKey{
-		ID:            m.ID,
-		UserID:        m.UserID,
-		Key:           m.Key,
-		Name:          m.Name,
-		Status:        m.Status,
-		IPWhitelist:   m.IPWhitelist,
-		IPBlacklist:   m.IPBlacklist,
-		LastUsedAt:    m.LastUsedAt,
-		CreatedAt:     m.CreatedAt,
-		UpdatedAt:     m.UpdatedAt,
-		GroupID:       m.GroupID,
-		Quota:         m.Quota,
-		QuotaUsed:     m.QuotaUsed,
-		ExpiresAt:     m.ExpiresAt,
-		RateLimit5h:   m.RateLimit5h,
-		RateLimit1d:   m.RateLimit1d,
-		RateLimit7d:   m.RateLimit7d,
-		Usage5h:       m.Usage5h,
-		Usage1d:       m.Usage1d,
-		Usage7d:       m.Usage7d,
-		Window5hStart: m.Window5hStart,
-		Window1dStart: m.Window1dStart,
-		Window7dStart: m.Window7dStart,
+		ID:             m.ID,
+		UserID:         m.UserID,
+		Key:            m.Key,
+		Name:           m.Name,
+		Status:         m.Status,
+		IPWhitelist:    m.IPWhitelist,
+		IPBlacklist:    m.IPBlacklist,
+		LastUsedAt:     m.LastUsedAt,
+		CreatedAt:      m.CreatedAt,
+		UpdatedAt:      m.UpdatedAt,
+		PrimaryGroupID: m.PrimaryGroupID,
+		GroupID:        m.GroupID,
+		Quota:          m.Quota,
+		QuotaUsed:      m.QuotaUsed,
+		ExpiresAt:      m.ExpiresAt,
+		RateLimit5h:    m.RateLimit5h,
+		RateLimit1d:    m.RateLimit1d,
+		RateLimit7d:    m.RateLimit7d,
+		Usage5h:        m.Usage5h,
+		Usage1d:        m.Usage1d,
+		Usage7d:        m.Usage7d,
+		Window5hStart:  m.Window5hStart,
+		Window1dStart:  m.Window1dStart,
+		Window7dStart:  m.Window7dStart,
 	}
 	if m.Edges.User != nil {
 		out.User = userEntityToService(m.Edges.User)
@@ -735,6 +806,9 @@ func apiKeyEntityToService(m *dbent.APIKey) *service.APIKey {
 	}
 	if m.Edges.Group != nil {
 		out.Group = groupEntityToService(m.Edges.Group)
+	}
+	if m.Edges.PrimaryGroup != nil {
+		out.PrimaryGroup = groupEntityToService(m.Edges.PrimaryGroup)
 	}
 	return out
 }

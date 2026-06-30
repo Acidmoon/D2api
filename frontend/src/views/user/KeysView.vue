@@ -97,11 +97,48 @@
             </div>
           </template>
 
+          <template #cell-primary_group="{ row }">
+            <div class="group/dropdown relative">
+              <button
+                :ref="(el) => setGroupButtonRef(row.id, 'primary', el)"
+                @click="openGroupSelector(row, 'primary')"
+                class="-mx-2 -my-1 flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1 transition-all duration-200 hover:bg-gray-100 dark:hover:bg-dark-700"
+                :title="t('keys.clickToChangeGroup')"
+              >
+                <GroupBadge
+                  v-if="row.primary_group"
+                  :name="row.primary_group.name"
+                  :platform="row.primary_group.platform"
+                  :subscription-type="row.primary_group.subscription_type"
+                  :rate-multiplier="row.primary_group.rate_multiplier"
+                  :user-rate-multiplier="userGroupRates[row.primary_group.id]"
+                />
+                <span v-else class="text-sm text-gray-400 dark:text-dark-500">{{
+                  t('keys.noGroup')
+                }}</span>
+                <span class="text-xs text-gray-500 dark:text-gray-400">{{ t('keys.selectGroup') }}</span>
+                <svg
+                  class="h-3.5 w-3.5 text-gray-400 opacity-60 transition-opacity group-hover/dropdown:opacity-100"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  stroke-width="2"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M8.25 15L12 18.75 15.75 15m-7.5-6L12 5.25 15.75 9"
+                  />
+                </svg>
+              </button>
+            </div>
+          </template>
+
           <template #cell-group="{ row }">
             <div class="group/dropdown relative">
               <button
-                :ref="(el) => setGroupButtonRef(row.id, el)"
-                @click="openGroupSelector(row)"
+                :ref="(el) => setGroupButtonRef(row.id, 'secondary', el)"
+                @click="openGroupSelector(row, 'secondary')"
                 class="-mx-2 -my-1 flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1 transition-all duration-200 hover:bg-gray-100 dark:hover:bg-dark-700"
                 :title="t('keys.clickToChangeGroup')"
               >
@@ -364,14 +401,52 @@
           />
         </div>
 
+        <div class="grid gap-4 sm:grid-cols-2">
         <div>
-          <label class="input-label">{{ t('keys.groupLabel') }}</label>
+          <label class="input-label">{{ t('keys.primaryGroup') }}</label>
+          <Select
+            v-model="formData.primary_group_id"
+            :options="groupOptions"
+            :placeholder="t('keys.selectGroup')"
+            :searchable="true"
+            :search-placeholder="t('keys.searchGroup')"
+            :clearable="true"
+            data-tour="key-form-primary-group"
+          >
+            <template #selected="{ option }">
+              <GroupBadge
+                v-if="option"
+                :name="(option as unknown as GroupOption).label"
+                :platform="(option as unknown as GroupOption).platform"
+                :subscription-type="(option as unknown as GroupOption).subscriptionType"
+                :rate-multiplier="(option as unknown as GroupOption).rate"
+                :user-rate-multiplier="(option as unknown as GroupOption).userRate"
+              />
+              <span v-else class="text-gray-400">{{ t('keys.selectGroup') }}</span>
+            </template>
+            <template #option="{ option, selected }">
+              <GroupOptionItem
+                :name="(option as unknown as GroupOption).label"
+                :platform="(option as unknown as GroupOption).platform"
+                :subscription-type="(option as unknown as GroupOption).subscriptionType"
+                :rate-multiplier="(option as unknown as GroupOption).rate"
+                :user-rate-multiplier="(option as unknown as GroupOption).userRate"
+                :description="(option as unknown as GroupOption).description"
+                :selected="selected"
+              />
+            </template>
+          </Select>
+        </div>
+
+        <div>
+          <label class="input-label">{{ t('keys.secondaryGroup') }}</label>
           <Select
             v-model="formData.group_id"
             :options="groupOptions"
             :placeholder="t('keys.selectGroup')"
             :searchable="true"
             :search-placeholder="t('keys.searchGroup')"
+            :clearable="true"
             data-tour="key-form-group"
           >
             <template #selected="{ option }">
@@ -397,6 +472,7 @@
               />
             </template>
           </Select>
+        </div>
         </div>
 
         <!-- Custom Key Section (only for create) -->
@@ -810,8 +886,8 @@
       :show="showUseKeyModal"
       :api-key="selectedKey?.key || ''"
       :base-url="publicSettings?.api_base_url || ''"
-      :platform="selectedKey?.group?.platform || null"
-      :allow-messages-dispatch="selectedKey?.group?.allow_messages_dispatch || false"
+      :platform="displayGroupForKey(selectedKey)?.platform || null"
+      :allow-messages-dispatch="displayGroupForKey(selectedKey)?.allow_messages_dispatch || false"
       @close="closeUseKeyModal"
     />
 
@@ -895,12 +971,12 @@
           <button
             v-for="option in filteredGroupOptions"
             :key="option.value ?? 'null'"
-            @click="changeGroup(selectedKeyForGroup!, option.value)"
+            @click="changeGroup(selectedKeyForGroup!, groupSelectorSlot!, option.value)"
             :class="[
               'flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-sm transition-colors',
               'border-b border-gray-100 last:border-0 dark:border-dark-700',
-              selectedKeyForGroup?.group_id === option.value ||
-              (!selectedKeyForGroup?.group_id && option.value === null)
+              selectedGroupIdForDropdown === option.value ||
+              (selectedGroupIdForDropdown === null && option.value === null)
                 ? 'bg-primary-50 dark:bg-primary-900/20'
                 : 'hover:bg-gray-100 dark:hover:bg-dark-700'
             ]"
@@ -914,8 +990,8 @@
               :user-rate-multiplier="option.userRate"
               :description="option.description"
               :selected="
-                selectedKeyForGroup?.group_id === option.value ||
-                (!selectedKeyForGroup?.group_id && option.value === null)
+                selectedGroupIdForDropdown === option.value ||
+                (selectedGroupIdForDropdown === null && option.value === null)
               "
             />
           </button>
@@ -987,12 +1063,11 @@ const { copyToClipboard: clipboardCopy } = useClipboard()
 const columns = computed<Column[]>(() => [
   { key: 'name', label: t('common.name'), sortable: true },
   { key: 'key', label: t('keys.apiKey'), sortable: false },
-  { key: 'group', label: t('keys.group'), sortable: false },
+  { key: 'primary_group', label: t('keys.primaryGroup'), sortable: false },
+  { key: 'group', label: t('keys.secondaryGroup'), sortable: false },
   { key: 'usage', label: t('keys.usage'), sortable: false },
-  { key: 'rate_limit', label: t('keys.rateLimitColumn'), sortable: false },
   { key: 'expires_at', label: t('keys.expiresAt'), sortable: true },
   { key: 'status', label: t('common.status'), sortable: true },
-  { key: 'last_used_at', label: t('keys.lastUsedAt'), sortable: true },
   { key: 'created_at', label: t('keys.created'), sortable: true },
   { key: 'actions', label: t('common.actions'), sortable: false }
 ])
@@ -1033,10 +1108,11 @@ const pendingCcsRow = ref<ApiKey | null>(null)
 const selectedKey = ref<ApiKey | null>(null)
 const copiedKeyId = ref<number | null>(null)
 const groupSelectorKeyId = ref<number | null>(null)
+const groupSelectorSlot = ref<'primary' | 'secondary' | null>(null)
 const publicSettings = ref<PublicSettings | null>(null)
 const dropdownRef = ref<HTMLElement | null>(null)
 const dropdownPosition = ref<{ top?: number; bottom?: number; left: number } | null>(null)
-const groupButtonRefs = ref<Map<number, HTMLElement>>(new Map())
+const groupButtonRefs = ref<Map<string, HTMLElement>>(new Map())
 let abortController: AbortController | null = null
 
 // Get the currently selected key for group change
@@ -1045,16 +1121,27 @@ const selectedKeyForGroup = computed(() => {
   return apiKeys.value.find((k) => k.id === groupSelectorKeyId.value) || null
 })
 
-const setGroupButtonRef = (keyId: number, el: Element | ComponentPublicInstance | null) => {
+const selectedGroupIdForDropdown = computed(() => {
+  if (!selectedKeyForGroup.value || !groupSelectorSlot.value) return null
+  return groupSelectorSlot.value === 'primary'
+    ? selectedKeyForGroup.value.primary_group_id
+    : selectedKeyForGroup.value.group_id
+})
+
+const groupRefKey = (keyId: number, slot: 'primary' | 'secondary') => `${keyId}:${slot}`
+
+const setGroupButtonRef = (keyId: number, slot: 'primary' | 'secondary', el: Element | ComponentPublicInstance | null) => {
+  const refKey = groupRefKey(keyId, slot)
   if (el instanceof HTMLElement) {
-    groupButtonRefs.value.set(keyId, el)
+    groupButtonRefs.value.set(refKey, el)
   } else {
-    groupButtonRefs.value.delete(keyId)
+    groupButtonRefs.value.delete(refKey)
   }
 }
 
 const formData = ref({
   name: '',
+  primary_group_id: null as number | null,
   group_id: null as number | null,
   status: 'active' as 'active' | 'inactive',
   use_custom_key: false,
@@ -1278,6 +1365,7 @@ const editKey = (key: ApiKey) => {
   const hasExpiration = !!key.expires_at
   formData.value = {
     name: key.name,
+    primary_group_id: key.primary_group_id,
     group_id: key.group_id,
     status: key.status === 'quota_exhausted' || key.status === 'expired' ? 'inactive' : key.status,
     use_custom_key: false,
@@ -1311,12 +1399,13 @@ const toggleKeyStatus = async (key: ApiKey) => {
   }
 }
 
-const openGroupSelector = (key: ApiKey) => {
-  if (groupSelectorKeyId.value === key.id) {
+const openGroupSelector = (key: ApiKey, slot: 'primary' | 'secondary') => {
+  if (groupSelectorKeyId.value === key.id && groupSelectorSlot.value === slot) {
     groupSelectorKeyId.value = null
+    groupSelectorSlot.value = null
     dropdownPosition.value = null
   } else {
-    const buttonEl = groupButtonRefs.value.get(key.id)
+    const buttonEl = groupButtonRefs.value.get(groupRefKey(key.id, slot))
     if (buttonEl) {
       const rect = buttonEl.getBoundingClientRect()
       const dropdownEstHeight = 400 // estimated max dropdown height
@@ -1338,17 +1427,25 @@ const openGroupSelector = (key: ApiKey) => {
       }
     }
     groupSelectorKeyId.value = key.id
+    groupSelectorSlot.value = slot
     groupSearchQuery.value = ''
   }
 }
 
-const changeGroup = async (key: ApiKey, newGroupId: number | null) => {
+const changeGroup = async (key: ApiKey, slot: 'primary' | 'secondary', newGroupId: number | null) => {
   groupSelectorKeyId.value = null
+  groupSelectorSlot.value = null
   dropdownPosition.value = null
-  if (key.group_id === newGroupId) return
+  const currentGroupId = slot === 'primary' ? key.primary_group_id : key.group_id
+  const otherGroupId = slot === 'primary' ? key.group_id : key.primary_group_id
+  if (currentGroupId === newGroupId) return
+  if (newGroupId !== null && otherGroupId === newGroupId) {
+    appStore.showError(t('keys.groupsMustDiffer'))
+    return
+  }
 
   try {
-    await keysAPI.update(key.id, { group_id: newGroupId })
+    await keysAPI.update(key.id, slot === 'primary' ? { primary_group_id: newGroupId } : { group_id: newGroupId })
     appStore.showSuccess(t('keys.groupChangedSuccess'))
     loadApiKeys()
   } catch (error) {
@@ -1361,6 +1458,7 @@ const closeGroupSelector = (event: MouseEvent) => {
   // Check if click is inside the dropdown or the trigger button
   if (!target.closest('.group\\/dropdown') && !dropdownRef.value?.contains(target)) {
     groupSelectorKeyId.value = null
+    groupSelectorSlot.value = null
     dropdownPosition.value = null
   }
 }
@@ -1371,9 +1469,16 @@ const confirmDelete = (key: ApiKey) => {
 }
 
 const handleSubmit = async () => {
-  // Validate group_id is required
-  if (formData.value.group_id === null) {
+  if (formData.value.primary_group_id === null && formData.value.group_id === null) {
     appStore.showError(t('keys.groupRequired'))
+    return
+  }
+  if (
+    formData.value.primary_group_id !== null &&
+    formData.value.group_id !== null &&
+    formData.value.primary_group_id === formData.value.group_id
+  ) {
+    appStore.showError(t('keys.groupsMustDiffer'))
     return
   }
 
@@ -1429,6 +1534,7 @@ const handleSubmit = async () => {
     if (showEditModal.value && selectedKey.value) {
       await keysAPI.update(selectedKey.value.id, {
         name: formData.value.name,
+        primary_group_id: formData.value.primary_group_id,
         group_id: formData.value.group_id,
         status: formData.value.status,
         ip_whitelist: ipWhitelist,
@@ -1444,6 +1550,7 @@ const handleSubmit = async () => {
       const customKey = formData.value.use_custom_key ? formData.value.custom_key : undefined
       await keysAPI.create(
         formData.value.name,
+        formData.value.primary_group_id,
         formData.value.group_id,
         customKey,
         ipWhitelist,
@@ -1495,6 +1602,7 @@ const closeModals = () => {
   selectedKey.value = null
   formData.value = {
     name: '',
+    primary_group_id: null,
     group_id: null,
     status: 'active',
     use_custom_key: false,
@@ -1575,8 +1683,10 @@ const resetRateLimitUsage = async () => {
   }
 }
 
+const displayGroupForKey = (row: ApiKey | null | undefined) => row?.primary_group || row?.group || null
+
 const importToCcswitch = (row: ApiKey) => {
-  const platform = row.group?.platform || 'anthropic'
+  const platform = displayGroupForKey(row)?.platform || 'anthropic'
 
   // For antigravity platform, show client selection dialog
   if (platform === 'antigravity') {
@@ -1591,7 +1701,7 @@ const importToCcswitch = (row: ApiKey) => {
 
 const executeCcsImport = (row: ApiKey, clientType: CcSwitchClientType) => {
   const baseUrl = publicSettings.value?.api_base_url || window.location.origin
-  const platform = row.group?.platform || 'anthropic'
+  const platform = displayGroupForKey(row)?.platform || 'anthropic'
 
   const usageScript = `({
     request: {

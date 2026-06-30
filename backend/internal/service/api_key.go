@@ -28,22 +28,25 @@ func IsWindowExpired(windowStart *time.Time, duration time.Duration) bool {
 }
 
 type APIKey struct {
-	ID          int64
-	UserID      int64
-	Key         string
-	Name        string
-	GroupID     *int64
-	Status      string
-	IPWhitelist []string
-	IPBlacklist []string
+	ID             int64
+	UserID         int64
+	Key            string
+	Name           string
+	PrimaryGroupID *int64
+	GroupID        *int64
+	Status         string
+	IPWhitelist    []string
+	IPBlacklist    []string
 	// 预编译的 IP 规则，用于认证热路径避免重复 ParseIP/ParseCIDR。
-	CompiledIPWhitelist *ip.CompiledIPRules `json:"-"`
-	CompiledIPBlacklist *ip.CompiledIPRules `json:"-"`
-	LastUsedAt          *time.Time
-	CreatedAt           time.Time
-	UpdatedAt           time.Time
-	User                *User
-	Group               *Group
+	CompiledIPWhitelist  *ip.CompiledIPRules `json:"-"`
+	CompiledIPBlacklist  *ip.CompiledIPRules `json:"-"`
+	LastUsedAt           *time.Time
+	CreatedAt            time.Time
+	UpdatedAt            time.Time
+	User                 *User
+	PrimaryGroup         *Group
+	Group                *Group
+	SelectedSubscription *UserSubscription
 
 	// Quota fields
 	Quota     float64    // Quota limit in USD (0 = unlimited)
@@ -139,5 +142,5 @@ func (k *APIKey) EffectiveUsage7d() float64 {
 type APIKeyListFilters struct {
 	Search  string
 	Status  string
-	GroupID *int64 // nil=不筛选, 0=无分组, >0=指定分组
+	GroupID *int64 // nil=不筛选, 0=无主副分组, >0=主分组或副分组命中
 }
