@@ -651,6 +651,20 @@ func (_u *GroupUpdate) AddRpmLimit(v int) *GroupUpdate {
 	return _u
 }
 
+// SetUnavailableAlertEnabled sets the "unavailable_alert_enabled" field.
+func (_u *GroupUpdate) SetUnavailableAlertEnabled(v bool) *GroupUpdate {
+	_u.mutation.SetUnavailableAlertEnabled(v)
+	return _u
+}
+
+// SetNillableUnavailableAlertEnabled sets the "unavailable_alert_enabled" field if the given value is not nil.
+func (_u *GroupUpdate) SetNillableUnavailableAlertEnabled(v *bool) *GroupUpdate {
+	if v != nil {
+		_u.SetUnavailableAlertEnabled(*v)
+	}
+	return _u
+}
+
 // AddAPIKeyIDs adds the "api_keys" edge to the APIKey entity by IDs.
 func (_u *GroupUpdate) AddAPIKeyIDs(ids ...int64) *GroupUpdate {
 	_u.mutation.AddAPIKeyIDs(ids...)
@@ -1170,6 +1184,9 @@ func (_u *GroupUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.AddedRpmLimit(); ok {
 		_spec.AddField(group.FieldRpmLimit, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.UnavailableAlertEnabled(); ok {
+		_spec.SetField(group.FieldUnavailableAlertEnabled, field.TypeBool, value)
 	}
 	if _u.mutation.APIKeysCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -2145,6 +2162,20 @@ func (_u *GroupUpdateOne) AddRpmLimit(v int) *GroupUpdateOne {
 	return _u
 }
 
+// SetUnavailableAlertEnabled sets the "unavailable_alert_enabled" field.
+func (_u *GroupUpdateOne) SetUnavailableAlertEnabled(v bool) *GroupUpdateOne {
+	_u.mutation.SetUnavailableAlertEnabled(v)
+	return _u
+}
+
+// SetNillableUnavailableAlertEnabled sets the "unavailable_alert_enabled" field if the given value is not nil.
+func (_u *GroupUpdateOne) SetNillableUnavailableAlertEnabled(v *bool) *GroupUpdateOne {
+	if v != nil {
+		_u.SetUnavailableAlertEnabled(*v)
+	}
+	return _u
+}
+
 // AddAPIKeyIDs adds the "api_keys" edge to the APIKey entity by IDs.
 func (_u *GroupUpdateOne) AddAPIKeyIDs(ids ...int64) *GroupUpdateOne {
 	_u.mutation.AddAPIKeyIDs(ids...)
@@ -2694,6 +2725,9 @@ func (_u *GroupUpdateOne) sqlSave(ctx context.Context) (_node *Group, err error)
 	}
 	if value, ok := _u.mutation.AddedRpmLimit(); ok {
 		_spec.AddField(group.FieldRpmLimit, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.UnavailableAlertEnabled(); ok {
+		_spec.SetField(group.FieldUnavailableAlertEnabled, field.TypeBool, value)
 	}
 	if _u.mutation.APIKeysCleared() {
 		edge := &sqlgraph.EdgeSpec{

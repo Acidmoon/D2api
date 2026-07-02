@@ -210,6 +210,11 @@ func RpmLimit(v int) predicate.Group {
 	return predicate.Group(sql.FieldEQ(FieldRpmLimit, v))
 }
 
+// UnavailableAlertEnabled applies equality check predicate on the "unavailable_alert_enabled" field. It's identical to UnavailableAlertEnabledEQ.
+func UnavailableAlertEnabled(v bool) predicate.Group {
+	return predicate.Group(sql.FieldEQ(FieldUnavailableAlertEnabled, v))
+}
+
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.
 func CreatedAtEQ(v time.Time) predicate.Group {
 	return predicate.Group(sql.FieldEQ(FieldCreatedAt, v))
@@ -1438,6 +1443,16 @@ func RpmLimitLT(v int) predicate.Group {
 // RpmLimitLTE applies the LTE predicate on the "rpm_limit" field.
 func RpmLimitLTE(v int) predicate.Group {
 	return predicate.Group(sql.FieldLTE(FieldRpmLimit, v))
+}
+
+// UnavailableAlertEnabledEQ applies the EQ predicate on the "unavailable_alert_enabled" field.
+func UnavailableAlertEnabledEQ(v bool) predicate.Group {
+	return predicate.Group(sql.FieldEQ(FieldUnavailableAlertEnabled, v))
+}
+
+// UnavailableAlertEnabledNEQ applies the NEQ predicate on the "unavailable_alert_enabled" field.
+func UnavailableAlertEnabledNEQ(v bool) predicate.Group {
+	return predicate.Group(sql.FieldNEQ(FieldUnavailableAlertEnabled, v))
 }
 
 // HasAPIKeys applies the HasEdge predicate on the "api_keys" edge.

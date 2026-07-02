@@ -122,6 +122,9 @@ type Group struct {
 	// RPMLimit 分组级每分钟请求数上限（0 = 不限制），设置后覆盖用户级 rpm_limit。
 	RPMLimit int `json:"rpm_limit"`
 
+	// UnavailableAlertEnabled 控制该分组全部账号不可调度时是否发送系统邮件警告。
+	UnavailableAlertEnabled bool `json:"unavailable_alert_enabled"`
+
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }

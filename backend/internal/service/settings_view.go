@@ -221,6 +221,9 @@ type SystemSettings struct {
 	AccountQuotaNotifyEnabled bool
 	AccountQuotaNotifyEmails  []NotifyEmailEntry
 
+	// 分组不可用警告通知
+	GroupUnavailableAlertEmails []NotifyEmailEntry
+
 	// 系统全局默认平台配额（key = platform，nil/缺省 = 不限制）
 	DefaultPlatformQuotas map[string]*DefaultPlatformQuotaSetting `json:"default_platform_quotas"`
 

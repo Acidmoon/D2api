@@ -68,6 +68,9 @@ type Group struct {
 	// 一旦设置即接管该分组用户的限流（覆盖用户级 rpm_limit），可被 user-group rpm_override 进一步覆盖。
 	RPMLimit int
 
+	// UnavailableAlertEnabled 控制该分组全部账号不可调度时是否发送系统邮件警告。
+	UnavailableAlertEnabled bool
+
 	CreatedAt time.Time
 	UpdatedAt time.Time
 

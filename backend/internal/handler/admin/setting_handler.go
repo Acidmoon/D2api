@@ -269,6 +269,7 @@ func (h *SettingHandler) GetSettings(c *gin.Context) {
 		SubscriptionExpiryNotifyEnabled:        settings.SubscriptionExpiryNotifyEnabled,
 		AccountQuotaNotifyEnabled:              settings.AccountQuotaNotifyEnabled,
 		AccountQuotaNotifyEmails:               dto.NotifyEmailEntriesFromService(settings.AccountQuotaNotifyEmails),
+		GroupUnavailableAlertEmails:            dto.NotifyEmailEntriesFromService(settings.GroupUnavailableAlertEmails),
 		PaymentEnabled:                         paymentCfg.Enabled,
 		PaymentMinAmount:                       paymentCfg.MinAmount,
 		PaymentMaxAmount:                       paymentCfg.MaxAmount,
@@ -605,6 +606,7 @@ type UpdateSettingsRequest struct {
 	SubscriptionExpiryNotifyEnabled *bool                   `json:"subscription_expiry_notify_enabled"`
 	AccountQuotaNotifyEnabled       *bool                   `json:"account_quota_notify_enabled"`
 	AccountQuotaNotifyEmails        *[]dto.NotifyEmailEntry `json:"account_quota_notify_emails"`
+	GroupUnavailableAlertEmails     *[]dto.NotifyEmailEntry `json:"group_unavailable_alert_emails"`
 
 	// Payment configuration (integrated into settings, full replace)
 	PaymentEnabled                   *bool    `json:"payment_enabled"`
@@ -1739,6 +1741,12 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 			}
 			return previousSettings.AccountQuotaNotifyEmails
 		}(),
+		GroupUnavailableAlertEmails: func() []service.NotifyEmailEntry {
+			if req.GroupUnavailableAlertEmails != nil {
+				return dto.NotifyEmailEntriesToService(*req.GroupUnavailableAlertEmails)
+			}
+			return previousSettings.GroupUnavailableAlertEmails
+		}(),
 		ChannelMonitorEnabled: func() bool {
 			if req.ChannelMonitorEnabled != nil {
 				return *req.ChannelMonitorEnabled
@@ -2061,6 +2069,7 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		SubscriptionExpiryNotifyEnabled:        updatedSettings.SubscriptionExpiryNotifyEnabled,
 		AccountQuotaNotifyEnabled:              updatedSettings.AccountQuotaNotifyEnabled,
 		AccountQuotaNotifyEmails:               dto.NotifyEmailEntriesFromService(updatedSettings.AccountQuotaNotifyEmails),
+		GroupUnavailableAlertEmails:            dto.NotifyEmailEntriesFromService(updatedSettings.GroupUnavailableAlertEmails),
 		PaymentEnabled:                         updatedPaymentCfg.Enabled,
 		PaymentMinAmount:                       updatedPaymentCfg.MinAmount,
 		PaymentMaxAmount:                       updatedPaymentCfg.MaxAmount,
@@ -2556,6 +2565,9 @@ func diffSettings(before *service.SystemSettings, after *service.SystemSettings,
 	}
 	if !equalNotifyEmailEntries(before.AccountQuotaNotifyEmails, after.AccountQuotaNotifyEmails) {
 		changed = append(changed, "account_quota_notify_emails")
+	}
+	if !equalNotifyEmailEntries(before.GroupUnavailableAlertEmails, after.GroupUnavailableAlertEmails) {
+		changed = append(changed, "group_unavailable_alert_emails")
 	}
 	if before.ChannelMonitorEnabled != after.ChannelMonitorEnabled {
 		changed = append(changed, "channel_monitor_enabled")

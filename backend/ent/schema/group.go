@@ -164,6 +164,9 @@ func (Group) Fields() []ent.Field {
 		field.Int("rpm_limit").
 			Default(0).
 			Comment("分组 RPM 上限，0 表示不限制；设置后接管该分组用户的限流"),
+		field.Bool("unavailable_alert_enabled").
+			Default(false).
+			Comment("是否在该分组所有账号不可用时发送邮件警告"),
 	}
 }
 

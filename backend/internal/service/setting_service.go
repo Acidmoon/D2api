@@ -1927,6 +1927,7 @@ func (s *SettingService) buildSystemSettingsUpdates(ctx context.Context, setting
 	updates[SettingKeySubscriptionExpiryNotifyEnabled] = strconv.FormatBool(settings.SubscriptionExpiryNotifyEnabled)
 	updates[SettingKeyAccountQuotaNotifyEnabled] = strconv.FormatBool(settings.AccountQuotaNotifyEnabled)
 	updates[SettingKeyAccountQuotaNotifyEmails] = MarshalNotifyEmails(settings.AccountQuotaNotifyEmails)
+	updates[SettingKeyGroupUnavailableAlertEmails] = MarshalNotifyEmails(settings.GroupUnavailableAlertEmails)
 
 	// 系统全局 platform quota：整体替换语义（null/缺省 = 不限制）。
 	if settings.DefaultPlatformQuotas != nil {
@@ -3381,6 +3382,12 @@ func (s *SettingService) parseSettings(settings map[string]string) *SystemSettin
 	}
 	if result.AccountQuotaNotifyEmails == nil {
 		result.AccountQuotaNotifyEmails = []NotifyEmailEntry{}
+	}
+	if raw := strings.TrimSpace(settings[SettingKeyGroupUnavailableAlertEmails]); raw != "" {
+		result.GroupUnavailableAlertEmails = ParseNotifyEmails(raw)
+	}
+	if result.GroupUnavailableAlertEmails == nil {
+		result.GroupUnavailableAlertEmails = []NotifyEmailEntry{}
 	}
 
 	// 系统层默认 platform quota（修复 Bug B：parseSettings 不填充导致回显恒为 nil）

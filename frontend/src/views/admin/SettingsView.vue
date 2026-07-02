@@ -6538,6 +6538,73 @@
             </div>
           </div>
 
+          <!-- Group Unavailable Alert Recipients -->
+          <div class="card">
+            <div
+              class="border-b border-gray-100 px-6 py-4 dark:border-dark-700"
+            >
+              <h3 class="text-base font-medium text-gray-900 dark:text-white">
+                {{ t("admin.settings.groupUnavailableAlertNotify.title") }}
+              </h3>
+              <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                {{ t("admin.settings.groupUnavailableAlertNotify.description") }}
+              </p>
+            </div>
+            <div class="px-6 py-6">
+              <label
+                class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                >{{ t("admin.settings.groupUnavailableAlertNotify.emails") }}</label
+              >
+              <div class="space-y-2">
+                <div
+                  v-for="(entry, index) in form.group_unavailable_alert_emails ||
+                  []"
+                  :key="index"
+                  class="flex items-center gap-2"
+                >
+                  <label
+                    class="relative inline-flex items-center cursor-pointer shrink-0"
+                  >
+                    <input
+                      type="checkbox"
+                      :checked="!entry.disabled"
+                      @change="entry.disabled = !entry.disabled"
+                      class="sr-only peer"
+                    />
+                    <div
+                      class="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:after:border-gray-500 peer-checked:bg-primary-600"
+                    ></div>
+                  </label>
+                  <input
+                    v-model="entry.email"
+                    type="email"
+                    class="input flex-1"
+                    :placeholder="
+                      t('admin.settings.groupUnavailableAlertNotify.emailPlaceholder')
+                    "
+                  />
+                  <button
+                    @click="form.group_unavailable_alert_emails.splice(index, 1)"
+                    class="btn btn-secondary px-2"
+                    type="button"
+                  >
+                    <Icon name="x" size="xs" class="h-4 w-4" />
+                  </button>
+                </div>
+                <button
+                  @click="addGroupUnavailableAlertEmail"
+                  class="btn btn-secondary btn-sm"
+                  type="button"
+                >
+                  + {{ t("admin.settings.groupUnavailableAlertNotify.addEmail") }}
+                </button>
+              </div>
+              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                {{ t("admin.settings.groupUnavailableAlertNotify.emailsHint") }}
+              </p>
+            </div>
+          </div>
+
           <!-- Account Quota Notification -->
           <div class="card">
             <div
@@ -7212,6 +7279,7 @@ const form = reactive<SettingsForm>({
   subscription_expiry_notify_enabled: true,
   account_quota_notify_enabled: false,
   account_quota_notify_emails: [] as NotifyEmailEntry[],
+  group_unavailable_alert_emails: [] as NotifyEmailEntry[],
   // Channel Monitor feature switch
   channel_monitor_enabled: true,
   channel_monitor_default_interval_seconds: 60,
@@ -7550,6 +7618,17 @@ const addQuotaNotifyEmail = () => {
     form.account_quota_notify_emails = [];
   }
   form.account_quota_notify_emails.push({
+    email: "",
+    disabled: false,
+    verified: true,
+  });
+};
+
+const addGroupUnavailableAlertEmail = () => {
+  if (!form.group_unavailable_alert_emails) {
+    form.group_unavailable_alert_emails = [];
+  }
+  form.group_unavailable_alert_emails.push({
     email: "",
     disabled: false,
     verified: true,
@@ -8353,6 +8432,9 @@ async function saveSettings() {
       account_quota_notify_enabled: form.account_quota_notify_enabled,
       account_quota_notify_emails: (
         form.account_quota_notify_emails || []
+      ).filter((e) => e.email.trim() !== ""),
+      group_unavailable_alert_emails: (
+        form.group_unavailable_alert_emails || []
       ).filter((e) => e.email.trim() !== ""),
       // Channel Monitor feature switch
       channel_monitor_enabled: form.channel_monitor_enabled,

@@ -86,6 +86,8 @@ const (
 	FieldModelsListConfig = "models_list_config"
 	// FieldRpmLimit holds the string denoting the rpm_limit field in the database.
 	FieldRpmLimit = "rpm_limit"
+	// FieldUnavailableAlertEnabled holds the string denoting the unavailable_alert_enabled field in the database.
+	FieldUnavailableAlertEnabled = "unavailable_alert_enabled"
 	// EdgeAPIKeys holds the string denoting the api_keys edge name in mutations.
 	EdgeAPIKeys = "api_keys"
 	// EdgePrimaryAPIKeys holds the string denoting the primary_api_keys edge name in mutations.
@@ -205,6 +207,7 @@ var Columns = []string{
 	FieldMessagesDispatchModelConfig,
 	FieldModelsListConfig,
 	FieldRpmLimit,
+	FieldUnavailableAlertEnabled,
 }
 
 var (
@@ -292,6 +295,8 @@ var (
 	DefaultModelsListConfig domain.GroupModelsListConfig
 	// DefaultRpmLimit holds the default value on creation for the "rpm_limit" field.
 	DefaultRpmLimit int
+	// DefaultUnavailableAlertEnabled holds the default value on creation for the "unavailable_alert_enabled" field.
+	DefaultUnavailableAlertEnabled bool
 )
 
 // OrderOption defines the ordering options for the Group queries.
@@ -455,6 +460,11 @@ func ByDefaultMappedModel(opts ...sql.OrderTermOption) OrderOption {
 // ByRpmLimit orders the results by the rpm_limit field.
 func ByRpmLimit(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldRpmLimit, opts...).ToFunc()
+}
+
+// ByUnavailableAlertEnabled orders the results by the unavailable_alert_enabled field.
+func ByUnavailableAlertEnabled(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldUnavailableAlertEnabled, opts...).ToFunc()
 }
 
 // ByAPIKeysCount orders the results by api_keys count.

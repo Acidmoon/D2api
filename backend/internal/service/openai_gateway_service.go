@@ -354,6 +354,7 @@ type OpenAIGatewayService struct {
 	channelService        *ChannelService
 	balanceNotifyService  *BalanceNotifyService
 	settingService        *SettingService
+	groupUnavailableAlert *GroupUnavailableAlertService
 	userPlatformQuotaRepo UserPlatformQuotaRepository
 
 	openaiWSPoolOnce              sync.Once
@@ -399,6 +400,7 @@ func NewOpenAIGatewayService(
 	channelService *ChannelService,
 	balanceNotifyService *BalanceNotifyService,
 	settingService *SettingService,
+	groupUnavailableAlert *GroupUnavailableAlertService,
 	userPlatformQuotaRepo UserPlatformQuotaRepository,
 ) *OpenAIGatewayService {
 	svc := &OpenAIGatewayService{
@@ -431,6 +433,7 @@ func NewOpenAIGatewayService(
 		channelService:        channelService,
 		balanceNotifyService:  balanceNotifyService,
 		settingService:        settingService,
+		groupUnavailableAlert: groupUnavailableAlert,
 		userPlatformQuotaRepo: userPlatformQuotaRepo,
 		responseHeaderFilter:  compileResponseHeaderFilter(cfg),
 		codexSnapshotThrottle: newAccountWriteThrottle(openAICodexSnapshotPersistMinInterval),

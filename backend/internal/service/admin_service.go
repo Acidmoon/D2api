@@ -230,6 +230,8 @@ type CreateGroupInput struct {
 	ModelsListConfig            GroupModelsListConfig
 	// RPMLimit 分组 RPM 上限（0 = 不限制）
 	RPMLimit int
+	// UnavailableAlertEnabled 控制该分组全部账号不可调度时是否发送系统邮件警告。
+	UnavailableAlertEnabled bool
 	// 从指定分组复制账号（创建分组后在同一事务内绑定）
 	CopyAccountsFromGroupIDs []int64
 }
@@ -271,6 +273,8 @@ type UpdateGroupInput struct {
 	ModelsListConfig            *GroupModelsListConfig
 	// RPMLimit 分组 RPM 上限（0 = 不限制），nil 表示未提供不改动。
 	RPMLimit *int
+	// UnavailableAlertEnabled 控制该分组全部账号不可调度时是否发送系统邮件警告。
+	UnavailableAlertEnabled *bool
 	// 从指定分组复制账号（同步操作：先清空当前分组的账号绑定，再绑定源分组的账号）
 	CopyAccountsFromGroupIDs []int64
 }
@@ -1906,6 +1910,7 @@ func (s *adminServiceImpl) CreateGroup(ctx context.Context, input *CreateGroupIn
 		MessagesDispatchModelConfig:     normalizeOpenAIMessagesDispatchModelConfig(input.MessagesDispatchModelConfig),
 		ModelsListConfig:                normalizeGroupModelsListConfig(input.ModelsListConfig),
 		RPMLimit:                        input.RPMLimit,
+		UnavailableAlertEnabled:         input.UnavailableAlertEnabled,
 	}
 	sanitizeGroupMessagesDispatchFields(group)
 	if err := s.groupRepo.Create(ctx, group); err != nil {
@@ -2157,6 +2162,9 @@ func (s *adminServiceImpl) UpdateGroup(ctx context.Context, id int64, input *Upd
 	}
 	if input.RPMLimit != nil {
 		group.RPMLimit = *input.RPMLimit
+	}
+	if input.UnavailableAlertEnabled != nil {
+		group.UnavailableAlertEnabled = *input.UnavailableAlertEnabled
 	}
 	sanitizeGroupMessagesDispatchFields(group)
 

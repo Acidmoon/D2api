@@ -185,6 +185,16 @@
             >
           </template>
 
+          <template #cell-unavailable_alert_enabled="{ value }">
+            <span :class="['badge', value ? 'badge-success' : 'badge-gray']">
+              {{
+                value
+                  ? t("admin.groups.unavailableAlertEnabled")
+                  : t("admin.groups.unavailableAlertDisabled")
+              }}
+            </span>
+          </template>
+
           <template #cell-is_exclusive="{ value }">
             <span :class="['badge', value ? 'badge-primary' : 'badge-gray']">
               {{
@@ -508,6 +518,19 @@
             :placeholder="t('admin.groups.form.rpmLimitPlaceholder')"
           />
           <p class="input-hint">{{ t("admin.groups.form.rpmLimitHint") }}</p>
+        </div>
+        <div class="rounded-lg border border-gray-200 p-4 dark:border-dark-600">
+          <div class="flex items-center justify-between gap-4">
+            <div>
+              <label class="input-label mb-0">
+                {{ t("admin.groups.form.unavailableAlert") }}
+              </label>
+              <p class="input-hint mt-1">
+                {{ t("admin.groups.form.unavailableAlertHint") }}
+              </p>
+            </div>
+            <Toggle v-model="createForm.unavailable_alert_enabled" />
+          </div>
         </div>
         <div
           v-if="createForm.subscription_type !== 'subscription'"
@@ -1795,6 +1818,19 @@
           />
           <p class="input-hint">{{ t("admin.groups.form.rpmLimitHint") }}</p>
         </div>
+        <div class="rounded-lg border border-gray-200 p-4 dark:border-dark-600">
+          <div class="flex items-center justify-between gap-4">
+            <div>
+              <label class="input-label mb-0">
+                {{ t("admin.groups.form.unavailableAlert") }}
+              </label>
+              <p class="input-hint mt-1">
+                {{ t("admin.groups.form.unavailableAlertHint") }}
+              </p>
+            </div>
+            <Toggle v-model="editForm.unavailable_alert_enabled" />
+          </div>
+        </div>
         <div v-if="editForm.subscription_type !== 'subscription'">
           <div class="mb-1.5 flex items-center gap-1">
             <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -3057,6 +3093,7 @@ import Icon from "@/components/icons/Icon.vue";
 import GroupRateMultipliersModal from "@/components/admin/group/GroupRateMultipliersModal.vue";
 import GroupRPMOverridesModal from "@/components/admin/group/GroupRPMOverridesModal.vue";
 import GroupCapacityBadge from "@/components/common/GroupCapacityBadge.vue";
+import Toggle from "@/components/common/Toggle.vue";
 import { VueDraggable } from "vue-draggable-plus";
 import { createStableObjectKeyResolver } from "@/utils/stableObjectKey";
 import { useKeyedDebouncedSearch } from "@/composables/useKeyedDebouncedSearch";
@@ -3099,6 +3136,10 @@ const columns = computed<Column[]>(() => [
     key: "rate_multiplier",
     label: t("admin.groups.columns.rateMultiplier"),
     sortable: true,
+  },
+  {
+    key: "unavailable_alert_enabled",
+    label: t("admin.groups.columns.unavailableAlert"),
   },
   {
     key: "is_exclusive",
@@ -3363,6 +3404,8 @@ const createForm = reactive({
   copy_accounts_from_group_ids: [] as number[],
   // 分组级 RPM 限制（每用户每分钟最大请求数；0 = 不限制）
   rpm_limit: 0 as number,
+  // 分组不可用警告开关
+  unavailable_alert_enabled: false,
 });
 
 // 简单账号类型（用于模型路由选择）
@@ -3695,6 +3738,8 @@ const editForm = reactive({
   copy_accounts_from_group_ids: [] as number[],
   // 分组级 RPM 限制（每用户每分钟最大请求数；0 = 不限制）
   rpm_limit: 0 as number,
+  // 分组不可用警告开关
+  unavailable_alert_enabled: false,
 });
 
 type ImagePricingFormState = {
@@ -3932,6 +3977,7 @@ const closeCreateModal = () => {
   createForm.mcp_xml_inject = true;
   createForm.copy_accounts_from_group_ids = [];
   createForm.rpm_limit = 0;
+  createForm.unavailable_alert_enabled = false;
   resetModelsListState(createModelsListState);
   createModelRoutingRules.value = [];
 };
@@ -4074,6 +4120,7 @@ const handleEdit = async (group: AdminGroup) => {
   editForm.mcp_xml_inject = group.mcp_xml_inject ?? true;
   editForm.copy_accounts_from_group_ids = []; // 复制账号字段每次编辑时重置为空
   editForm.rpm_limit = group.rpm_limit ?? 0;
+  editForm.unavailable_alert_enabled = group.unavailable_alert_enabled ?? false;
   resetModelsListState(editModelsListState, group.models_list_config);
   // 加载模型路由规则（异步加载账号名称）
   editModelRoutingRules.value = await convertApiFormatToRoutingRules(
@@ -4092,6 +4139,7 @@ const closeEditModal = () => {
   editingGroup.value = null;
   editModelRoutingRules.value = [];
   editForm.copy_accounts_from_group_ids = [];
+  editForm.unavailable_alert_enabled = false;
   resetMessagesDispatchFormState(editForm);
   resetModelsListState(editModelsListState);
 };

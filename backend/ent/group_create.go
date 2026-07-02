@@ -495,6 +495,20 @@ func (_c *GroupCreate) SetNillableRpmLimit(v *int) *GroupCreate {
 	return _c
 }
 
+// SetUnavailableAlertEnabled sets the "unavailable_alert_enabled" field.
+func (_c *GroupCreate) SetUnavailableAlertEnabled(v bool) *GroupCreate {
+	_c.mutation.SetUnavailableAlertEnabled(v)
+	return _c
+}
+
+// SetNillableUnavailableAlertEnabled sets the "unavailable_alert_enabled" field if the given value is not nil.
+func (_c *GroupCreate) SetNillableUnavailableAlertEnabled(v *bool) *GroupCreate {
+	if v != nil {
+		_c.SetUnavailableAlertEnabled(*v)
+	}
+	return _c
+}
+
 // AddAPIKeyIDs adds the "api_keys" edge to the APIKey entity by IDs.
 func (_c *GroupCreate) AddAPIKeyIDs(ids ...int64) *GroupCreate {
 	_c.mutation.AddAPIKeyIDs(ids...)
@@ -735,6 +749,10 @@ func (_c *GroupCreate) defaults() error {
 		v := group.DefaultRpmLimit
 		_c.mutation.SetRpmLimit(v)
 	}
+	if _, ok := _c.mutation.UnavailableAlertEnabled(); !ok {
+		v := group.DefaultUnavailableAlertEnabled
+		_c.mutation.SetUnavailableAlertEnabled(v)
+	}
 	return nil
 }
 
@@ -836,6 +854,9 @@ func (_c *GroupCreate) check() error {
 	}
 	if _, ok := _c.mutation.RpmLimit(); !ok {
 		return &ValidationError{Name: "rpm_limit", err: errors.New(`ent: missing required field "Group.rpm_limit"`)}
+	}
+	if _, ok := _c.mutation.UnavailableAlertEnabled(); !ok {
+		return &ValidationError{Name: "unavailable_alert_enabled", err: errors.New(`ent: missing required field "Group.unavailable_alert_enabled"`)}
 	}
 	return nil
 }
@@ -1003,6 +1024,10 @@ func (_c *GroupCreate) createSpec() (*Group, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.RpmLimit(); ok {
 		_spec.SetField(group.FieldRpmLimit, field.TypeInt, value)
 		_node.RpmLimit = value
+	}
+	if value, ok := _c.mutation.UnavailableAlertEnabled(); ok {
+		_spec.SetField(group.FieldUnavailableAlertEnabled, field.TypeBool, value)
+		_node.UnavailableAlertEnabled = value
 	}
 	if nodes := _c.mutation.APIKeysIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
@@ -1728,6 +1753,18 @@ func (u *GroupUpsert) AddRpmLimit(v int) *GroupUpsert {
 	return u
 }
 
+// SetUnavailableAlertEnabled sets the "unavailable_alert_enabled" field.
+func (u *GroupUpsert) SetUnavailableAlertEnabled(v bool) *GroupUpsert {
+	u.Set(group.FieldUnavailableAlertEnabled, v)
+	return u
+}
+
+// UpdateUnavailableAlertEnabled sets the "unavailable_alert_enabled" field to the value that was provided on create.
+func (u *GroupUpsert) UpdateUnavailableAlertEnabled() *GroupUpsert {
+	u.SetExcluded(group.FieldUnavailableAlertEnabled)
+	return u
+}
+
 // UpdateNewValues updates the mutable fields using the new values that were set on create.
 // Using this option is equivalent to using:
 //
@@ -2414,6 +2451,20 @@ func (u *GroupUpsertOne) AddRpmLimit(v int) *GroupUpsertOne {
 func (u *GroupUpsertOne) UpdateRpmLimit() *GroupUpsertOne {
 	return u.Update(func(s *GroupUpsert) {
 		s.UpdateRpmLimit()
+	})
+}
+
+// SetUnavailableAlertEnabled sets the "unavailable_alert_enabled" field.
+func (u *GroupUpsertOne) SetUnavailableAlertEnabled(v bool) *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.SetUnavailableAlertEnabled(v)
+	})
+}
+
+// UpdateUnavailableAlertEnabled sets the "unavailable_alert_enabled" field to the value that was provided on create.
+func (u *GroupUpsertOne) UpdateUnavailableAlertEnabled() *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.UpdateUnavailableAlertEnabled()
 	})
 }
 
@@ -3269,6 +3320,20 @@ func (u *GroupUpsertBulk) AddRpmLimit(v int) *GroupUpsertBulk {
 func (u *GroupUpsertBulk) UpdateRpmLimit() *GroupUpsertBulk {
 	return u.Update(func(s *GroupUpsert) {
 		s.UpdateRpmLimit()
+	})
+}
+
+// SetUnavailableAlertEnabled sets the "unavailable_alert_enabled" field.
+func (u *GroupUpsertBulk) SetUnavailableAlertEnabled(v bool) *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.SetUnavailableAlertEnabled(v)
+	})
+}
+
+// UpdateUnavailableAlertEnabled sets the "unavailable_alert_enabled" field to the value that was provided on create.
+func (u *GroupUpsertBulk) UpdateUnavailableAlertEnabled() *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.UpdateUnavailableAlertEnabled()
 	})
 }
 

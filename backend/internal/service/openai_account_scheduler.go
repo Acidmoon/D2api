@@ -939,6 +939,7 @@ func (s *defaultOpenAIAccountScheduler) selectByLoadBalance(
 		})
 	}
 	if len(filtered) == 0 {
+		s.service.notifyGroupUnavailable(ctx, req, schedGroup, "filter", len(accounts), 0, 0, "all group accounts were filtered before load balancing")
 		return nil, 0, 0, 0, noAvailableOpenAISelectionError(req.RequestedModel, false)
 	}
 
@@ -961,6 +962,7 @@ func (s *defaultOpenAIAccountScheduler) selectByLoadBalance(
 		return nil, candidateCount, topK, loadSkew, ErrNoAvailableCompactAccounts
 	}
 	if len(selectionOrder) == 0 {
+		s.service.notifyGroupUnavailable(ctx, req, schedGroup, "load_plan", len(accounts), candidateCount, topK, "no candidate account remained after load planning")
 		return nil, candidateCount, topK, loadSkew, noAvailableOpenAISelectionError(req.RequestedModel, req.RequireCompact && len(plan.allCandidates) > 0)
 	}
 
@@ -1018,7 +1020,41 @@ func (s *defaultOpenAIAccountScheduler) selectByLoadBalance(
 		}, candidateCount, topK, loadSkew, nil
 	}
 
+	s.service.notifyGroupUnavailable(ctx, req, schedGroup, "acquire", len(accounts), candidateCount, topK, "all candidate accounts failed concurrency acquisition or final database recheck")
 	return nil, candidateCount, topK, loadSkew, noAvailableOpenAISelectionError(req.RequestedModel, compactBlocked)
+}
+
+func (s *OpenAIGatewayService) notifyGroupUnavailable(
+	ctx context.Context,
+	req OpenAIAccountScheduleRequest,
+	schedGroup *Group,
+	stage string,
+	totalAccounts int,
+	candidateCount int,
+	topK int,
+	reason string,
+) {
+	if s == nil || s.groupUnavailableAlert == nil || req.GroupID == nil || *req.GroupID <= 0 || totalAccounts == 0 {
+		return
+	}
+	if schedGroup == nil && s.schedulerSnapshot != nil {
+		schedGroup, _ = s.schedulerSnapshot.GetGroupByID(ctx, *req.GroupID)
+	}
+	if schedGroup == nil || !schedGroup.UnavailableAlertEnabled {
+		return
+	}
+	s.groupUnavailableAlert.NotifyAsync(GroupUnavailableAlertInput{
+		GroupID:        *req.GroupID,
+		GroupName:      schedGroup.Name,
+		Platform:       schedGroup.Platform,
+		RequestedModel: req.RequestedModel,
+		Stage:          stage,
+		TotalAccounts:  totalAccounts,
+		CandidateCount: candidateCount,
+		TopK:           topK,
+		Reason:         reason,
+		OccurredAt:     time.Now(),
+	})
 }
 
 func (s *defaultOpenAIAccountScheduler) isAccountTransportCompatible(account *Account, requiredTransport OpenAIUpstreamTransport) bool {

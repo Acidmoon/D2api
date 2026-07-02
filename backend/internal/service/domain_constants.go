@@ -444,8 +444,10 @@ const (
 	SettingKeySubscriptionExpiryNotifyEnabled = "subscription_expiry_notify_enabled" // 订阅到期提醒全局开关，默认开启
 
 	// 账号限额通知
-	SettingKeyAccountQuotaNotifyEnabled = "account_quota_notify_enabled" // 全局开关
-	SettingKeyAccountQuotaNotifyEmails  = "account_quota_notify_emails"  // 管理员通知邮箱列表（JSON 数组）
+	SettingKeyAccountQuotaNotifyEnabled      = "account_quota_notify_enabled"      // 全局开关
+	SettingKeyAccountQuotaNotifyEmails       = "account_quota_notify_emails"       // 管理员通知邮箱列表（JSON 数组）
+	SettingKeyGroupUnavailableAlertEmails    = "group_unavailable_alert_emails"    // 分组不可用警告收件邮箱列表（JSON 数组）
+	SettingKeyGroupUnavailableAlertCooldowns = "group_unavailable_alert_cooldowns" // 分组不可用警告冷却记录（JSON 对象）
 
 	// Web Search Emulation
 	SettingKeyWebSearchEmulationConfig = "web_search_emulation_config" // JSON 配置

@@ -599,6 +599,7 @@ export interface SystemSettings {
   subscription_expiry_notify_enabled: boolean;
   account_quota_notify_enabled: boolean;
   account_quota_notify_emails: NotifyEmailEntry[];
+  group_unavailable_alert_emails: NotifyEmailEntry[];
 
   // Channel Monitor feature switch
   channel_monitor_enabled: boolean;
@@ -832,6 +833,7 @@ export interface UpdateSettingsRequest {
   subscription_expiry_notify_enabled?: boolean;
   account_quota_notify_enabled?: boolean;
   account_quota_notify_emails?: NotifyEmailEntry[];
+  group_unavailable_alert_emails?: NotifyEmailEntry[];
 
   // Channel Monitor feature switch
   channel_monitor_enabled?: boolean;
