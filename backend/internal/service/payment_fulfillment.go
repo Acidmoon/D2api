@@ -425,9 +425,13 @@ func (s *PaymentService) ExecuteSubscriptionFulfillment(ctx context.Context, oid
 func (s *PaymentService) doSub(ctx context.Context, o *dbent.PaymentOrder) error {
 	gid := *o.SubscriptionGroupID
 	days := *o.SubscriptionDays
-	g, err := s.groupRepo.GetByID(ctx, gid)
-	if err != nil || g.Status != payment.EntityStatusActive {
-		return fmt.Errorf("group %d no longer exists or inactive", gid)
+	var group *Group
+	if gid > 0 {
+		g, err := s.groupRepo.GetByID(ctx, gid)
+		if err != nil || g.Status != payment.EntityStatusActive {
+			return fmt.Errorf("group %d no longer exists or inactive", gid)
+		}
+		group = g
 	}
 	// Idempotency: check audit log to see if subscription was already assigned.
 	// Prevents double-extension on retry after markCompleted fails.
@@ -435,12 +439,51 @@ func (s *PaymentService) doSub(ctx context.Context, o *dbent.PaymentOrder) error
 		slog.Info("subscription already assigned for order, skipping", "orderID", o.ID, "groupID", gid)
 		return s.markCompleted(ctx, o, "SUBSCRIPTION_SUCCESS")
 	}
+	planName, dailyLimit, weeklyLimit, monthlyLimit := subscriptionFulfillmentPlanSnapshot(ctx, s.configService, o, group)
 	orderNote := fmt.Sprintf("payment order %d", o.ID)
-	_, _, err = s.subscriptionSvc.AssignOrExtendSubscription(ctx, &AssignSubscriptionInput{UserID: o.UserID, GroupID: gid, ValidityDays: days, AssignedBy: 0, Notes: orderNote})
+	_, _, err := s.subscriptionSvc.AssignOrExtendSubscription(ctx, &AssignSubscriptionInput{
+		UserID:          o.UserID,
+		GroupID:         0,
+		PlanName:        planName,
+		DailyLimitUSD:   dailyLimit,
+		WeeklyLimitUSD:  weeklyLimit,
+		MonthlyLimitUSD: monthlyLimit,
+		ValidityDays:    days,
+		AssignedBy:      0,
+		Notes:           orderNote,
+	})
 	if err != nil {
 		return fmt.Errorf("assign subscription: %w", err)
 	}
 	return s.markCompleted(ctx, o, "SUBSCRIPTION_SUCCESS")
+}
+
+func subscriptionFulfillmentPlanSnapshot(ctx context.Context, configService *PaymentConfigService, o *dbent.PaymentOrder, group *Group) (string, *float64, *float64, *float64) {
+	planName := "Paid subscription"
+	var dailyLimit, weeklyLimit, monthlyLimit *float64
+	if group != nil {
+		planName = group.Name
+		dailyLimit = group.DailyLimitUSD
+		weeklyLimit = group.WeeklyLimitUSD
+		monthlyLimit = group.MonthlyLimitUSD
+	}
+	if configService != nil && o != nil && o.PlanID != nil {
+		if plan, err := configService.GetPlan(ctx, *o.PlanID); err == nil && plan != nil {
+			if strings.TrimSpace(plan.Name) != "" {
+				planName = plan.Name
+			}
+			if plan.DailyLimitUsd != nil {
+				dailyLimit = plan.DailyLimitUsd
+			}
+			if plan.WeeklyLimitUsd != nil {
+				weeklyLimit = plan.WeeklyLimitUsd
+			}
+			if plan.MonthlyLimitUsd != nil {
+				monthlyLimit = plan.MonthlyLimitUsd
+			}
+		}
+	}
+	return planName, dailyLimit, weeklyLimit, monthlyLimit
 }
 
 func (s *PaymentService) hasAuditLog(ctx context.Context, orderID int64, action string) bool {

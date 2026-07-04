@@ -54,25 +54,29 @@ func (h *PaymentHandler) GetPlans(c *gin.Context) {
 	}
 	// Enrich plans with group platform for frontend color coding
 	type planWithPlatform struct {
-		ID            int64    `json:"id"`
-		GroupID       int64    `json:"group_id"`
-		GroupPlatform string   `json:"group_platform"`
-		Name          string   `json:"name"`
-		Description   string   `json:"description"`
-		Price         float64  `json:"price"`
-		OriginalPrice *float64 `json:"original_price,omitempty"`
-		ValidityDays  int      `json:"validity_days"`
-		ValidityUnit  string   `json:"validity_unit"`
-		Features      string   `json:"features"`
-		ProductName   string   `json:"product_name"`
-		ForSale       bool     `json:"for_sale"`
-		SortOrder     int      `json:"sort_order"`
+		ID              int64    `json:"id"`
+		GroupID         int64    `json:"group_id"`
+		GroupPlatform   string   `json:"group_platform"`
+		DailyLimitUSD   *float64 `json:"daily_limit_usd"`
+		WeeklyLimitUSD  *float64 `json:"weekly_limit_usd"`
+		MonthlyLimitUSD *float64 `json:"monthly_limit_usd"`
+		Name            string   `json:"name"`
+		Description     string   `json:"description"`
+		Price           float64  `json:"price"`
+		OriginalPrice   *float64 `json:"original_price,omitempty"`
+		ValidityDays    int      `json:"validity_days"`
+		ValidityUnit    string   `json:"validity_unit"`
+		Features        string   `json:"features"`
+		ProductName     string   `json:"product_name"`
+		ForSale         bool     `json:"for_sale"`
+		SortOrder       int      `json:"sort_order"`
 	}
 	platformMap := h.configService.GetGroupPlatformMap(c.Request.Context(), plans)
 	result := make([]planWithPlatform, 0, len(plans))
 	for _, p := range plans {
 		result = append(result, planWithPlatform{
 			ID: int64(p.ID), GroupID: p.GroupID, GroupPlatform: platformMap[p.GroupID],
+			DailyLimitUSD: p.DailyLimitUsd, WeeklyLimitUSD: p.WeeklyLimitUsd, MonthlyLimitUSD: p.MonthlyLimitUsd,
 			Name: p.Name, Description: p.Description, Price: p.Price, OriginalPrice: p.OriginalPrice,
 			ValidityDays: p.ValidityDays, ValidityUnit: p.ValidityUnit, Features: p.Features,
 			ProductName: p.ProductName, ForSale: p.ForSale, SortOrder: p.SortOrder,
@@ -121,8 +125,8 @@ func (h *PaymentHandler) GetCheckoutInfo(c *gin.Context) {
 		planList = append(planList, checkoutPlan{
 			ID: int64(p.ID), GroupID: p.GroupID,
 			GroupPlatform: gi.Platform, GroupName: gi.Name,
-			RateMultiplier: gi.RateMultiplier, DailyLimitUSD: gi.DailyLimitUSD,
-			WeeklyLimitUSD: gi.WeeklyLimitUSD, MonthlyLimitUSD: gi.MonthlyLimitUSD,
+			RateMultiplier: gi.RateMultiplier, DailyLimitUSD: firstLimit(p.DailyLimitUsd, gi.DailyLimitUSD),
+			WeeklyLimitUSD: firstLimit(p.WeeklyLimitUsd, gi.WeeklyLimitUSD), MonthlyLimitUSD: firstLimit(p.MonthlyLimitUsd, gi.MonthlyLimitUSD),
 			ModelScopes: gi.ModelScopes,
 			Name:        p.Name, Description: p.Description, Price: p.Price, OriginalPrice: p.OriginalPrice,
 			ValidityDays: p.ValidityDays, ValidityUnit: p.ValidityUnit, Features: parseFeatures(p.Features),
@@ -143,6 +147,13 @@ func (h *PaymentHandler) GetCheckoutInfo(c *gin.Context) {
 		StripePublishableKey:      cfg.StripePublishableKey,
 		AlipayForceQRCode:         cfg.AlipayForceQRCode,
 	})
+}
+
+func firstLimit(primary, fallback *float64) *float64 {
+	if primary != nil {
+		return primary
+	}
+	return fallback
 }
 
 type checkoutInfoResponse struct {

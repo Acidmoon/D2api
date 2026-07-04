@@ -7,8 +7,8 @@
           <input v-model="planForm.name" type="text" class="input" required />
         </div>
         <div>
-          <label class="input-label">{{ t('payment.admin.group') }} <span class="text-red-500">*</span></label>
-          <Select v-model="planForm.group_id" :options="groupOptions" :placeholder="t('payment.admin.selectGroup')" class="w-full">
+          <label class="input-label">{{ t('payment.admin.compatGroup') }}</label>
+          <Select v-model="planForm.group_id" :options="groupOptions" :placeholder="t('payment.admin.selectGroup')" class="w-full" clearable>
             <template #selected="{ option }">
               <span v-if="option?.platform" :class="platformTextClass(String(option.platform))">{{ option.label }}</span>
               <span v-else>{{ option?.label || t('payment.admin.selectGroup') }}</span>
@@ -21,7 +21,7 @@
         </div>
       </div>
 
-      <!-- Group Info Preview -->
+      <!-- Optional compatibility group preview. Subscriptions now use plan limits, not group membership. -->
       <div v-if="selectedGroupInfo" class="rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-dark-600 dark:bg-dark-800">
         <div class="mb-2 flex items-center gap-2">
           <GroupBadge :name="selectedGroupInfo.name" :platform="selectedGroupInfo.platform" :rate-multiplier="selectedGroupInfo.rate_multiplier" />
@@ -37,6 +37,11 @@
       <div class="grid grid-cols-2 gap-4">
         <div><label class="input-label">{{ t('payment.admin.price') }} <span class="text-red-500">*</span></label><input v-model.number="planForm.price" type="number" step="0.01" min="0.01" class="input" required /></div>
         <div><label class="input-label">{{ t('payment.admin.originalPrice') }}</label><input v-model.number="planForm.original_price" type="number" step="0.01" min="0" class="input" /></div>
+      </div>
+      <div class="grid grid-cols-3 gap-4">
+        <div><label class="input-label">{{ t('payment.admin.dailyLimit') }}</label><input v-model.number="planForm.daily_limit_usd" type="number" step="0.01" min="0" class="input" /></div>
+        <div><label class="input-label">{{ t('payment.admin.weeklyLimit') }}</label><input v-model.number="planForm.weekly_limit_usd" type="number" step="0.01" min="0" class="input" /></div>
+        <div><label class="input-label">{{ t('payment.admin.monthlyLimit') }}</label><input v-model.number="planForm.monthly_limit_usd" type="number" step="0.01" min="0" class="input" /></div>
       </div>
       <div class="grid grid-cols-2 gap-4">
         <div><label class="input-label">{{ t('payment.admin.validityDays') }} <span class="text-red-500">*</span></label><input v-model.number="planForm.validity_days" type="number" min="1" class="input" required /></div>
@@ -105,7 +110,20 @@ const { t } = useI18n()
 const appStore = useAppStore()
 
 const saving = ref(false)
-const planForm = reactive({ name: '', group_id: null as number | null, description: '', price: 0, original_price: 0, validity_days: 30, validity_unit: 'days', sort_order: 0, for_sale: true })
+const planForm = reactive({
+  name: '',
+  group_id: null as number | null,
+  description: '',
+  price: 0,
+  original_price: 0,
+  daily_limit_usd: null as number | null,
+  weekly_limit_usd: null as number | null,
+  monthly_limit_usd: null as number | null,
+  validity_days: 30,
+  validity_unit: 'days',
+  sort_order: 0,
+  for_sale: true
+})
 const planFeaturesText = ref('')
 
 const validityUnitOptions = computed(() => [
@@ -133,10 +151,10 @@ const selectedGroupInfo = computed(() => {
 watch(() => props.show, (visible) => {
   if (!visible) return
   if (props.plan) {
-    Object.assign(planForm, { name: props.plan.name, group_id: props.plan.group_id, description: props.plan.description, price: props.plan.price, original_price: props.plan.original_price || 0, validity_days: props.plan.validity_days, validity_unit: props.plan.validity_unit || 'days', sort_order: props.plan.sort_order || 0, for_sale: props.plan.for_sale })
+    Object.assign(planForm, { name: props.plan.name, group_id: props.plan.group_id, description: props.plan.description, price: props.plan.price, original_price: props.plan.original_price || 0, daily_limit_usd: props.plan.daily_limit_usd ?? null, weekly_limit_usd: props.plan.weekly_limit_usd ?? null, monthly_limit_usd: props.plan.monthly_limit_usd ?? null, validity_days: props.plan.validity_days, validity_unit: props.plan.validity_unit || 'days', sort_order: props.plan.sort_order || 0, for_sale: props.plan.for_sale })
     planFeaturesText.value = (props.plan.features || []).join('\n')
   } else {
-    Object.assign(planForm, { name: '', group_id: null, description: '', price: 0, original_price: 0, validity_days: 30, validity_unit: 'days', sort_order: 0, for_sale: true })
+    Object.assign(planForm, { name: '', group_id: null, description: '', price: 0, original_price: 0, daily_limit_usd: null, weekly_limit_usd: null, monthly_limit_usd: null, validity_days: 30, validity_unit: 'days', sort_order: 0, for_sale: true })
     planFeaturesText.value = ''
   }
 })
@@ -146,10 +164,13 @@ function buildPlanPayload() {
   const features = planFeaturesText.value.split('\n').map(f => f.trim()).filter(Boolean).join('\n')
   return {
     name: planForm.name,
-    group_id: planForm.group_id,
+    group_id: planForm.group_id || 0,
     description: planForm.description,
     price: planForm.price,
     original_price: planForm.original_price || 0,
+    daily_limit_usd: normalizePlanLimit(planForm.daily_limit_usd),
+    weekly_limit_usd: normalizePlanLimit(planForm.weekly_limit_usd),
+    monthly_limit_usd: normalizePlanLimit(planForm.monthly_limit_usd),
     validity_days: planForm.validity_days,
     validity_unit: planForm.validity_unit,
     sort_order: planForm.sort_order,
@@ -158,11 +179,12 @@ function buildPlanPayload() {
   }
 }
 
+function normalizePlanLimit(value: number | null): number | null {
+  if (value == null || Number.isNaN(value) || value <= 0) return 0
+  return value
+}
+
 async function handleSavePlan() {
-  if (!planForm.group_id) {
-    appStore.showError(t('payment.admin.groupRequired'))
-    return
-  }
   if (!planForm.price || planForm.price <= 0) {
     appStore.showError(t('payment.admin.priceRequired'))
     return

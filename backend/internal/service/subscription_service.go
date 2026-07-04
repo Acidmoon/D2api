@@ -144,11 +144,15 @@ func (s *SubscriptionService) InvalidateSubCache(userID, groupID int64) {
 
 // AssignSubscriptionInput 分配订阅输入
 type AssignSubscriptionInput struct {
-	UserID       int64
-	GroupID      int64
-	ValidityDays int
-	AssignedBy   int64
-	Notes        string
+	UserID          int64
+	GroupID         int64
+	PlanName        string
+	DailyLimitUSD   *float64
+	WeeklyLimitUSD  *float64
+	MonthlyLimitUSD *float64
+	ValidityDays    int
+	AssignedBy      int64
+	Notes           string
 }
 
 // AssignSubscription 分配订阅给用户（不允许重复分配）
@@ -167,20 +171,25 @@ func (s *SubscriptionService) AssignSubscription(ctx context.Context, input *Ass
 //
 // 如果没有订阅：创建新订阅
 func (s *SubscriptionService) AssignOrExtendSubscription(ctx context.Context, input *AssignSubscriptionInput) (*UserSubscription, bool, error) {
-	// 检查分组是否存在且为订阅类型
-	group, err := s.groupRepo.GetByID(ctx, input.GroupID)
-	if err != nil {
-		return nil, false, fmt.Errorf("group not found: %w", err)
-	}
-	if !group.IsSubscriptionType() {
-		return nil, false, ErrGroupNotSubscriptionType
+	var group *Group
+	if input.GroupID > 0 {
+		var err error
+		group, err = s.groupRepo.GetByID(ctx, input.GroupID)
+		if err != nil {
+			return nil, false, fmt.Errorf("group not found: %w", err)
+		}
+		if !group.IsSubscriptionType() {
+			return nil, false, ErrGroupNotSubscriptionType
+		}
 	}
 
 	// 查询是否已有订阅
-	existingSub, err := s.userSubRepo.GetByUserIDAndGroupID(ctx, input.UserID, input.GroupID)
-	if err != nil {
-		// 不存在记录是正常情况，其他错误需要返回
-		existingSub = nil
+	var existingSub *UserSubscription
+	if input.GroupID > 0 {
+		existing, err := s.userSubRepo.GetByUserIDAndGroupID(ctx, input.UserID, input.GroupID)
+		if err == nil {
+			existingSub = existing
+		}
 	}
 
 	validityDays := input.ValidityDays
@@ -354,25 +363,52 @@ func (s *SubscriptionService) createSubscription(ctx context.Context, input *Ass
 		expiresAt = MaxExpiresAt
 	}
 
-	group, err := s.groupRepo.GetByID(ctx, input.GroupID)
-	if err != nil {
-		return nil, fmt.Errorf("group not found: %w", err)
+	var (
+		group         *Group
+		sourceGroupID *int64
+		planName      = strings.TrimSpace(input.PlanName)
+		dailyLimit    = input.DailyLimitUSD
+		weeklyLimit   = input.WeeklyLimitUSD
+		monthlyLimit  = input.MonthlyLimitUSD
+	)
+	if input.GroupID > 0 {
+		var err error
+		group, err = s.groupRepo.GetByID(ctx, input.GroupID)
+		if err != nil {
+			return nil, fmt.Errorf("group not found: %w", err)
+		}
+		if !group.IsSubscriptionType() {
+			return nil, ErrGroupNotSubscriptionType
+		}
+		sourceGroupID = &input.GroupID
+		if planName == "" {
+			planName = group.Name
+		}
+		if dailyLimit == nil {
+			dailyLimit = group.DailyLimitUSD
+		}
+		if weeklyLimit == nil {
+			weeklyLimit = group.WeeklyLimitUSD
+		}
+		if monthlyLimit == nil {
+			monthlyLimit = group.MonthlyLimitUSD
+		}
 	}
-	if !group.IsSubscriptionType() {
-		return nil, ErrGroupNotSubscriptionType
+	if planName == "" {
+		planName = "Manual subscription"
 	}
 
 	sub := &UserSubscription{
 		UserID:          input.UserID,
 		GroupID:         input.GroupID,
-		SourceGroupID:   &input.GroupID,
-		PlanName:        group.Name,
+		SourceGroupID:   sourceGroupID,
+		PlanName:        planName,
 		StartsAt:        now,
 		ExpiresAt:       expiresAt,
 		Status:          SubscriptionStatusActive,
-		DailyLimitUSD:   group.DailyLimitUSD,
-		WeeklyLimitUSD:  group.WeeklyLimitUSD,
-		MonthlyLimitUSD: group.MonthlyLimitUSD,
+		DailyLimitUSD:   dailyLimit,
+		WeeklyLimitUSD:  weeklyLimit,
+		MonthlyLimitUSD: monthlyLimit,
 		AssignedAt:      now,
 		Notes:           input.Notes,
 		CreatedAt:       now,
@@ -393,11 +429,15 @@ func (s *SubscriptionService) createSubscription(ctx context.Context, input *Ass
 
 // BulkAssignSubscriptionInput 批量分配订阅输入
 type BulkAssignSubscriptionInput struct {
-	UserIDs      []int64
-	GroupID      int64
-	ValidityDays int
-	AssignedBy   int64
-	Notes        string
+	UserIDs         []int64
+	GroupID         int64
+	PlanName        string
+	DailyLimitUSD   *float64
+	WeeklyLimitUSD  *float64
+	MonthlyLimitUSD *float64
+	ValidityDays    int
+	AssignedBy      int64
+	Notes           string
 }
 
 // BulkAssignResult 批量分配结果
@@ -421,11 +461,15 @@ func (s *SubscriptionService) BulkAssignSubscription(ctx context.Context, input 
 
 	for _, userID := range input.UserIDs {
 		sub, reused, err := s.assignSubscriptionWithReuse(ctx, &AssignSubscriptionInput{
-			UserID:       userID,
-			GroupID:      input.GroupID,
-			ValidityDays: input.ValidityDays,
-			AssignedBy:   input.AssignedBy,
-			Notes:        input.Notes,
+			UserID:          userID,
+			GroupID:         input.GroupID,
+			PlanName:        input.PlanName,
+			DailyLimitUSD:   input.DailyLimitUSD,
+			WeeklyLimitUSD:  input.WeeklyLimitUSD,
+			MonthlyLimitUSD: input.MonthlyLimitUSD,
+			ValidityDays:    input.ValidityDays,
+			AssignedBy:      input.AssignedBy,
+			Notes:           input.Notes,
 		})
 		if err != nil {
 			result.FailedCount++
@@ -448,7 +492,12 @@ func (s *SubscriptionService) BulkAssignSubscription(ctx context.Context, input 
 }
 
 func (s *SubscriptionService) assignSubscriptionWithReuse(ctx context.Context, input *AssignSubscriptionInput) (*UserSubscription, bool, error) {
-	// 检查分组是否存在且为订阅类型
+	if input.GroupID <= 0 {
+		sub, err := s.createSubscription(ctx, input)
+		return sub, false, err
+	}
+
+	// 检查分组是否存在且为订阅类型。仅旧分组模板/兼容路径需要此校验。
 	group, err := s.groupRepo.GetByID(ctx, input.GroupID)
 	if err != nil {
 		return nil, false, fmt.Errorf("group not found: %w", err)
@@ -514,6 +563,9 @@ func detectAssignSemanticConflict(existing *UserSubscription, input *AssignSubsc
 	inputNotes := strings.TrimSpace(input.Notes)
 	if existingNotes != inputNotes {
 		return "notes_mismatch", true
+	}
+	if input.PlanName != "" && existing.PlanName != "" && strings.TrimSpace(existing.PlanName) != strings.TrimSpace(input.PlanName) {
+		return "plan_name_mismatch", true
 	}
 
 	return "", false

@@ -388,6 +388,35 @@ func (r *userSubscriptionRepository) insertSubscriptionBalance(ctx context.Conte
 		return errors.New("subscription balance repository db is nil")
 	}
 	var id int64
+	if sub.SourceGroupID == nil && sub.GroupID <= 0 {
+		err := exec.QueryRowContext(ctx, `
+			INSERT INTO subscription_balances (
+				user_id, source_group_id, plan_name, source, starts_at, expires_at, status,
+				daily_limit_usd, weekly_limit_usd, monthly_limit_usd,
+				daily_usage_usd, weekly_usage_usd, monthly_usage_usd,
+				daily_window_start, weekly_window_start, monthly_window_start,
+				assigned_by, assigned_at, notes, created_at, updated_at
+			)
+			VALUES (
+				$1, NULL, $2, 'manual', $3, $4, $5,
+				$6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, NOW(), NOW()
+			)
+			RETURNING id, created_at, updated_at
+		`,
+			sub.UserID, sub.PlanName,
+			sub.StartsAt, sub.ExpiresAt, sub.Status,
+			sub.DailyLimitUSD, sub.WeeklyLimitUSD, sub.MonthlyLimitUSD,
+			sub.DailyUsageUSD, sub.WeeklyUsageUSD, sub.MonthlyUsageUSD,
+			sub.DailyWindowStart, sub.WeeklyWindowStart, sub.MonthlyWindowStart,
+			sub.AssignedBy, sub.AssignedAt, nullableString(sub.Notes),
+		).Scan(&id, &sub.CreatedAt, &sub.UpdatedAt)
+		if err != nil {
+			return translatePersistenceError(err, nil, service.ErrSubscriptionAlreadyExists)
+		}
+		sub.ID = id
+		return nil
+	}
+
 	err := exec.QueryRowContext(ctx, `
 		WITH legacy AS (
 			INSERT INTO user_subscriptions (

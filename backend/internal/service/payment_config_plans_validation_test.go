@@ -27,8 +27,7 @@ func TestValidatePlanRequired_WhitespaceName(t *testing.T) {
 
 func TestValidatePlanRequired_ZeroGroupID(t *testing.T) {
 	err := validatePlanRequired("Pro", 0, 9.99, 30, "days", nil)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "group")
+	require.NoError(t, err)
 }
 
 func TestValidatePlanRequired_NegativeGroupID(t *testing.T) {
@@ -149,8 +148,13 @@ func TestValidatePlanPatch_ValidName(t *testing.T) {
 
 func TestValidatePlanPatch_ZeroGroupID(t *testing.T) {
 	err := validatePlanPatch(UpdatePlanRequest{GroupID: ptrInt64(0)})
+	require.NoError(t, err)
+}
+
+func TestValidatePlanPatch_NegativeGroupID(t *testing.T) {
+	err := validatePlanPatch(UpdatePlanRequest{GroupID: ptrInt64(-1)})
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "group")
+	require.Contains(t, err.Error(), "group_id")
 }
 
 func TestValidatePlanPatch_NegativePrice(t *testing.T) {
@@ -190,4 +194,17 @@ func TestValidatePlanPatch_ValidValidityUnit(t *testing.T) {
 func TestValidatePlanPatch_AllNil(t *testing.T) {
 	err := validatePlanPatch(UpdatePlanRequest{})
 	require.NoError(t, err)
+}
+
+func TestValidatePlanPatch_SubscriptionLimitFields(t *testing.T) {
+	err := validatePlanPatch(UpdatePlanRequest{
+		DailyLimitUSD:   ptrFloat(0),
+		WeeklyLimitUSD:  ptrFloat(10),
+		MonthlyLimitUSD: ptrFloat(20),
+	})
+	require.NoError(t, err)
+
+	err = validatePlanPatch(UpdatePlanRequest{DailyLimitUSD: ptrFloat(-0.01)})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "daily_limit_usd")
 }

@@ -496,34 +496,29 @@
           </div>
         </div>
         <div>
-          <label class="input-label">{{ t('admin.subscriptions.form.group') }}</label>
-          <Select
-            v-model="assignForm.group_id"
-            :options="subscriptionGroupOptions"
-            :placeholder="t('admin.subscriptions.selectGroup')"
-          >
-            <template #selected="{ option }">
-              <GroupBadge
-                v-if="option"
-                :name="(option as unknown as GroupOption).label"
-                :platform="(option as unknown as GroupOption).platform"
-                :subscription-type="(option as unknown as GroupOption).subscriptionType"
-                :rate-multiplier="(option as unknown as GroupOption).rate"
-              />
-              <span v-else class="text-gray-400">{{ t('admin.subscriptions.selectGroup') }}</span>
-            </template>
-            <template #option="{ option, selected }">
-              <GroupOptionItem
-                :name="(option as unknown as GroupOption).label"
-                :platform="(option as unknown as GroupOption).platform"
-                :subscription-type="(option as unknown as GroupOption).subscriptionType"
-                :rate-multiplier="(option as unknown as GroupOption).rate"
-                :description="(option as unknown as GroupOption).description"
-                :selected="selected"
-              />
-            </template>
-          </Select>
-          <p class="input-hint">{{ t('admin.subscriptions.groupHint') }}</p>
+          <label class="input-label">{{ t('admin.subscriptions.form.planName') }}</label>
+          <input
+            v-model.trim="assignForm.plan_name"
+            type="text"
+            class="input"
+            :placeholder="t('admin.subscriptions.planNamePlaceholder')"
+          />
+          <p class="input-hint">{{ t('admin.subscriptions.planHint') }}</p>
+        </div>
+        <div class="grid gap-4 sm:grid-cols-3">
+          <div>
+            <label class="input-label">{{ t('admin.subscriptions.form.dailyLimit') }}</label>
+            <input v-model.number="assignForm.daily_limit_usd" type="number" min="0" step="0.01" class="input" />
+          </div>
+          <div>
+            <label class="input-label">{{ t('admin.subscriptions.form.weeklyLimit') }}</label>
+            <input v-model.number="assignForm.weekly_limit_usd" type="number" min="0" step="0.01" class="input" />
+          </div>
+          <div>
+            <label class="input-label">{{ t('admin.subscriptions.form.monthlyLimit') }}</label>
+            <input v-model.number="assignForm.monthly_limit_usd" type="number" min="0" step="0.01" class="input" />
+          </div>
+          <p class="input-hint sm:col-span-3">{{ t('admin.subscriptions.limitHint') }}</p>
         </div>
         <div>
           <label class="input-label">{{ t('admin.subscriptions.form.validityDays') }}</label>
@@ -745,7 +740,7 @@ import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
 import { adminAPI } from '@/api/admin'
-import type { UserSubscription, Group, GroupPlatform, SubscriptionType } from '@/types'
+import type { UserSubscription, Group } from '@/types'
 import type { SimpleUser } from '@/api/admin/usage'
 import type { Column } from '@/components/common/types'
 import { formatDateOnly } from '@/utils/format'
@@ -759,21 +754,11 @@ import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import Select from '@/components/common/Select.vue'
 import GroupBadge from '@/components/common/GroupBadge.vue'
-import GroupOptionItem from '@/components/common/GroupOptionItem.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { getRemainingDurationParts, isOneTimeDailyQuota, type RemainingDurationParts } from '@/utils/subscriptionQuota'
 
 const { t } = useI18n()
 const appStore = useAppStore()
-
-interface GroupOption {
-  value: number
-  label: string
-  description: string | null
-  platform: GroupPlatform
-  subscriptionType: SubscriptionType
-  rate: number
-}
 
 // Guide modal state
 const showGuideModal = ref(false)
@@ -952,7 +937,10 @@ const revokingSubscription = ref<UserSubscription | null>(null)
 
 const assignForm = reactive({
   user_id: null as number | null,
-  group_id: null as number | null,
+  plan_name: 'APC Subscription',
+  daily_limit_usd: null as number | null,
+  weekly_limit_usd: null as number | null,
+  monthly_limit_usd: null as number | null,
   validity_days: 30
 })
 
@@ -973,20 +961,6 @@ const platformFilterOptions = computed(() => [
   { value: 'gemini', label: 'Gemini' },
   { value: 'antigravity', label: 'Antigravity' }
 ])
-
-// Group options for assign (only subscription type groups)
-const subscriptionGroupOptions = computed(() =>
-  groups.value
-    .filter((g) => g.subscription_type === 'subscription' && g.status === 'active')
-    .map((g) => ({
-      value: g.id,
-      label: g.name,
-      description: g.description,
-      platform: g.platform,
-      subscriptionType: g.subscription_type,
-      rate: g.rate_multiplier
-    }))
-)
 
 const applyFilters = () => {
   pagination.page = 1
@@ -1163,7 +1137,10 @@ const handleSort = (key: string, order: 'asc' | 'desc') => {
 const closeAssignModal = () => {
   showAssignModal.value = false
   assignForm.user_id = null
-  assignForm.group_id = null
+  assignForm.plan_name = 'APC Subscription'
+  assignForm.daily_limit_usd = null
+  assignForm.weekly_limit_usd = null
+  assignForm.monthly_limit_usd = null
   assignForm.validity_days = 30
   // Clear user search state
   selectedUser.value = null
@@ -1177,8 +1154,8 @@ const handleAssignSubscription = async () => {
     appStore.showError(t('admin.subscriptions.pleaseSelectUser'))
     return
   }
-  if (!assignForm.group_id) {
-    appStore.showError(t('admin.subscriptions.pleaseSelectGroup'))
+  if (!assignForm.plan_name.trim()) {
+    appStore.showError(t('admin.subscriptions.planNameRequired'))
     return
   }
   if (!assignForm.validity_days || assignForm.validity_days < 1) {
@@ -1190,7 +1167,10 @@ const handleAssignSubscription = async () => {
   try {
     await adminAPI.subscriptions.assign({
       user_id: assignForm.user_id,
-      group_id: assignForm.group_id,
+      plan_name: assignForm.plan_name.trim(),
+      daily_limit_usd: normalizeLimit(assignForm.daily_limit_usd),
+      weekly_limit_usd: normalizeLimit(assignForm.weekly_limit_usd),
+      monthly_limit_usd: normalizeLimit(assignForm.monthly_limit_usd),
       validity_days: assignForm.validity_days
     })
     appStore.showSuccess(t('admin.subscriptions.subscriptionAssigned'))
@@ -1202,6 +1182,11 @@ const handleAssignSubscription = async () => {
   } finally {
     submitting.value = false
   }
+}
+
+const normalizeLimit = (value: number | null): number | null => {
+  if (value == null || Number.isNaN(value) || value <= 0) return null
+  return value
 }
 
 const handleExtend = (subscription: UserSubscription) => {

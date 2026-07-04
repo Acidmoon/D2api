@@ -40,18 +40,26 @@ func NewSubscriptionHandler(subscriptionService *service.SubscriptionService) *S
 
 // AssignSubscriptionRequest represents assign subscription request
 type AssignSubscriptionRequest struct {
-	UserID       int64  `json:"user_id" binding:"required"`
-	GroupID      int64  `json:"group_id" binding:"required"`
-	ValidityDays int    `json:"validity_days" binding:"omitempty,max=36500"` // max 100 years
-	Notes        string `json:"notes"`
+	UserID          int64    `json:"user_id" binding:"required"`
+	GroupID         int64    `json:"group_id" binding:"omitempty,min=0"`
+	PlanName        string   `json:"plan_name" binding:"required"`
+	DailyLimitUSD   *float64 `json:"daily_limit_usd" binding:"omitempty,min=0"`
+	WeeklyLimitUSD  *float64 `json:"weekly_limit_usd" binding:"omitempty,min=0"`
+	MonthlyLimitUSD *float64 `json:"monthly_limit_usd" binding:"omitempty,min=0"`
+	ValidityDays    int      `json:"validity_days" binding:"omitempty,max=36500"` // max 100 years
+	Notes           string   `json:"notes"`
 }
 
 // BulkAssignSubscriptionRequest represents bulk assign subscription request
 type BulkAssignSubscriptionRequest struct {
-	UserIDs      []int64 `json:"user_ids" binding:"required,min=1"`
-	GroupID      int64   `json:"group_id" binding:"required"`
-	ValidityDays int     `json:"validity_days" binding:"omitempty,max=36500"` // max 100 years
-	Notes        string  `json:"notes"`
+	UserIDs         []int64  `json:"user_ids" binding:"required,min=1"`
+	GroupID         int64    `json:"group_id" binding:"omitempty,min=0"`
+	PlanName        string   `json:"plan_name" binding:"required"`
+	DailyLimitUSD   *float64 `json:"daily_limit_usd" binding:"omitempty,min=0"`
+	WeeklyLimitUSD  *float64 `json:"weekly_limit_usd" binding:"omitempty,min=0"`
+	MonthlyLimitUSD *float64 `json:"monthly_limit_usd" binding:"omitempty,min=0"`
+	ValidityDays    int      `json:"validity_days" binding:"omitempty,max=36500"` // max 100 years
+	Notes           string   `json:"notes"`
 }
 
 // AdjustSubscriptionRequest represents adjust subscription request (extend or shorten)
@@ -145,11 +153,15 @@ func (h *SubscriptionHandler) Assign(c *gin.Context) {
 	adminID := getAdminIDFromContext(c)
 
 	subscription, err := h.subscriptionService.AssignSubscription(c.Request.Context(), &service.AssignSubscriptionInput{
-		UserID:       req.UserID,
-		GroupID:      req.GroupID,
-		ValidityDays: req.ValidityDays,
-		AssignedBy:   adminID,
-		Notes:        req.Notes,
+		UserID:          req.UserID,
+		GroupID:         req.GroupID,
+		PlanName:        req.PlanName,
+		DailyLimitUSD:   req.DailyLimitUSD,
+		WeeklyLimitUSD:  req.WeeklyLimitUSD,
+		MonthlyLimitUSD: req.MonthlyLimitUSD,
+		ValidityDays:    req.ValidityDays,
+		AssignedBy:      adminID,
+		Notes:           req.Notes,
 	})
 	if err != nil {
 		response.ErrorFrom(c, err)
@@ -172,11 +184,15 @@ func (h *SubscriptionHandler) BulkAssign(c *gin.Context) {
 	adminID := getAdminIDFromContext(c)
 
 	result, err := h.subscriptionService.BulkAssignSubscription(c.Request.Context(), &service.BulkAssignSubscriptionInput{
-		UserIDs:      req.UserIDs,
-		GroupID:      req.GroupID,
-		ValidityDays: req.ValidityDays,
-		AssignedBy:   adminID,
-		Notes:        req.Notes,
+		UserIDs:         req.UserIDs,
+		GroupID:         req.GroupID,
+		PlanName:        req.PlanName,
+		DailyLimitUSD:   req.DailyLimitUSD,
+		WeeklyLimitUSD:  req.WeeklyLimitUSD,
+		MonthlyLimitUSD: req.MonthlyLimitUSD,
+		ValidityDays:    req.ValidityDays,
+		AssignedBy:      adminID,
+		Notes:           req.Notes,
 	})
 	if err != nil {
 		response.ErrorFrom(c, err)
