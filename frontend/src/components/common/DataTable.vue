@@ -66,8 +66,10 @@
     class="table-wrapper"
     :class="{
       'actions-expanded': actionsExpanded,
-      'is-scrollable': isScrollable
+      'is-scrollable': isScrollable,
+      'dt-fixed-row-height': fixedVirtualRowHeight
     }"
+    :style="fixedVirtualRowHeight ? { '--dt-row-height': `${virtualRowHeight}px` } : undefined"
   >
     <table class="dt-table w-full min-w-max">
       <thead class="table-header">
@@ -161,8 +163,9 @@
             :key="resolveRowKey(sortedData[virtualRow.index], virtualRow.index)"
             :data-row-id="resolveRowKey(sortedData[virtualRow.index], virtualRow.index)"
             :data-index="virtualRow.index"
-            :ref="measureElement"
+            :ref="rowRef"
             class="dt-row"
+            :style="fixedVirtualRowHeight ? { height: `${virtualRowHeight}px` } : undefined"
           >
             <td
               v-for="(column, colIndex) in columns"
@@ -174,14 +177,16 @@
                 column.class
               ]"
             >
-              <slot :name="`cell-${column.key}`"
-                    :row="sortedData[virtualRow.index]"
-                    :value="sortedData[virtualRow.index][column.key]"
-                    :expanded="actionsExpanded">
-                {{ column.formatter
-                   ? column.formatter(sortedData[virtualRow.index][column.key], sortedData[virtualRow.index])
-                   : sortedData[virtualRow.index][column.key] }}
-              </slot>
+              <div :class="['dt-cell-content', { 'dt-cell-content-fixed': fixedVirtualRowHeight }]">
+                <slot :name="`cell-${column.key}`"
+                      :row="sortedData[virtualRow.index]"
+                      :value="sortedData[virtualRow.index][column.key]"
+                      :expanded="actionsExpanded">
+                  {{ column.formatter
+                     ? column.formatter(sortedData[virtualRow.index][column.key], sortedData[virtualRow.index])
+                     : sortedData[virtualRow.index][column.key] }}
+                </slot>
+              </div>
             </td>
           </tr>
           <tr v-if="virtualPaddingBottom > 0" aria-hidden="true">
@@ -380,6 +385,12 @@ interface Props {
   serverSideSort?: boolean
   /** Estimated row height in px for the virtualizer (default 56) */
   estimateRowHeight?: number
+  /**
+   * Keep virtual rows at the estimated height instead of re-measuring DOM rows.
+   * Use this for tables whose cells load async content after mount; dynamic
+   * row measurement changes virtual padding and makes the scrollbar jump.
+   */
+  fixedVirtualRowHeight?: boolean
   /** Number of rows to render beyond the visible area (default 5) */
   overscan?: number
 }
@@ -390,7 +401,8 @@ const props = withDefaults(defineProps<Props>(), {
   stickyActionsColumn: true,
   expandableActions: true,
   defaultSortOrder: 'asc',
-  serverSideSort: false
+  serverSideSort: false,
+  fixedVirtualRowHeight: false
 })
 
 const sortKey = ref<string>('')
@@ -594,10 +606,11 @@ const sortedData = computed(() => {
 })
 
 // --- Virtual scrolling ---
+const virtualRowHeight = computed(() => props.estimateRowHeight ?? 56)
 const rowVirtualizer = useVirtualizer(computed(() => ({
   count: isDesktopViewport.value ? (sortedData.value?.length ?? 0) : 0,
   getScrollElement: () => tableWrapperRef.value,
-  estimateSize: () => props.estimateRowHeight ?? 56,
+  estimateSize: () => virtualRowHeight.value,
   overscan: props.overscan ?? 5,
   // 兜底高度:首个有效高度读数到来前,先按一屏渲染,避免空白帧
   initialRect: { width: 0, height: estimatedViewportHeight() },
@@ -621,9 +634,13 @@ const virtualPaddingBottom = computed(() => {
 })
 
 const measureElement = (el: any) => {
-  if (el) {
+  if (!props.fixedVirtualRowHeight && el) {
     rowVirtualizer.value.measureElement(el as Element)
   }
+}
+
+const rowRef = (el: any) => {
+  measureElement(el)
 }
 
 const hasActionsColumn = computed(() => {
@@ -787,6 +804,28 @@ defineExpose({
 .dt-table th,
 .dt-table td {
   border-bottom: 1px solid var(--nm-border-light);
+}
+
+.dt-cell-content {
+  min-width: 0;
+}
+
+.dt-fixed-row-height .dt-row {
+  height: var(--dt-row-height);
+}
+
+.dt-fixed-row-height .dt-row > td {
+  height: var(--dt-row-height);
+  max-height: var(--dt-row-height);
+  vertical-align: middle;
+}
+
+.dt-fixed-row-height .dt-cell-content-fixed {
+  display: flex;
+  min-height: 0;
+  height: calc(var(--dt-row-height) - 2rem);
+  min-width: 0;
+  align-items: center;
 }
 
 .dt-sort-icon {

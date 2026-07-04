@@ -196,6 +196,7 @@
           default-sort-order="asc"
           :sort-storage-key="ACCOUNT_SORT_STORAGE_KEY"
           :estimate-row-height="136"
+          :fixed-virtual-row-height="true"
           :overscan="5"
         >
           <template #header-select>
@@ -1716,7 +1717,11 @@ onUnmounted(() => {
 <style scoped>
 .account-usage-cell-frame {
   contain: layout style;
+  display: flex;
+  height: 100%;
+  min-height: 0;
   min-width: 14rem;
+  align-items: center;
 }
 
 .account-tools-menu-item {

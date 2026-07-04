@@ -63,7 +63,7 @@ vi.mock('vue-i18n', async () => {
 
 // Render the per-column header slots so we can assert the usage-window header hint.
 const DataTableStub = {
-  props: ['columns', 'data'],
+  props: ['columns', 'data', 'fixedVirtualRowHeight'],
   template: `
     <div data-test="data-table">
       <template v-for="column in columns" :key="column.key">
@@ -160,5 +160,12 @@ describe('admin AccountsView usage windows hint', () => {
     const hint = wrapper.find('[data-test="usage-windows-hint"]')
     expect(hint.exists()).toBe(true)
     expect(hint.text()).toBe('admin.accounts.usageWindowsHint')
+  })
+
+  it('keeps virtual account rows at a fixed height while usage windows load', async () => {
+    const wrapper = mountView()
+    await flushPromises()
+
+    expect(wrapper.getComponent(DataTableStub).props('fixedVirtualRowHeight')).toBe(true)
   })
 })
