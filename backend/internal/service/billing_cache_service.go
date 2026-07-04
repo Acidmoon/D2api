@@ -408,19 +408,19 @@ func (s *BillingCacheService) InvalidateUserBalance(ctx context.Context, userID 
 // ============================================
 
 // GetSubscriptionStatus 获取订阅状态（优先从缓存读取）
-func (s *BillingCacheService) GetSubscriptionStatus(ctx context.Context, userID, groupID int64) (*subscriptionCacheData, error) {
+func (s *BillingCacheService) GetSubscriptionStatus(ctx context.Context, userID, subscriptionID int64) (*subscriptionCacheData, error) {
 	if s.cache == nil {
-		return s.getSubscriptionFromDB(ctx, userID, groupID)
+		return s.getSubscriptionFromDB(ctx, userID, subscriptionID)
 	}
 
 	// 尝试从缓存读取
-	cacheData, err := s.cache.GetSubscriptionCache(ctx, userID, groupID)
+	cacheData, err := s.cache.GetSubscriptionCache(ctx, userID, subscriptionID)
 	if err == nil && cacheData != nil {
 		return s.convertFromPortsData(cacheData), nil
 	}
 
 	// 缓存未命中，从数据库读取
-	data, err := s.getSubscriptionFromDB(ctx, userID, groupID)
+	data, err := s.getSubscriptionFromDB(ctx, userID, subscriptionID)
 	if err != nil {
 		return nil, err
 	}
@@ -429,7 +429,7 @@ func (s *BillingCacheService) GetSubscriptionStatus(ctx context.Context, userID,
 	_ = s.enqueueCacheWrite(cacheWriteTask{
 		kind:             cacheWriteSetSubscription,
 		userID:           userID,
-		groupID:          groupID,
+		groupID:          subscriptionID,
 		subscriptionData: data,
 	})
 
@@ -459,10 +459,13 @@ func (s *BillingCacheService) convertToPortsData(data *subscriptionCacheData) *S
 }
 
 // getSubscriptionFromDB 从数据库获取订阅数据
-func (s *BillingCacheService) getSubscriptionFromDB(ctx context.Context, userID, groupID int64) (*subscriptionCacheData, error) {
-	sub, err := s.subRepo.GetActiveByUserIDAndGroupID(ctx, userID, groupID)
+func (s *BillingCacheService) getSubscriptionFromDB(ctx context.Context, userID, subscriptionID int64) (*subscriptionCacheData, error) {
+	sub, err := s.subRepo.GetByID(ctx, subscriptionID)
 	if err != nil {
 		return nil, fmt.Errorf("get subscription: %w", err)
+	}
+	if sub.UserID != userID || !sub.IsActive() {
+		return nil, ErrSubscriptionInvalid
 	}
 
 	return &subscriptionCacheData{
@@ -716,10 +719,10 @@ func (s *BillingCacheService) CheckBillingEligibility(ctx context.Context, user 
 	}
 
 	// 订阅是用户级预付额度；请求分组只决定路由和倍率，不再决定是否能使用订阅额度。
-	isSubscriptionMode := subscription != nil && subscription.Group != nil && subscription.Group.IsSubscriptionType()
+	isSubscriptionMode := subscription != nil && subscription.IsSubscriptionWallet()
 
 	if isSubscriptionMode {
-		if err := s.checkSubscriptionEligibility(ctx, user.ID, subscription.Group, subscription); err != nil {
+		if err := s.checkSubscriptionEligibility(ctx, user.ID, subscription); err != nil {
 			if !errors.Is(err, ErrDailyLimitExceeded) &&
 				!errors.Is(err, ErrWeeklyLimitExceeded) &&
 				!errors.Is(err, ErrMonthlyLimitExceeded) {
@@ -863,14 +866,14 @@ func (s *BillingCacheService) checkBalanceEligibility(ctx context.Context, userI
 }
 
 // checkSubscriptionEligibility 检查订阅模式资格
-func (s *BillingCacheService) checkSubscriptionEligibility(ctx context.Context, userID int64, group *Group, subscription *UserSubscription) error {
+func (s *BillingCacheService) checkSubscriptionEligibility(ctx context.Context, userID int64, subscription *UserSubscription) error {
 	// 获取订阅缓存数据
-	subData, err := s.GetSubscriptionStatus(ctx, userID, group.ID)
+	subData, err := s.GetSubscriptionStatus(ctx, userID, subscription.ID)
 	if err != nil {
 		if s.circuitBreaker != nil {
 			s.circuitBreaker.OnFailure(err)
 		}
-		logger.LegacyPrintf("service.billing_cache", "ALERT: billing subscription check failed for user %d group %d: %v", userID, group.ID, err)
+		logger.LegacyPrintf("service.billing_cache", "ALERT: billing subscription check failed for user %d subscription %d: %v", userID, subscription.ID, err)
 		return ErrBillingServiceUnavailable.WithCause(err)
 	}
 	if s.circuitBreaker != nil {
@@ -887,16 +890,15 @@ func (s *BillingCacheService) checkSubscriptionEligibility(ctx context.Context, 
 		return ErrSubscriptionInvalid
 	}
 
-	// 检查限额（使用传入的Group限额配置）
-	if group.HasDailyLimit() && subData.DailyUsage >= *group.DailyLimitUSD {
+	if subscription.HasDailyLimit() && subData.DailyUsage >= *subscription.DailyLimitUSD {
 		return ErrDailyLimitExceeded
 	}
 
-	if group.HasWeeklyLimit() && subData.WeeklyUsage >= *group.WeeklyLimitUSD {
+	if subscription.HasWeeklyLimit() && subData.WeeklyUsage >= *subscription.WeeklyLimitUSD {
 		return ErrWeeklyLimitExceeded
 	}
 
-	if group.HasMonthlyLimit() && subData.MonthlyUsage >= *group.MonthlyLimitUSD {
+	if subscription.HasMonthlyLimit() && subData.MonthlyUsage >= *subscription.MonthlyLimitUSD {
 		return ErrMonthlyLimitExceeded
 	}
 

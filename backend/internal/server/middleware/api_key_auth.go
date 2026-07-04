@@ -272,9 +272,6 @@ func validateAPIKeyGroupAllowed(apiKey *service.APIKey) bool {
 		return true
 	}
 	group := apiKey.Group
-	if group.IsSubscriptionType() {
-		return true
-	}
 	return apiKey.User.CanBindGroup(group.ID, group.IsExclusive)
 }
 
@@ -320,6 +317,14 @@ func abortAPIKeyGroupSelectionError(c *gin.Context, err error) {
 }
 
 func selectAPIKeyGroupForRequest(ctx context.Context, apiKey *service.APIKey, subscriptionService *service.SubscriptionService, skipBilling bool) error {
+	if subscriptionService != nil && apiKey != nil && apiKey.User != nil {
+		if sub, err := activeBillingSubscriptionForRequest(ctx, subscriptionService, apiKey.User.ID, skipBilling); err == nil {
+			apiKey.SelectedSubscription = sub
+		} else {
+			apiKey.SelectedSubscription = nil
+		}
+	}
+
 	candidates := []struct {
 		id    *int64
 		group *service.Group
@@ -341,13 +346,6 @@ func selectAPIKeyGroupForRequest(ctx context.Context, apiKey *service.APIKey, su
 		apiKey.GroupID = &group.ID
 		apiKey.Group = group
 		applyGroupRPMOverride(apiKey.User, group.ID)
-		if subscriptionService != nil {
-			if sub, err := activeBillingSubscriptionForRequest(ctx, subscriptionService, apiKey.User.ID, skipBilling); err == nil {
-				apiKey.SelectedSubscription = sub
-			} else {
-				apiKey.SelectedSubscription = nil
-			}
-		}
 		return nil
 	}
 
@@ -362,11 +360,11 @@ func activeBillingSubscriptionForRequest(ctx context.Context, subscriptionServic
 	if err != nil {
 		return nil, err
 	}
-	if skipBilling || subscription.Group == nil {
+	if skipBilling {
 		return subscription, nil
 	}
 
-	needsMaintenance, validateErr := subscriptionService.ValidateAndCheckLimits(subscription, subscription.Group)
+	needsMaintenance, validateErr := subscriptionService.ValidateAndCheckLimits(subscription, nil)
 	if validateErr != nil &&
 		!errors.Is(validateErr, service.ErrDailyLimitExceeded) &&
 		!errors.Is(validateErr, service.ErrWeeklyLimitExceeded) &&

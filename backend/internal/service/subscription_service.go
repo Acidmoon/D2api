@@ -354,16 +354,29 @@ func (s *SubscriptionService) createSubscription(ctx context.Context, input *Ass
 		expiresAt = MaxExpiresAt
 	}
 
+	group, err := s.groupRepo.GetByID(ctx, input.GroupID)
+	if err != nil {
+		return nil, fmt.Errorf("group not found: %w", err)
+	}
+	if !group.IsSubscriptionType() {
+		return nil, ErrGroupNotSubscriptionType
+	}
+
 	sub := &UserSubscription{
-		UserID:     input.UserID,
-		GroupID:    input.GroupID,
-		StartsAt:   now,
-		ExpiresAt:  expiresAt,
-		Status:     SubscriptionStatusActive,
-		AssignedAt: now,
-		Notes:      input.Notes,
-		CreatedAt:  now,
-		UpdatedAt:  now,
+		UserID:          input.UserID,
+		GroupID:         input.GroupID,
+		SourceGroupID:   &input.GroupID,
+		PlanName:        group.Name,
+		StartsAt:        now,
+		ExpiresAt:       expiresAt,
+		Status:          SubscriptionStatusActive,
+		DailyLimitUSD:   group.DailyLimitUSD,
+		WeeklyLimitUSD:  group.WeeklyLimitUSD,
+		MonthlyLimitUSD: group.MonthlyLimitUSD,
+		AssignedAt:      now,
+		Notes:           input.Notes,
+		CreatedAt:       now,
+		UpdatedAt:       now,
 	}
 	// 只有当 AssignedBy > 0 时才设置（0 表示系统分配，如兑换码）
 	if input.AssignedBy > 0 {
@@ -688,9 +701,6 @@ func (s *SubscriptionService) GetActiveBillingSubscription(ctx context.Context, 
 	selectedRemaining := 0.0
 	for i := range subs {
 		sub := &subs[i]
-		if sub.Group == nil || !sub.Group.IsSubscriptionType() {
-			continue
-		}
 		remaining := subscriptionRemainingForBilling(sub)
 		if remaining <= 0 {
 			if selected == nil {
@@ -712,7 +722,7 @@ func (s *SubscriptionService) GetActiveBillingSubscription(ctx context.Context, 
 }
 
 func subscriptionRemainingForBilling(sub *UserSubscription) float64 {
-	if sub == nil || sub.Group == nil {
+	if sub == nil {
 		return 0
 	}
 	cp := *sub
@@ -725,7 +735,7 @@ func subscriptionRemainingForBilling(sub *UserSubscription) float64 {
 	if cp.NeedsMonthlyReset() {
 		cp.MonthlyUsageUSD = 0
 	}
-	return cp.RemainingQuotaUSD(cp.Group)
+	return cp.RemainingQuotaUSD()
 }
 
 // ListGroupSubscriptions 获取分组的所有订阅
@@ -893,13 +903,14 @@ func (s *SubscriptionService) CheckAndResetWindows(ctx context.Context, sub *Use
 // CheckUsageLimits 检查使用限额（返回错误如果超限）
 // 用于中间件的快速预检查，additionalCost 通常为 0
 func (s *SubscriptionService) CheckUsageLimits(ctx context.Context, sub *UserSubscription, group *Group, additionalCost float64) error {
-	if !sub.CheckDailyLimit(group, additionalCost) {
+	applyLegacyGroupLimits(sub, group)
+	if !sub.CheckDailyLimit(additionalCost) {
 		return ErrDailyLimitExceeded
 	}
-	if !sub.CheckWeeklyLimit(group, additionalCost) {
+	if !sub.CheckWeeklyLimit(additionalCost) {
 		return ErrWeeklyLimitExceeded
 	}
-	if !sub.CheckMonthlyLimit(group, additionalCost) {
+	if !sub.CheckMonthlyLimit(additionalCost) {
 		return ErrMonthlyLimitExceeded
 	}
 	return nil
@@ -909,6 +920,7 @@ func (s *SubscriptionService) CheckUsageLimits(ctx context.Context, sub *UserSub
 // 仅做内存检查，不触发 DB 写入。窗口重置的 DB 写入由 DoWindowMaintenance 异步完成。
 // 返回 needsMaintenance 表示是否需要异步执行窗口维护。
 func (s *SubscriptionService) ValidateAndCheckLimits(sub *UserSubscription, group *Group) (needsMaintenance bool, err error) {
+	applyLegacyGroupLimits(sub, group)
 	// 1. 验证订阅状态
 	if sub.Status == SubscriptionStatusExpired {
 		return false, ErrSubscriptionExpired
@@ -939,17 +951,35 @@ func (s *SubscriptionService) ValidateAndCheckLimits(sub *UserSubscription, grou
 	}
 
 	// 3. 检查用量限额
-	if !sub.CheckDailyLimit(group, 0) {
+	if !sub.CheckDailyLimit(0) {
 		return needsMaintenance, ErrDailyLimitExceeded
 	}
-	if !sub.CheckWeeklyLimit(group, 0) {
+	if !sub.CheckWeeklyLimit(0) {
 		return needsMaintenance, ErrWeeklyLimitExceeded
 	}
-	if !sub.CheckMonthlyLimit(group, 0) {
+	if !sub.CheckMonthlyLimit(0) {
 		return needsMaintenance, ErrMonthlyLimitExceeded
 	}
 
 	return needsMaintenance, nil
+}
+
+func applyLegacyGroupLimits(sub *UserSubscription, group *Group) {
+	if sub == nil || group == nil {
+		return
+	}
+	if sub.DailyLimitUSD == nil {
+		sub.DailyLimitUSD = group.DailyLimitUSD
+	}
+	if sub.WeeklyLimitUSD == nil {
+		sub.WeeklyLimitUSD = group.WeeklyLimitUSD
+	}
+	if sub.MonthlyLimitUSD == nil {
+		sub.MonthlyLimitUSD = group.MonthlyLimitUSD
+	}
+	if sub.PlanName == "" {
+		sub.PlanName = group.Name
+	}
 }
 
 // DoWindowMaintenance 异步执行窗口维护（激活+重置）
@@ -1041,16 +1071,22 @@ func (s *SubscriptionService) GetSubscriptionProgress(ctx context.Context, subsc
 
 // calculateProgress 根据已加载的订阅和分组数据计算使用进度（纯内存计算，无 DB 查询）
 func (s *SubscriptionService) calculateProgress(sub *UserSubscription, group *Group) *SubscriptionProgress {
+	applyLegacyGroupLimits(sub, group)
+
+	groupName := sub.PlanName
+	if groupName == "" && group != nil {
+		groupName = group.Name
+	}
 	progress := &SubscriptionProgress{
 		ID:            sub.ID,
-		GroupName:     group.Name,
+		GroupName:     groupName,
 		ExpiresAt:     sub.ExpiresAt,
 		ExpiresInDays: sub.DaysRemaining(),
 	}
 
 	// 日进度
-	if group.HasDailyLimit() && sub.DailyWindowStart != nil {
-		limit := *group.DailyLimitUSD
+	if sub.HasDailyLimit() && sub.DailyWindowStart != nil {
+		limit := *sub.DailyLimitUSD
 		resetsAt := sub.DailyWindowStart.Add(24 * time.Hour)
 		if dailyResetTime := sub.DailyResetTime(); dailyResetTime != nil {
 			resetsAt = *dailyResetTime
@@ -1076,8 +1112,8 @@ func (s *SubscriptionService) calculateProgress(sub *UserSubscription, group *Gr
 	}
 
 	// 周进度
-	if group.HasWeeklyLimit() && sub.WeeklyWindowStart != nil {
-		limit := *group.WeeklyLimitUSD
+	if sub.HasWeeklyLimit() && sub.WeeklyWindowStart != nil {
+		limit := *sub.WeeklyLimitUSD
 		resetsAt := sub.WeeklyWindowStart.Add(7 * 24 * time.Hour)
 		progress.Weekly = &UsageWindowProgress{
 			LimitUSD:        limit,
@@ -1100,8 +1136,8 @@ func (s *SubscriptionService) calculateProgress(sub *UserSubscription, group *Gr
 	}
 
 	// 月进度
-	if group.HasMonthlyLimit() && sub.MonthlyWindowStart != nil {
-		limit := *group.MonthlyLimitUSD
+	if sub.HasMonthlyLimit() && sub.MonthlyWindowStart != nil {
+		limit := *sub.MonthlyLimitUSD
 		resetsAt := sub.MonthlyWindowStart.Add(30 * 24 * time.Hour)
 		progress.Monthly = &UsageWindowProgress{
 			LimitUSD:        limit,
@@ -1137,11 +1173,7 @@ func (s *SubscriptionService) GetUserSubscriptionsWithProgress(ctx context.Conte
 	progresses := make([]SubscriptionProgress, 0, len(subs))
 	for i := range subs {
 		sub := &subs[i]
-		group := sub.Group
-		if group == nil {
-			continue
-		}
-		progresses = append(progresses, *s.calculateProgress(sub, group))
+		progresses = append(progresses, *s.calculateProgress(sub, sub.Group))
 	}
 
 	return progresses, nil

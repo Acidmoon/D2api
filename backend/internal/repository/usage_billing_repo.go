@@ -181,31 +181,26 @@ func usageBillingSubscriptionRemaining(ctx context.Context, tx *sql.Tx, subscrip
 	const q = `
 		WITH sub AS (
 			SELECT
-				us.*,
-				g.daily_limit_usd,
-				g.weekly_limit_usd,
-				g.monthly_limit_usd,
+				sb.*,
 				(
-					us.daily_window_start IS NOT NULL
-					AND us.expires_at > us.starts_at + INTERVAL '1 day'
-					AND NOW() >= us.daily_window_start + INTERVAL '24 hours'
+					sb.daily_window_start IS NOT NULL
+					AND sb.expires_at > sb.starts_at + INTERVAL '1 day'
+					AND NOW() >= sb.daily_window_start + INTERVAL '24 hours'
 				) AS daily_expired,
 				(
-					us.weekly_window_start IS NOT NULL
-					AND NOW() >= us.weekly_window_start + INTERVAL '7 days'
+					sb.weekly_window_start IS NOT NULL
+					AND NOW() >= sb.weekly_window_start + INTERVAL '7 days'
 				) AS weekly_expired,
 				(
-					us.monthly_window_start IS NOT NULL
-					AND NOW() >= us.monthly_window_start + INTERVAL '30 days'
+					sb.monthly_window_start IS NOT NULL
+					AND NOW() >= sb.monthly_window_start + INTERVAL '30 days'
 				) AS monthly_expired
-			FROM user_subscriptions us
-			JOIN groups g ON g.id = us.group_id AND g.deleted_at IS NULL
-			WHERE us.id = $1
-				AND us.deleted_at IS NULL
-				AND us.status = $2
-				AND g.subscription_type = $3
-				AND us.expires_at > NOW()
-			FOR UPDATE OF us
+			FROM subscription_balances sb
+			WHERE sb.id = $1
+				AND sb.deleted_at IS NULL
+				AND sb.status = $2
+				AND sb.expires_at > NOW()
+			FOR UPDATE OF sb
 		)
 		SELECT LEAST(
 			CASE WHEN daily_limit_usd IS NULL OR daily_limit_usd <= 0 THEN 1e100 ELSE GREATEST(daily_limit_usd - CASE WHEN daily_expired THEN 0 ELSE daily_usage_usd END, 0) END,
@@ -215,7 +210,7 @@ func usageBillingSubscriptionRemaining(ctx context.Context, tx *sql.Tx, subscrip
 		FROM sub
 	`
 	var remaining float64
-	if err := tx.QueryRowContext(ctx, q, subscriptionID, service.SubscriptionStatusActive, service.SubscriptionTypeSubscription).Scan(&remaining); err != nil {
+	if err := tx.QueryRowContext(ctx, q, subscriptionID, service.SubscriptionStatusActive).Scan(&remaining); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return 0, service.ErrSubscriptionNotFound
 		}
@@ -226,61 +221,72 @@ func usageBillingSubscriptionRemaining(ctx context.Context, tx *sql.Tx, subscrip
 
 func incrementUsageBillingSubscription(ctx context.Context, tx *sql.Tx, subscriptionID int64, costUSD float64) error {
 	const updateSQL = `
-		UPDATE user_subscriptions us
-		SET
-			daily_usage_usd = CASE
-				WHEN us.daily_window_start IS NOT NULL
-					AND us.expires_at > us.starts_at + INTERVAL '1 day'
-					AND NOW() >= us.daily_window_start + INTERVAL '24 hours'
-				THEN $1
-				ELSE us.daily_usage_usd + $1
-			END,
-			weekly_usage_usd = CASE
-				WHEN us.weekly_window_start IS NOT NULL
-					AND NOW() >= us.weekly_window_start + INTERVAL '7 days'
-				THEN $1
-				ELSE us.weekly_usage_usd + $1
-			END,
-			monthly_usage_usd = CASE
-				WHEN us.monthly_window_start IS NOT NULL
-					AND NOW() >= us.monthly_window_start + INTERVAL '30 days'
-				THEN $1
-				ELSE us.monthly_usage_usd + $1
-			END,
-			daily_window_start = CASE
-				WHEN us.daily_window_start IS NULL
-					OR (
-						us.expires_at > us.starts_at + INTERVAL '1 day'
-						AND NOW() >= us.daily_window_start + INTERVAL '24 hours'
-					)
-				THEN date_trunc('day', NOW())
-				ELSE us.daily_window_start
-			END,
-			weekly_window_start = CASE
-				WHEN us.weekly_window_start IS NULL
-					OR NOW() >= us.weekly_window_start + INTERVAL '7 days'
-				THEN date_trunc('day', NOW())
-				ELSE us.weekly_window_start
-			END,
-			monthly_window_start = CASE
-				WHEN us.monthly_window_start IS NULL
-					OR NOW() >= us.monthly_window_start + INTERVAL '30 days'
-				THEN NOW()
-				ELSE us.monthly_window_start
-			END,
-			updated_at = NOW()
-		FROM groups g
-		WHERE us.id = $2
-			AND us.deleted_at IS NULL
-			AND us.group_id = g.id
-			AND g.deleted_at IS NULL
+		WITH updated AS (
+			UPDATE subscription_balances sb
+			SET
+				daily_usage_usd = CASE
+					WHEN sb.daily_window_start IS NOT NULL
+						AND sb.expires_at > sb.starts_at + INTERVAL '1 day'
+						AND NOW() >= sb.daily_window_start + INTERVAL '24 hours'
+					THEN $1
+					ELSE sb.daily_usage_usd + $1
+				END,
+				weekly_usage_usd = CASE
+					WHEN sb.weekly_window_start IS NOT NULL
+						AND NOW() >= sb.weekly_window_start + INTERVAL '7 days'
+					THEN $1
+					ELSE sb.weekly_usage_usd + $1
+				END,
+				monthly_usage_usd = CASE
+					WHEN sb.monthly_window_start IS NOT NULL
+						AND NOW() >= sb.monthly_window_start + INTERVAL '30 days'
+					THEN $1
+					ELSE sb.monthly_usage_usd + $1
+				END,
+				daily_window_start = CASE
+					WHEN sb.daily_window_start IS NULL
+						OR (
+							sb.expires_at > sb.starts_at + INTERVAL '1 day'
+							AND NOW() >= sb.daily_window_start + INTERVAL '24 hours'
+						)
+					THEN date_trunc('day', NOW())
+					ELSE sb.daily_window_start
+				END,
+				weekly_window_start = CASE
+					WHEN sb.weekly_window_start IS NULL
+						OR NOW() >= sb.weekly_window_start + INTERVAL '7 days'
+					THEN date_trunc('day', NOW())
+					ELSE sb.weekly_window_start
+				END,
+				monthly_window_start = CASE
+					WHEN sb.monthly_window_start IS NULL
+						OR NOW() >= sb.monthly_window_start + INTERVAL '30 days'
+					THEN NOW()
+					ELSE sb.monthly_window_start
+				END,
+				updated_at = NOW()
+			WHERE sb.id = $2
+				AND sb.deleted_at IS NULL
+			RETURNING legacy_user_subscription_id, daily_usage_usd, weekly_usage_usd, monthly_usage_usd,
+				daily_window_start, weekly_window_start, monthly_window_start, updated_at
+		),
+		mirrored AS (
+			UPDATE user_subscriptions us
+			SET daily_usage_usd = updated.daily_usage_usd,
+				weekly_usage_usd = updated.weekly_usage_usd,
+				monthly_usage_usd = updated.monthly_usage_usd,
+				daily_window_start = updated.daily_window_start,
+				weekly_window_start = updated.weekly_window_start,
+				monthly_window_start = updated.monthly_window_start,
+				updated_at = updated.updated_at
+			FROM updated
+			WHERE us.id = updated.legacy_user_subscription_id
+			RETURNING us.id
+		)
+		SELECT COUNT(*) FROM updated
 	`
-	res, err := tx.ExecContext(ctx, updateSQL, costUSD, subscriptionID)
-	if err != nil {
-		return err
-	}
-	affected, err := res.RowsAffected()
-	if err != nil {
+	var affected int
+	if err := tx.QueryRowContext(ctx, updateSQL, costUSD, subscriptionID).Scan(&affected); err != nil {
 		return err
 	}
 	if affected > 0 {

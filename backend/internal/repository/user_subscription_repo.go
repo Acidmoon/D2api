@@ -2,21 +2,47 @@ package repository
 
 import (
 	"context"
+	"database/sql"
+	"errors"
+	"fmt"
+	"strings"
 	"time"
 
+	entsql "entgo.io/ent/dialect/sql"
 	dbent "github.com/Wei-Shaw/sub2api/ent"
-	"github.com/Wei-Shaw/sub2api/ent/group"
-	"github.com/Wei-Shaw/sub2api/ent/usersubscription"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/pagination"
 	"github.com/Wei-Shaw/sub2api/internal/service"
 )
 
-type userSubscriptionRepository struct {
-	client *dbent.Client
+type subscriptionBalanceExecutor interface {
+	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
+	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
+	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
 }
 
-func NewUserSubscriptionRepository(client *dbent.Client) service.UserSubscriptionRepository {
-	return &userSubscriptionRepository{client: client}
+type userSubscriptionRepository struct {
+	client *dbent.Client
+	db     *sql.DB
+}
+
+func NewUserSubscriptionRepository(client *dbent.Client, dbOpt ...*sql.DB) service.UserSubscriptionRepository {
+	var db *sql.DB
+	if len(dbOpt) > 0 {
+		db = dbOpt[0]
+	}
+	if db == nil && client != nil {
+		if drv, ok := client.Driver().(*entsql.Driver); ok {
+			db = drv.DB()
+		}
+	}
+	return &userSubscriptionRepository{client: client, db: db}
+}
+
+func (r *userSubscriptionRepository) subscriptionBalanceExec() subscriptionBalanceExecutor {
+	if r == nil || r.db == nil {
+		return nil
+	}
+	return r.db
 }
 
 func (r *userSubscriptionRepository) Create(ctx context.Context, sub *service.UserSubscription) error {
@@ -24,81 +50,31 @@ func (r *userSubscriptionRepository) Create(ctx context.Context, sub *service.Us
 		return service.ErrSubscriptionNilInput
 	}
 
-	client := clientFromContext(ctx, r.client)
-	builder := client.UserSubscription.Create().
-		SetUserID(sub.UserID).
-		SetGroupID(sub.GroupID).
-		SetExpiresAt(sub.ExpiresAt).
-		SetNillableDailyWindowStart(sub.DailyWindowStart).
-		SetNillableWeeklyWindowStart(sub.WeeklyWindowStart).
-		SetNillableMonthlyWindowStart(sub.MonthlyWindowStart).
-		SetDailyUsageUsd(sub.DailyUsageUSD).
-		SetWeeklyUsageUsd(sub.WeeklyUsageUSD).
-		SetMonthlyUsageUsd(sub.MonthlyUsageUSD).
-		SetNillableAssignedBy(sub.AssignedBy)
-
 	if sub.StartsAt.IsZero() {
-		builder.SetStartsAt(time.Now())
-	} else {
-		builder.SetStartsAt(sub.StartsAt)
+		sub.StartsAt = time.Now()
 	}
-	if sub.Status != "" {
-		builder.SetStatus(sub.Status)
+	if sub.Status == "" {
+		sub.Status = service.SubscriptionStatusActive
 	}
-	if !sub.AssignedAt.IsZero() {
-		builder.SetAssignedAt(sub.AssignedAt)
+	if sub.AssignedAt.IsZero() {
+		sub.AssignedAt = time.Now()
 	}
-	// Keep compatibility with historical behavior: always store notes as a string value.
-	builder.SetNotes(sub.Notes)
-
-	created, err := builder.Save(ctx)
-	if err == nil {
-		applyUserSubscriptionEntityToService(sub, created)
+	if sub.PlanName == "" && sub.Group != nil {
+		sub.PlanName = sub.Group.Name
 	}
-	return translatePersistenceError(err, nil, service.ErrSubscriptionAlreadyExists)
+	return r.insertSubscriptionBalance(ctx, sub)
 }
 
 func (r *userSubscriptionRepository) GetByID(ctx context.Context, id int64) (*service.UserSubscription, error) {
-	client := clientFromContext(ctx, r.client)
-	m, err := client.UserSubscription.Query().
-		Where(usersubscription.IDEQ(id)).
-		WithUser().
-		WithGroup().
-		WithAssignedByUser().
-		Only(ctx)
-	if err != nil {
-		return nil, translatePersistenceError(err, service.ErrSubscriptionNotFound, nil)
-	}
-	return userSubscriptionEntityToService(m), nil
+	return r.getSubscriptionBalanceByID(ctx, id)
 }
 
 func (r *userSubscriptionRepository) GetByUserIDAndGroupID(ctx context.Context, userID, groupID int64) (*service.UserSubscription, error) {
-	client := clientFromContext(ctx, r.client)
-	m, err := client.UserSubscription.Query().
-		Where(usersubscription.UserIDEQ(userID), usersubscription.GroupIDEQ(groupID)).
-		WithGroup().
-		Only(ctx)
-	if err != nil {
-		return nil, translatePersistenceError(err, service.ErrSubscriptionNotFound, nil)
-	}
-	return userSubscriptionEntityToService(m), nil
+	return r.getSubscriptionBalanceByUserSourceGroup(ctx, userID, groupID, false)
 }
 
 func (r *userSubscriptionRepository) GetActiveByUserIDAndGroupID(ctx context.Context, userID, groupID int64) (*service.UserSubscription, error) {
-	client := clientFromContext(ctx, r.client)
-	m, err := client.UserSubscription.Query().
-		Where(
-			usersubscription.UserIDEQ(userID),
-			usersubscription.GroupIDEQ(groupID),
-			usersubscription.StatusEQ(service.SubscriptionStatusActive),
-			usersubscription.ExpiresAtGT(time.Now()),
-		).
-		WithGroup().
-		Only(ctx)
-	if err != nil {
-		return nil, translatePersistenceError(err, service.ErrSubscriptionNotFound, nil)
-	}
-	return userSubscriptionEntityToService(m), nil
+	return r.getSubscriptionBalanceByUserSourceGroup(ctx, userID, groupID, true)
 }
 
 func (r *userSubscriptionRepository) Update(ctx context.Context, sub *service.UserSubscription) error {
@@ -106,234 +82,160 @@ func (r *userSubscriptionRepository) Update(ctx context.Context, sub *service.Us
 		return service.ErrSubscriptionNilInput
 	}
 
-	client := clientFromContext(ctx, r.client)
-	builder := client.UserSubscription.UpdateOneID(sub.ID).
-		SetUserID(sub.UserID).
-		SetGroupID(sub.GroupID).
-		SetStartsAt(sub.StartsAt).
-		SetExpiresAt(sub.ExpiresAt).
-		SetStatus(sub.Status).
-		SetNillableDailyWindowStart(sub.DailyWindowStart).
-		SetNillableWeeklyWindowStart(sub.WeeklyWindowStart).
-		SetNillableMonthlyWindowStart(sub.MonthlyWindowStart).
-		SetDailyUsageUsd(sub.DailyUsageUSD).
-		SetWeeklyUsageUsd(sub.WeeklyUsageUSD).
-		SetMonthlyUsageUsd(sub.MonthlyUsageUSD).
-		SetNillableAssignedBy(sub.AssignedBy).
-		SetAssignedAt(sub.AssignedAt).
-		SetNotes(sub.Notes)
-
-	updated, err := builder.Save(ctx)
-	if err == nil {
-		applyUserSubscriptionEntityToService(sub, updated)
-		return nil
-	}
-	return translatePersistenceError(err, service.ErrSubscriptionNotFound, service.ErrSubscriptionAlreadyExists)
+	return r.updateSubscriptionBalance(ctx, sub)
 }
 
 func (r *userSubscriptionRepository) Delete(ctx context.Context, id int64) error {
-	// Match GORM semantics: deleting a missing row is not an error.
-	client := clientFromContext(ctx, r.client)
-	_, err := client.UserSubscription.Delete().Where(usersubscription.IDEQ(id)).Exec(ctx)
+	exec := r.subscriptionBalanceExec()
+	if exec == nil {
+		return errors.New("subscription balance repository db is nil")
+	}
+	_, err := exec.ExecContext(ctx, `
+		WITH deleted AS (
+			UPDATE subscription_balances
+			SET deleted_at = NOW(), updated_at = NOW()
+			WHERE id = $1 AND deleted_at IS NULL
+			RETURNING legacy_user_subscription_id
+		)
+		UPDATE user_subscriptions us
+		SET deleted_at = NOW(), updated_at = NOW()
+		FROM deleted
+		WHERE us.id = deleted.legacy_user_subscription_id
+	`, id)
 	return err
 }
 
 func (r *userSubscriptionRepository) ListByUserID(ctx context.Context, userID int64) ([]service.UserSubscription, error) {
-	client := clientFromContext(ctx, r.client)
-	subs, err := client.UserSubscription.Query().
-		Where(usersubscription.UserIDEQ(userID)).
-		WithGroup().
-		Order(dbent.Desc(usersubscription.FieldCreatedAt)).
-		All(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return userSubscriptionEntitiesToService(subs), nil
+	return r.listSubscriptionBalances(ctx, "WHERE sb.user_id = $1 AND sb.deleted_at IS NULL", []any{userID}, "ORDER BY sb.created_at DESC", 0, 0)
 }
 
 func (r *userSubscriptionRepository) ListActiveByUserID(ctx context.Context, userID int64) ([]service.UserSubscription, error) {
-	client := clientFromContext(ctx, r.client)
-	subs, err := client.UserSubscription.Query().
-		Where(
-			usersubscription.UserIDEQ(userID),
-			usersubscription.StatusEQ(service.SubscriptionStatusActive),
-			usersubscription.ExpiresAtGT(time.Now()),
-		).
-		WithGroup().
-		Order(dbent.Desc(usersubscription.FieldCreatedAt)).
-		All(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return userSubscriptionEntitiesToService(subs), nil
+	return r.listSubscriptionBalances(ctx, "WHERE sb.user_id = $1 AND sb.status = $2 AND sb.expires_at > NOW() AND sb.deleted_at IS NULL", []any{userID, service.SubscriptionStatusActive}, "ORDER BY sb.created_at DESC", 0, 0)
 }
 
 func (r *userSubscriptionRepository) ListByGroupID(ctx context.Context, groupID int64, params pagination.PaginationParams) ([]service.UserSubscription, *pagination.PaginationResult, error) {
-	client := clientFromContext(ctx, r.client)
-	q := client.UserSubscription.Query().Where(usersubscription.GroupIDEQ(groupID))
-
-	total, err := q.Clone().Count(ctx)
+	where := "WHERE sb.source_group_id = $1 AND sb.deleted_at IS NULL"
+	total, err := r.countSubscriptionBalances(ctx, where, []any{groupID})
 	if err != nil {
 		return nil, nil, err
 	}
-
-	subs, err := q.
-		WithUser().
-		WithGroup().
-		Order(dbent.Desc(usersubscription.FieldCreatedAt)).
-		Offset(params.Offset()).
-		Limit(params.Limit()).
-		All(ctx)
+	subs, err := r.listSubscriptionBalances(ctx, where, []any{groupID}, "ORDER BY sb.created_at DESC", params.Limit(), params.Offset())
 	if err != nil {
 		return nil, nil, err
 	}
-
-	return userSubscriptionEntitiesToService(subs), paginationResultFromTotal(int64(total), params), nil
+	return subs, paginationResultFromTotal(total, params), nil
 }
 
 func (r *userSubscriptionRepository) List(ctx context.Context, params pagination.PaginationParams, userID, groupID *int64, status, platform, sortBy, sortOrder string) ([]service.UserSubscription, *pagination.PaginationResult, error) {
-	client := clientFromContext(ctx, r.client)
-	q := client.UserSubscription.Query()
+	clauses := []string{"sb.deleted_at IS NULL"}
+	args := make([]any, 0, 4)
 	if userID != nil {
-		q = q.Where(usersubscription.UserIDEQ(*userID))
+		args = append(args, *userID)
+		clauses = append(clauses, fmt.Sprintf("sb.user_id = $%d", len(args)))
 	}
 	if groupID != nil {
-		q = q.Where(usersubscription.GroupIDEQ(*groupID))
+		args = append(args, *groupID)
+		clauses = append(clauses, fmt.Sprintf("sb.source_group_id = $%d", len(args)))
 	}
 	if platform != "" {
-		q = q.Where(usersubscription.HasGroupWith(group.PlatformEQ(platform)))
+		args = append(args, platform)
+		clauses = append(clauses, fmt.Sprintf("g.platform = $%d", len(args)))
 	}
 
-	// Status filtering with real-time expiration check
-	now := time.Now()
 	switch status {
 	case service.SubscriptionStatusActive:
-		// Active: status is active AND not yet expired
-		q = q.Where(
-			usersubscription.StatusEQ(service.SubscriptionStatusActive),
-			usersubscription.ExpiresAtGT(now),
-		)
+		args = append(args, service.SubscriptionStatusActive)
+		clauses = append(clauses, fmt.Sprintf("sb.status = $%d AND sb.expires_at > NOW()", len(args)))
 	case service.SubscriptionStatusExpired:
-		// Expired: status is expired OR (status is active but already expired)
-		q = q.Where(
-			usersubscription.Or(
-				usersubscription.StatusEQ(service.SubscriptionStatusExpired),
-				usersubscription.And(
-					usersubscription.StatusEQ(service.SubscriptionStatusActive),
-					usersubscription.ExpiresAtLTE(now),
-				),
-			),
-		)
+		clauses = append(clauses, "(sb.status = 'expired' OR (sb.status = 'active' AND sb.expires_at <= NOW()))")
 	case "":
-		// No filter
 	default:
-		// Other status (e.g., revoked)
-		q = q.Where(usersubscription.StatusEQ(status))
+		args = append(args, status)
+		clauses = append(clauses, fmt.Sprintf("sb.status = $%d", len(args)))
 	}
 
-	total, err := q.Clone().Count(ctx)
+	where := "WHERE " + strings.Join(clauses, " AND ")
+	total, err := r.countSubscriptionBalances(ctx, where, args)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	// Apply sorting
-	q = q.WithUser().WithGroup().WithAssignedByUser()
-
-	// Determine sort field
-	var field string
+	field := "sb.created_at"
 	switch sortBy {
 	case "expires_at":
-		field = usersubscription.FieldExpiresAt
+		field = "sb.expires_at"
 	case "status":
-		field = usersubscription.FieldStatus
-	default:
-		field = usersubscription.FieldCreatedAt
+		field = "sb.status"
 	}
-
-	// Determine sort order (default: desc)
+	order := "DESC"
 	if sortOrder == "asc" && sortBy != "" {
-		q = q.Order(dbent.Asc(field))
-	} else {
-		q = q.Order(dbent.Desc(field))
+		order = "ASC"
 	}
-
-	subs, err := q.
-		Offset(params.Offset()).
-		Limit(params.Limit()).
-		All(ctx)
+	subs, err := r.listSubscriptionBalances(ctx, where, args, fmt.Sprintf("ORDER BY %s %s", field, order), params.Limit(), params.Offset())
 	if err != nil {
 		return nil, nil, err
 	}
 
-	return userSubscriptionEntitiesToService(subs), paginationResultFromTotal(int64(total), params), nil
+	return subs, paginationResultFromTotal(total, params), nil
 }
 
 func (r *userSubscriptionRepository) ExistsByUserIDAndGroupID(ctx context.Context, userID, groupID int64) (bool, error) {
-	client := clientFromContext(ctx, r.client)
-	return client.UserSubscription.Query().
-		Where(usersubscription.UserIDEQ(userID), usersubscription.GroupIDEQ(groupID)).
-		Exist(ctx)
+	exec := r.subscriptionBalanceExec()
+	if exec == nil {
+		return false, errors.New("subscription balance repository db is nil")
+	}
+	var exists bool
+	err := exec.QueryRowContext(ctx, `SELECT EXISTS (SELECT 1 FROM subscription_balances WHERE user_id = $1 AND source_group_id = $2 AND deleted_at IS NULL)`, userID, groupID).Scan(&exists)
+	return exists, err
 }
 
 func (r *userSubscriptionRepository) ExtendExpiry(ctx context.Context, subscriptionID int64, newExpiresAt time.Time) error {
-	client := clientFromContext(ctx, r.client)
-	_, err := client.UserSubscription.UpdateOneID(subscriptionID).
-		SetExpiresAt(newExpiresAt).
-		Save(ctx)
-	return translatePersistenceError(err, service.ErrSubscriptionNotFound, nil)
+	if err := r.execSubscriptionBalanceUpdate(ctx, `UPDATE subscription_balances SET expires_at = $1, updated_at = NOW() WHERE id = $2 AND deleted_at IS NULL`, newExpiresAt, subscriptionID); err != nil {
+		return err
+	}
+	return r.syncLegacySubscriptionSnapshot(ctx, subscriptionID)
 }
 
 func (r *userSubscriptionRepository) UpdateStatus(ctx context.Context, subscriptionID int64, status string) error {
-	client := clientFromContext(ctx, r.client)
-	_, err := client.UserSubscription.UpdateOneID(subscriptionID).
-		SetStatus(status).
-		Save(ctx)
-	return translatePersistenceError(err, service.ErrSubscriptionNotFound, nil)
+	if err := r.execSubscriptionBalanceUpdate(ctx, `UPDATE subscription_balances SET status = $1, updated_at = NOW() WHERE id = $2 AND deleted_at IS NULL`, status, subscriptionID); err != nil {
+		return err
+	}
+	return r.syncLegacySubscriptionSnapshot(ctx, subscriptionID)
 }
 
 func (r *userSubscriptionRepository) UpdateNotes(ctx context.Context, subscriptionID int64, notes string) error {
-	client := clientFromContext(ctx, r.client)
-	_, err := client.UserSubscription.UpdateOneID(subscriptionID).
-		SetNotes(notes).
-		Save(ctx)
-	return translatePersistenceError(err, service.ErrSubscriptionNotFound, nil)
+	if err := r.execSubscriptionBalanceUpdate(ctx, `UPDATE subscription_balances SET notes = $1, updated_at = NOW() WHERE id = $2 AND deleted_at IS NULL`, notes, subscriptionID); err != nil {
+		return err
+	}
+	return r.syncLegacySubscriptionSnapshot(ctx, subscriptionID)
 }
 
 func (r *userSubscriptionRepository) ActivateWindows(ctx context.Context, id int64, start time.Time) error {
-	client := clientFromContext(ctx, r.client)
-	_, err := client.UserSubscription.UpdateOneID(id).
-		SetDailyWindowStart(start).
-		SetWeeklyWindowStart(start).
-		SetMonthlyWindowStart(start).
-		Save(ctx)
-	return translatePersistenceError(err, service.ErrSubscriptionNotFound, nil)
+	if err := r.execSubscriptionBalanceUpdate(ctx, `UPDATE subscription_balances SET daily_window_start = $1, weekly_window_start = $1, monthly_window_start = $1, updated_at = NOW() WHERE id = $2 AND deleted_at IS NULL`, start, id); err != nil {
+		return err
+	}
+	return r.syncLegacySubscriptionSnapshot(ctx, id)
 }
 
 func (r *userSubscriptionRepository) ResetDailyUsage(ctx context.Context, id int64, newWindowStart time.Time) error {
-	client := clientFromContext(ctx, r.client)
-	_, err := client.UserSubscription.UpdateOneID(id).
-		SetDailyUsageUsd(0).
-		SetDailyWindowStart(newWindowStart).
-		Save(ctx)
-	return translatePersistenceError(err, service.ErrSubscriptionNotFound, nil)
+	if err := r.execSubscriptionBalanceUpdate(ctx, `UPDATE subscription_balances SET daily_usage_usd = 0, daily_window_start = $1, updated_at = NOW() WHERE id = $2 AND deleted_at IS NULL`, newWindowStart, id); err != nil {
+		return err
+	}
+	return r.syncLegacySubscriptionSnapshot(ctx, id)
 }
 
 func (r *userSubscriptionRepository) ResetWeeklyUsage(ctx context.Context, id int64, newWindowStart time.Time) error {
-	client := clientFromContext(ctx, r.client)
-	_, err := client.UserSubscription.UpdateOneID(id).
-		SetWeeklyUsageUsd(0).
-		SetWeeklyWindowStart(newWindowStart).
-		Save(ctx)
-	return translatePersistenceError(err, service.ErrSubscriptionNotFound, nil)
+	if err := r.execSubscriptionBalanceUpdate(ctx, `UPDATE subscription_balances SET weekly_usage_usd = 0, weekly_window_start = $1, updated_at = NOW() WHERE id = $2 AND deleted_at IS NULL`, newWindowStart, id); err != nil {
+		return err
+	}
+	return r.syncLegacySubscriptionSnapshot(ctx, id)
 }
 
 func (r *userSubscriptionRepository) ResetMonthlyUsage(ctx context.Context, id int64, newWindowStart time.Time) error {
-	client := clientFromContext(ctx, r.client)
-	_, err := client.UserSubscription.UpdateOneID(id).
-		SetMonthlyUsageUsd(0).
-		SetMonthlyWindowStart(newWindowStart).
-		Save(ctx)
-	return translatePersistenceError(err, service.ErrSubscriptionNotFound, nil)
+	if err := r.execSubscriptionBalanceUpdate(ctx, `UPDATE subscription_balances SET monthly_usage_usd = 0, monthly_window_start = $1, updated_at = NOW() WHERE id = $2 AND deleted_at IS NULL`, newWindowStart, id); err != nil {
+		return err
+	}
+	return r.syncLegacySubscriptionSnapshot(ctx, id)
 }
 
 // IncrementUsage 原子性地累加订阅用量。
@@ -341,21 +243,21 @@ func (r *userSubscriptionRepository) ResetMonthlyUsage(ctx context.Context, id i
 // 此处仅负责记录实际消费，确保消费数据的完整性。
 func (r *userSubscriptionRepository) IncrementUsage(ctx context.Context, id int64, costUSD float64) error {
 	const updateSQL = `
-		UPDATE user_subscriptions us
+		UPDATE subscription_balances sb
 		SET
-			daily_usage_usd = us.daily_usage_usd + $1,
-			weekly_usage_usd = us.weekly_usage_usd + $1,
-			monthly_usage_usd = us.monthly_usage_usd + $1,
+			daily_usage_usd = sb.daily_usage_usd + $1,
+			weekly_usage_usd = sb.weekly_usage_usd + $1,
+			monthly_usage_usd = sb.monthly_usage_usd + $1,
 			updated_at = NOW()
-		FROM groups g
-		WHERE us.id = $2
-			AND us.deleted_at IS NULL
-			AND us.group_id = g.id
-			AND g.deleted_at IS NULL
+		WHERE sb.id = $2
+			AND sb.deleted_at IS NULL
 	`
 
-	client := clientFromContext(ctx, r.client)
-	result, err := client.ExecContext(ctx, updateSQL, costUSD, id)
+	exec := r.subscriptionBalanceExec()
+	if exec == nil {
+		return errors.New("subscription balance repository db is nil")
+	}
+	result, err := exec.ExecContext(ctx, updateSQL, costUSD, id)
 	if err != nil {
 		return err
 	}
@@ -366,6 +268,9 @@ func (r *userSubscriptionRepository) IncrementUsage(ctx context.Context, id int6
 	}
 
 	if affected > 0 {
+		if err := r.syncLegacySubscriptionSnapshot(ctx, id); err != nil {
+			return err
+		}
 		return nil
 	}
 
@@ -374,55 +279,53 @@ func (r *userSubscriptionRepository) IncrementUsage(ctx context.Context, id int6
 }
 
 func (r *userSubscriptionRepository) BatchUpdateExpiredStatus(ctx context.Context) (int64, error) {
-	client := clientFromContext(ctx, r.client)
-	n, err := client.UserSubscription.Update().
-		Where(
-			usersubscription.StatusEQ(service.SubscriptionStatusActive),
-			usersubscription.ExpiresAtLTE(time.Now()),
-		).
-		SetStatus(service.SubscriptionStatusExpired).
-		Save(ctx)
-	return int64(n), err
+	exec := r.subscriptionBalanceExec()
+	if exec == nil {
+		return 0, errors.New("subscription balance repository db is nil")
+	}
+	res, err := exec.ExecContext(ctx, `
+		WITH updated AS (
+			UPDATE subscription_balances
+			SET status = $1, updated_at = NOW()
+			WHERE status = $2 AND expires_at <= NOW() AND deleted_at IS NULL
+			RETURNING legacy_user_subscription_id, status, updated_at
+		)
+		UPDATE user_subscriptions us
+		SET status = updated.status, updated_at = updated.updated_at
+		FROM updated
+		WHERE us.id = updated.legacy_user_subscription_id
+	`, service.SubscriptionStatusExpired, service.SubscriptionStatusActive)
+	if err != nil {
+		return 0, err
+	}
+	n, err := res.RowsAffected()
+	return n, err
 }
 
 // Extra repository helpers (currently used only by integration tests).
 
 func (r *userSubscriptionRepository) ListExpired(ctx context.Context) ([]service.UserSubscription, error) {
-	client := clientFromContext(ctx, r.client)
-	subs, err := client.UserSubscription.Query().
-		Where(
-			usersubscription.StatusEQ(service.SubscriptionStatusActive),
-			usersubscription.ExpiresAtLTE(time.Now()),
-		).
-		All(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return userSubscriptionEntitiesToService(subs), nil
+	return r.listSubscriptionBalances(ctx, "WHERE sb.status = $1 AND sb.expires_at <= NOW() AND sb.deleted_at IS NULL", []any{service.SubscriptionStatusActive}, "ORDER BY sb.expires_at ASC", 0, 0)
 }
 
 func (r *userSubscriptionRepository) CountByGroupID(ctx context.Context, groupID int64) (int64, error) {
-	client := clientFromContext(ctx, r.client)
-	count, err := client.UserSubscription.Query().Where(usersubscription.GroupIDEQ(groupID)).Count(ctx)
-	return int64(count), err
+	return r.countSubscriptionBalances(ctx, "WHERE sb.source_group_id = $1 AND sb.deleted_at IS NULL", []any{groupID})
 }
 
 func (r *userSubscriptionRepository) CountActiveByGroupID(ctx context.Context, groupID int64) (int64, error) {
-	client := clientFromContext(ctx, r.client)
-	count, err := client.UserSubscription.Query().
-		Where(
-			usersubscription.GroupIDEQ(groupID),
-			usersubscription.StatusEQ(service.SubscriptionStatusActive),
-			usersubscription.ExpiresAtGT(time.Now()),
-		).
-		Count(ctx)
-	return int64(count), err
+	return r.countSubscriptionBalances(ctx, "WHERE sb.source_group_id = $1 AND sb.status = $2 AND sb.expires_at > NOW() AND sb.deleted_at IS NULL", []any{groupID, service.SubscriptionStatusActive})
 }
 
 func (r *userSubscriptionRepository) DeleteByGroupID(ctx context.Context, groupID int64) (int64, error) {
-	client := clientFromContext(ctx, r.client)
-	n, err := client.UserSubscription.Delete().Where(usersubscription.GroupIDEQ(groupID)).Exec(ctx)
-	return int64(n), err
+	exec := r.subscriptionBalanceExec()
+	if exec == nil {
+		return 0, errors.New("subscription balance repository db is nil")
+	}
+	res, err := exec.ExecContext(ctx, `UPDATE subscription_balances SET deleted_at = NOW(), updated_at = NOW() WHERE source_group_id = $1 AND deleted_at IS NULL`, groupID)
+	if err != nil {
+		return 0, err
+	}
+	return res.RowsAffected()
 }
 
 func userSubscriptionEntityToService(m *dbent.UserSubscription) *service.UserSubscription {
@@ -477,4 +380,368 @@ func applyUserSubscriptionEntityToService(dst *service.UserSubscription, src *db
 	dst.ID = src.ID
 	dst.CreatedAt = src.CreatedAt
 	dst.UpdatedAt = src.UpdatedAt
+}
+
+func (r *userSubscriptionRepository) insertSubscriptionBalance(ctx context.Context, sub *service.UserSubscription) error {
+	exec := r.subscriptionBalanceExec()
+	if exec == nil {
+		return errors.New("subscription balance repository db is nil")
+	}
+	var id int64
+	err := exec.QueryRowContext(ctx, `
+		WITH legacy AS (
+			INSERT INTO user_subscriptions (
+				user_id, group_id, starts_at, expires_at, status,
+				daily_window_start, weekly_window_start, monthly_window_start,
+				daily_usage_usd, weekly_usage_usd, monthly_usage_usd,
+				assigned_by, assigned_at, notes, created_at, updated_at
+			)
+			VALUES ($1, $2, $4, $5, $6, $13, $14, $15, $10, $11, $12, $16, $17, $18, NOW(), NOW())
+			RETURNING id, created_at, updated_at
+		),
+		balance AS (
+			INSERT INTO subscription_balances (
+				id, user_id, legacy_user_subscription_id, source_group_id, plan_name, source, starts_at, expires_at, status,
+				daily_limit_usd, weekly_limit_usd, monthly_limit_usd,
+				daily_usage_usd, weekly_usage_usd, monthly_usage_usd,
+				daily_window_start, weekly_window_start, monthly_window_start,
+				assigned_by, assigned_at, notes, created_at, updated_at
+			)
+			SELECT
+				legacy.id, $1, legacy.id, $2, $3, 'manual', $4, $5, $6,
+				$7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18,
+				legacy.created_at, legacy.updated_at
+			FROM legacy
+			RETURNING id, created_at, updated_at
+		)
+		SELECT id, created_at, updated_at FROM balance
+	`,
+		sub.UserID, nullableInt64(sub.SourceGroupID, sub.GroupID), sub.PlanName,
+		sub.StartsAt, sub.ExpiresAt, sub.Status,
+		sub.DailyLimitUSD, sub.WeeklyLimitUSD, sub.MonthlyLimitUSD,
+		sub.DailyUsageUSD, sub.WeeklyUsageUSD, sub.MonthlyUsageUSD,
+		sub.DailyWindowStart, sub.WeeklyWindowStart, sub.MonthlyWindowStart,
+		sub.AssignedBy, sub.AssignedAt, nullableString(sub.Notes),
+	).Scan(&id, &sub.CreatedAt, &sub.UpdatedAt)
+	if err != nil {
+		return translatePersistenceError(err, nil, service.ErrSubscriptionAlreadyExists)
+	}
+	sub.ID = id
+	return nil
+}
+
+func (r *userSubscriptionRepository) updateSubscriptionBalance(ctx context.Context, sub *service.UserSubscription) error {
+	err := r.execSubscriptionBalanceUpdate(ctx, `
+		WITH updated AS (
+			UPDATE subscription_balances
+			SET user_id = $1,
+				source_group_id = $2,
+				plan_name = $3,
+				starts_at = $4,
+				expires_at = $5,
+				status = $6,
+				daily_limit_usd = $7,
+				weekly_limit_usd = $8,
+				monthly_limit_usd = $9,
+				daily_usage_usd = $10,
+				weekly_usage_usd = $11,
+				monthly_usage_usd = $12,
+				daily_window_start = $13,
+				weekly_window_start = $14,
+				monthly_window_start = $15,
+				assigned_by = $16,
+				assigned_at = $17,
+				notes = $18,
+				updated_at = NOW()
+			WHERE id = $19 AND deleted_at IS NULL
+			RETURNING legacy_user_subscription_id, user_id, source_group_id, starts_at, expires_at, status,
+				daily_window_start, weekly_window_start, monthly_window_start,
+				daily_usage_usd, weekly_usage_usd, monthly_usage_usd,
+				assigned_by, assigned_at, notes, updated_at
+		)
+		UPDATE user_subscriptions us
+		SET user_id = $1,
+			group_id = COALESCE(updated.source_group_id, us.group_id),
+			starts_at = $4,
+			expires_at = $5,
+			status = $6,
+			daily_usage_usd = $10,
+			weekly_usage_usd = $11,
+			monthly_usage_usd = $12,
+			daily_window_start = $13,
+			weekly_window_start = $14,
+			monthly_window_start = $15,
+			assigned_by = $16,
+			assigned_at = $17,
+			notes = $18,
+			updated_at = NOW()
+		FROM updated
+		WHERE us.id = updated.legacy_user_subscription_id
+	`,
+		sub.UserID, nullableInt64(sub.SourceGroupID, sub.GroupID), sub.PlanName,
+		sub.StartsAt, sub.ExpiresAt, sub.Status,
+		sub.DailyLimitUSD, sub.WeeklyLimitUSD, sub.MonthlyLimitUSD,
+		sub.DailyUsageUSD, sub.WeeklyUsageUSD, sub.MonthlyUsageUSD,
+		sub.DailyWindowStart, sub.WeeklyWindowStart, sub.MonthlyWindowStart,
+		sub.AssignedBy, sub.AssignedAt, nullableString(sub.Notes), sub.ID,
+	)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r *userSubscriptionRepository) getSubscriptionBalanceByID(ctx context.Context, id int64) (*service.UserSubscription, error) {
+	subs, err := r.listSubscriptionBalances(ctx, "WHERE sb.id = $1 AND sb.deleted_at IS NULL", []any{id}, "", 1, 0)
+	if err != nil {
+		return nil, err
+	}
+	if len(subs) == 0 {
+		return nil, service.ErrSubscriptionNotFound
+	}
+	return &subs[0], nil
+}
+
+func (r *userSubscriptionRepository) getSubscriptionBalanceByUserSourceGroup(ctx context.Context, userID, groupID int64, activeOnly bool) (*service.UserSubscription, error) {
+	where := "WHERE sb.user_id = $1 AND sb.source_group_id = $2 AND sb.deleted_at IS NULL"
+	args := []any{userID, groupID}
+	if activeOnly {
+		where += " AND sb.status = $3 AND sb.expires_at > NOW()"
+		args = append(args, service.SubscriptionStatusActive)
+	}
+	subs, err := r.listSubscriptionBalances(ctx, where, args, "ORDER BY sb.created_at DESC", 1, 0)
+	if err != nil {
+		return nil, err
+	}
+	if len(subs) == 0 {
+		return nil, service.ErrSubscriptionNotFound
+	}
+	return &subs[0], nil
+}
+
+func (r *userSubscriptionRepository) countSubscriptionBalances(ctx context.Context, where string, args []any) (int64, error) {
+	exec := r.subscriptionBalanceExec()
+	if exec == nil {
+		return 0, errors.New("subscription balance repository db is nil")
+	}
+	var total int64
+	err := exec.QueryRowContext(ctx, "SELECT COUNT(*) FROM subscription_balances sb LEFT JOIN groups g ON g.id = sb.source_group_id "+where, args...).Scan(&total)
+	return total, err
+}
+
+func (r *userSubscriptionRepository) listSubscriptionBalances(ctx context.Context, where string, args []any, order string, limit, offset int) ([]service.UserSubscription, error) {
+	exec := r.subscriptionBalanceExec()
+	if exec == nil {
+		return nil, errors.New("subscription balance repository db is nil")
+	}
+	query := `
+		SELECT
+			sb.id, sb.user_id, COALESCE(sb.source_group_id, 0), sb.source_group_id, sb.plan_name,
+			sb.starts_at, sb.expires_at, sb.status,
+			sb.daily_window_start, sb.weekly_window_start, sb.monthly_window_start,
+			sb.daily_limit_usd, sb.weekly_limit_usd, sb.monthly_limit_usd,
+			sb.daily_usage_usd, sb.weekly_usage_usd, sb.monthly_usage_usd,
+			sb.assigned_by, sb.assigned_at, sb.notes, sb.created_at, sb.updated_at,
+			u.email, u.name,
+			g.name, g.platform, g.rate_multiplier, g.subscription_type
+		FROM subscription_balances sb
+		LEFT JOIN users u ON u.id = sb.user_id
+		LEFT JOIN groups g ON g.id = sb.source_group_id
+		` + where + " " + order
+	if limit > 0 {
+		args = append(args, limit)
+		query += fmt.Sprintf(" LIMIT $%d", len(args))
+	}
+	if offset > 0 {
+		args = append(args, offset)
+		query += fmt.Sprintf(" OFFSET $%d", len(args))
+	}
+	rows, err := exec.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []service.UserSubscription
+	for rows.Next() {
+		sub, err := scanSubscriptionBalance(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, *sub)
+	}
+	return out, rows.Err()
+}
+
+func scanSubscriptionBalance(rows *sql.Rows) (*service.UserSubscription, error) {
+	var (
+		sub                   service.UserSubscription
+		sourceGroupID         sql.NullInt64
+		planName              string
+		dailyStart            sql.NullTime
+		weeklyStart           sql.NullTime
+		monthlyStart          sql.NullTime
+		dailyLimit            sql.NullFloat64
+		weeklyLimit           sql.NullFloat64
+		monthlyLimit          sql.NullFloat64
+		assignedBy            sql.NullInt64
+		notes                 sql.NullString
+		userEmail             sql.NullString
+		userName              sql.NullString
+		groupName             sql.NullString
+		groupPlatform         sql.NullString
+		groupRate             sql.NullFloat64
+		groupSubscriptionType sql.NullString
+	)
+	if err := rows.Scan(
+		&sub.ID, &sub.UserID, &sub.GroupID, &sourceGroupID, &planName,
+		&sub.StartsAt, &sub.ExpiresAt, &sub.Status,
+		&dailyStart, &weeklyStart, &monthlyStart,
+		&dailyLimit, &weeklyLimit, &monthlyLimit,
+		&sub.DailyUsageUSD, &sub.WeeklyUsageUSD, &sub.MonthlyUsageUSD,
+		&assignedBy, &sub.AssignedAt, &notes, &sub.CreatedAt, &sub.UpdatedAt,
+		&userEmail, &userName,
+		&groupName, &groupPlatform, &groupRate, &groupSubscriptionType,
+	); err != nil {
+		return nil, err
+	}
+	sub.PlanName = planName
+	sub.SourceGroupID = nullableInt64Ptr(sourceGroupID)
+	sub.DailyWindowStart = nullableTimePtr(dailyStart)
+	sub.WeeklyWindowStart = nullableTimePtr(weeklyStart)
+	sub.MonthlyWindowStart = nullableTimePtr(monthlyStart)
+	sub.DailyLimitUSD = subscriptionNullableFloat64Ptr(dailyLimit)
+	sub.WeeklyLimitUSD = subscriptionNullableFloat64Ptr(weeklyLimit)
+	sub.MonthlyLimitUSD = subscriptionNullableFloat64Ptr(monthlyLimit)
+	sub.AssignedBy = nullableInt64Ptr(assignedBy)
+	sub.Notes = derefStringFromNull(notes)
+	if userEmail.Valid || userName.Valid {
+		sub.User = &service.User{ID: sub.UserID, Email: userEmail.String, Username: userName.String}
+	}
+	if sourceGroupID.Valid {
+		sub.Group = &service.Group{
+			ID:               sourceGroupID.Int64,
+			Name:             firstNonEmpty(planName, groupName.String),
+			Platform:         groupPlatform.String,
+			RateMultiplier:   groupRate.Float64,
+			SubscriptionType: groupSubscriptionType.String,
+			DailyLimitUSD:    sub.DailyLimitUSD,
+			WeeklyLimitUSD:   sub.WeeklyLimitUSD,
+			MonthlyLimitUSD:  sub.MonthlyLimitUSD,
+			Hydrated:         true,
+		}
+	}
+	return &sub, nil
+}
+
+func (r *userSubscriptionRepository) execSubscriptionBalanceUpdate(ctx context.Context, query string, args ...any) error {
+	exec := r.subscriptionBalanceExec()
+	if exec == nil {
+		return errors.New("subscription balance repository db is nil")
+	}
+	res, err := exec.ExecContext(ctx, query, args...)
+	if err != nil {
+		return err
+	}
+	affected, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if affected == 0 {
+		return service.ErrSubscriptionNotFound
+	}
+	return nil
+}
+
+func (r *userSubscriptionRepository) syncLegacySubscriptionSnapshot(ctx context.Context, subscriptionID int64) error {
+	exec := r.subscriptionBalanceExec()
+	if exec == nil {
+		return errors.New("subscription balance repository db is nil")
+	}
+	_, err := exec.ExecContext(ctx, `
+		UPDATE user_subscriptions us
+		SET user_id = sb.user_id,
+			group_id = COALESCE(sb.source_group_id, us.group_id),
+			starts_at = sb.starts_at,
+			expires_at = sb.expires_at,
+			status = sb.status,
+			daily_window_start = sb.daily_window_start,
+			weekly_window_start = sb.weekly_window_start,
+			monthly_window_start = sb.monthly_window_start,
+			daily_usage_usd = sb.daily_usage_usd,
+			weekly_usage_usd = sb.weekly_usage_usd,
+			monthly_usage_usd = sb.monthly_usage_usd,
+			assigned_by = sb.assigned_by,
+			assigned_at = sb.assigned_at,
+			notes = sb.notes,
+			updated_at = sb.updated_at
+		FROM subscription_balances sb
+		WHERE sb.id = $1
+			AND us.id = sb.legacy_user_subscription_id
+	`, subscriptionID)
+	return err
+}
+
+func nullableInt64(ptr *int64, fallback int64) any {
+	if ptr != nil {
+		return *ptr
+	}
+	if fallback > 0 {
+		return fallback
+	}
+	return nil
+}
+
+func nullableString(s string) any {
+	if strings.TrimSpace(s) == "" {
+		return nil
+	}
+	return s
+}
+
+func nullableInt64Ptr(v sql.NullInt64) *int64 {
+	if !v.Valid {
+		return nil
+	}
+	x := v.Int64
+	return &x
+}
+
+func nullableTimePtr(v sql.NullTime) *time.Time {
+	if !v.Valid {
+		return nil
+	}
+	x := v.Time
+	return &x
+}
+
+func subscriptionNullableFloat64Ptr(v sql.NullFloat64) *float64 {
+	if !v.Valid {
+		return nil
+	}
+	x := v.Float64
+	return &x
+}
+
+func derefStringFromNull(v sql.NullString) string {
+	if !v.Valid {
+		return ""
+	}
+	return v.String
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, v := range values {
+		if strings.TrimSpace(v) != "" {
+			return v
+		}
+	}
+	return ""
+}
+
+func translateNoRows(err error) error {
+	if errors.Is(err, sql.ErrNoRows) {
+		return service.ErrSubscriptionNotFound
+	}
+	return err
 }

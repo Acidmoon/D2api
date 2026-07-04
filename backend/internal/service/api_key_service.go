@@ -327,10 +327,6 @@ func (s *APIKeyService) incrementAPIKeyErrorCount(ctx context.Context, userID in
 // canUserBindGroup 检查用户是否可以绑定指定分组。
 // 订阅现在是用户级预付额度，不再决定 API Key 能否绑定某个路由分组。
 func (s *APIKeyService) canUserBindGroup(_ context.Context, user *User, group *Group) bool {
-	if group.IsSubscriptionType() {
-		return true
-	}
-	// 标准类型分组：使用原有逻辑
 	return user.CanBindGroup(group.ID, group.IsExclusive)
 }
 
@@ -814,10 +810,6 @@ func (s *APIKeyService) GetAvailableGroups(ctx context.Context, userID int64) ([
 
 // canUserBindGroupInternal 内部方法，检查用户是否可以绑定分组。
 func (s *APIKeyService) canUserBindGroupInternal(user *User, group *Group) bool {
-	if group.IsSubscriptionType() {
-		return true
-	}
-	// 标准类型分组：使用原有逻辑
 	return user.CanBindGroup(group.ID, group.IsExclusive)
 }
 

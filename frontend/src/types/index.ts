@@ -1562,8 +1562,13 @@ export interface UserSubscription {
   id: number
   user_id: number
   group_id: number
+  source_group_id?: number | null
+  plan_name?: string
   status: 'active' | 'expired' | 'revoked'
   starts_at: string
+  daily_limit_usd?: number | null
+  weekly_limit_usd?: number | null
+  monthly_limit_usd?: number | null
   daily_usage_usd: number
   weekly_usage_usd: number
   monthly_usage_usd: number

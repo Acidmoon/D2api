@@ -9,6 +9,10 @@ type UserSubscription struct {
 	ID      int64
 	UserID  int64
 	GroupID int64
+	// SourceGroupID records the legacy APC subscription group used to create
+	// this wallet. Runtime billing must not use it for authorization.
+	SourceGroupID *int64
+	PlanName      string
 
 	StartsAt  time.Time
 	ExpiresAt time.Time
@@ -17,6 +21,10 @@ type UserSubscription struct {
 	DailyWindowStart   *time.Time
 	WeeklyWindowStart  *time.Time
 	MonthlyWindowStart *time.Time
+
+	DailyLimitUSD   *float64
+	WeeklyLimitUSD  *float64
+	MonthlyLimitUSD *float64
 
 	DailyUsageUSD   float64
 	WeeklyUsageUSD  float64
@@ -43,6 +51,10 @@ type SubscriptionUsageAllocation struct {
 
 func (s *UserSubscription) IsActive() bool {
 	return s.Status == SubscriptionStatusActive && time.Now().Before(s.ExpiresAt)
+}
+
+func (s *UserSubscription) IsSubscriptionWallet() bool {
+	return s != nil
 }
 
 func (s *UserSubscription) IsExpired() bool {
@@ -123,36 +135,48 @@ func (s *UserSubscription) MonthlyResetTime() *time.Time {
 	return &t
 }
 
-func (s *UserSubscription) CheckDailyLimit(group *Group, additionalCost float64) bool {
-	if !group.HasDailyLimit() {
-		return true
-	}
-	return s.DailyUsageUSD+additionalCost <= *group.DailyLimitUSD
+func (s *UserSubscription) HasDailyLimit() bool {
+	return s != nil && s.DailyLimitUSD != nil && *s.DailyLimitUSD > 0
 }
 
-func (s *UserSubscription) CheckWeeklyLimit(group *Group, additionalCost float64) bool {
-	if !group.HasWeeklyLimit() {
-		return true
-	}
-	return s.WeeklyUsageUSD+additionalCost <= *group.WeeklyLimitUSD
+func (s *UserSubscription) HasWeeklyLimit() bool {
+	return s != nil && s.WeeklyLimitUSD != nil && *s.WeeklyLimitUSD > 0
 }
 
-func (s *UserSubscription) CheckMonthlyLimit(group *Group, additionalCost float64) bool {
-	if !group.HasMonthlyLimit() {
-		return true
-	}
-	return s.MonthlyUsageUSD+additionalCost <= *group.MonthlyLimitUSD
+func (s *UserSubscription) HasMonthlyLimit() bool {
+	return s != nil && s.MonthlyLimitUSD != nil && *s.MonthlyLimitUSD > 0
 }
 
-func (s *UserSubscription) CheckAllLimits(group *Group, additionalCost float64) (daily, weekly, monthly bool) {
-	daily = s.CheckDailyLimit(group, additionalCost)
-	weekly = s.CheckWeeklyLimit(group, additionalCost)
-	monthly = s.CheckMonthlyLimit(group, additionalCost)
+func (s *UserSubscription) CheckDailyLimit(additionalCost float64) bool {
+	if !s.HasDailyLimit() {
+		return true
+	}
+	return s.DailyUsageUSD+additionalCost <= *s.DailyLimitUSD
+}
+
+func (s *UserSubscription) CheckWeeklyLimit(additionalCost float64) bool {
+	if !s.HasWeeklyLimit() {
+		return true
+	}
+	return s.WeeklyUsageUSD+additionalCost <= *s.WeeklyLimitUSD
+}
+
+func (s *UserSubscription) CheckMonthlyLimit(additionalCost float64) bool {
+	if !s.HasMonthlyLimit() {
+		return true
+	}
+	return s.MonthlyUsageUSD+additionalCost <= *s.MonthlyLimitUSD
+}
+
+func (s *UserSubscription) CheckAllLimits(additionalCost float64) (daily, weekly, monthly bool) {
+	daily = s.CheckDailyLimit(additionalCost)
+	weekly = s.CheckWeeklyLimit(additionalCost)
+	monthly = s.CheckMonthlyLimit(additionalCost)
 	return
 }
 
-func (s *UserSubscription) RemainingQuotaUSD(group *Group) float64 {
-	if s == nil || group == nil {
+func (s *UserSubscription) RemainingQuotaUSD() float64 {
+	if s == nil {
 		return 0
 	}
 
@@ -170,20 +194,20 @@ func (s *UserSubscription) RemainingQuotaUSD(group *Group) float64 {
 		}
 	}
 
-	applyLimit(group.DailyLimitUSD, s.DailyUsageUSD)
-	applyLimit(group.WeeklyLimitUSD, s.WeeklyUsageUSD)
-	applyLimit(group.MonthlyLimitUSD, s.MonthlyUsageUSD)
+	applyLimit(s.DailyLimitUSD, s.DailyUsageUSD)
+	applyLimit(s.WeeklyLimitUSD, s.WeeklyUsageUSD)
+	applyLimit(s.MonthlyLimitUSD, s.MonthlyUsageUSD)
 	if remaining < 0 {
 		return math.MaxFloat64
 	}
 	return remaining
 }
 
-func (s *UserSubscription) AllocateUsageCost(group *Group, costUSD float64) SubscriptionUsageAllocation {
-	if costUSD <= 0 || s == nil || group == nil {
+func (s *UserSubscription) AllocateUsageCost(costUSD float64) SubscriptionUsageAllocation {
+	if costUSD <= 0 || s == nil {
 		return SubscriptionUsageAllocation{}
 	}
-	remaining := s.RemainingQuotaUSD(group)
+	remaining := s.RemainingQuotaUSD()
 	if remaining <= 0 {
 		return SubscriptionUsageAllocation{BalanceCost: costUSD}
 	}

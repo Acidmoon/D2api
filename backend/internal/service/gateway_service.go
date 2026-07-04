@@ -8558,10 +8558,10 @@ func (p *postUsageBillingParams) subscriptionUsageAllocation() SubscriptionUsage
 	if p == nil || p.Cost == nil || p.Cost.ActualCost <= 0 {
 		return SubscriptionUsageAllocation{}
 	}
-	if !p.IsSubscriptionBill || p.Subscription == nil || p.Subscription.Group == nil {
+	if !p.IsSubscriptionBill || p.Subscription == nil || !p.Subscription.IsSubscriptionWallet() {
 		return SubscriptionUsageAllocation{BalanceCost: p.Cost.ActualCost}
 	}
-	return p.Subscription.AllocateUsageCost(p.Subscription.Group, p.Cost.ActualCost)
+	return p.Subscription.AllocateUsageCost(p.Cost.ActualCost)
 }
 
 func (p *postUsageBillingParams) appliedUsageAllocation(result *UsageBillingApplyResult) SubscriptionUsageAllocation {
@@ -8964,7 +8964,7 @@ func (s *GatewayService) recordUsageCore(ctx context.Context, input *recordUsage
 	cost := s.calculateRecordUsageCost(ctx, result, apiKey, billingModel, multiplier, imageMultiplier, opts)
 
 	// 判断计费方式：订阅模式 vs 余额模式
-	isSubscriptionBilling := subscription != nil && subscription.Group != nil && subscription.Group.IsSubscriptionType()
+	isSubscriptionBilling := subscription != nil && subscription.IsSubscriptionWallet()
 	billingType := BillingTypeBalance
 	if isSubscriptionBilling {
 		billingType = BillingTypeSubscription
