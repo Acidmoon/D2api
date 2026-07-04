@@ -195,7 +195,7 @@
           default-sort-key="name"
           default-sort-order="asc"
           :sort-storage-key="ACCOUNT_SORT_STORAGE_KEY"
-          :estimate-row-height="72"
+          :estimate-row-height="136"
           :overscan="5"
         >
           <template #header-select>
@@ -280,12 +280,14 @@
             </div>
           </template>
           <template #cell-usage="{ row }">
-            <AccountUsageCell
-              :account="row"
-              :today-stats="todayStatsByAccountId[String(row.id)] ?? null"
-              :today-stats-loading="todayStatsLoading"
-              :manual-refresh-token="usageManualRefreshToken"
-            />
+            <div class="account-usage-cell-frame">
+              <AccountUsageCell
+                :account="row"
+                :today-stats="todayStatsByAccountId[String(row.id)] ?? null"
+                :today-stats-loading="todayStatsLoading"
+                :manual-refresh-token="usageManualRefreshToken"
+              />
+            </div>
           </template>
           <template #cell-proxy="{ row }">
             <div class="flex flex-col gap-1">
@@ -1712,6 +1714,11 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+.account-usage-cell-frame {
+  contain: layout style;
+  min-width: 14rem;
+}
+
 .account-tools-menu-item {
   @apply flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700;
 }

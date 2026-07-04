@@ -26,10 +26,11 @@
     </div>
 
     <!-- Progress bar row -->
-    <div class="flex items-center gap-1">
+    <div class="usage-bar-row flex items-center gap-1">
       <!-- Label badge (fixed width for alignment) -->
       <span
         :class="['usage-label w-[32px] shrink-0 px-1 text-center text-[10px] font-medium', labelClass]"
+        :title="label"
       >
         {{ label }}
       </span>
@@ -204,6 +205,12 @@ const formatUserCost = computed(() => {
   color: var(--nm-ink-faint);
 }
 
+.usage-bar-row,
+.usage-stats-row {
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+
 .usage-stat-chip,
 .usage-label,
 .usage-track {
@@ -218,6 +225,9 @@ const formatUserCost = computed(() => {
 
 .usage-label {
   border: 1px solid transparent;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .usage-label-info {
@@ -279,5 +289,6 @@ const formatUserCost = computed(() => {
 
 .usage-reset {
   color: var(--nm-ink-faint);
+  white-space: nowrap;
 }
 </style>

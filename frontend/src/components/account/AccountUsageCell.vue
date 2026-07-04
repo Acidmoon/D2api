@@ -1,5 +1,5 @@
 <template>
-  <div ref="rootRef" v-if="showUsageWindows">
+  <div ref="rootRef" v-if="showUsageWindows" class="account-usage-cell account-usage-cell--window">
     <!-- Anthropic OAuth and Setup Token accounts: fetch real usage data -->
     <template
       v-if="
@@ -426,7 +426,7 @@
   </div>
 
   <!-- Non-OAuth/Setup-Token accounts -->
-  <div ref="rootRef" v-else>
+  <div ref="rootRef" v-else class="account-usage-cell account-usage-cell--compact">
     <!-- Gemini API Key accounts: show quota info -->
     <AccountQuotaInfo v-if="account.platform === 'gemini'" :account="account" />
     <!-- Key/Bedrock accounts: show today stats + optional quota bars -->
@@ -1214,7 +1214,14 @@ watch(openAIUsageRefreshKey, (nextKey, prevKey) => {
   if (!prevKey || nextKey === prevKey) return
   if (props.account.platform !== 'openai' || props.account.type !== 'oauth') return
 
-  requestAutoLoad()
+  if (shouldLazyLoadOnMobile.value && !hasEnteredViewport.value) {
+    pendingAutoLoad.value = true
+    pendingAutoLoadSource.value = undefined
+    return
+  }
+  loadUsage({ bypassCache: true }).catch((e) => {
+    console.error('Failed to refresh OpenAI usage after account update:', e)
+  })
 })
 
 watch(
@@ -1269,6 +1276,27 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+.account-usage-cell {
+  width: 100%;
+  min-width: 13rem;
+}
+
+@media (min-width: 768px) {
+  .account-usage-cell {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .account-usage-cell--window {
+    min-height: 6.25rem;
+  }
+
+  .account-usage-cell--compact {
+    min-height: 4.25rem;
+  }
+}
+
 .usage-skeleton,
 .usage-skeleton-track,
 .usage-badge,
