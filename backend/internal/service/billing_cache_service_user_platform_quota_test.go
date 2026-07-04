@@ -578,7 +578,7 @@ func TestCheckBillingEligibility_SubscriptionMode_BypassesPlatformQuota(t *testi
 		Status:           "active",
 		// 无 DailyLimitUSD → checkSubscriptionEligibility 不会因超限失败
 	}
-	sub := &UserSubscription{Status: "active"}
+	sub := &UserSubscription{Status: "active", GroupID: subGroup.ID, Group: subGroup}
 	user := &User{ID: 42}
 
 	err := s.CheckBillingEligibility(context.Background(), user, nil, subGroup, sub, "anthropic")
@@ -591,6 +591,48 @@ func TestCheckBillingEligibility_SubscriptionMode_BypassesPlatformQuota(t *testi
 	// GetUserPlatformQuotaCache 不应被调用
 	if fake.called {
 		t.Error("GetUserPlatformQuotaCache must NOT be called in subscription mode (C-NEW-2)")
+	}
+}
+
+// TestCheckBillingEligibility_SubscriptionWalletWorksWithStandardRouteGroup 验证：
+// 订阅作为用户级钱包生效时，请求路由分组可以是 standard；只要传入有效订阅，
+// 预检查就不应因为用户余额为 0 或 standard 分组 platform quota 耗尽而拒绝。
+func TestCheckBillingEligibility_SubscriptionWalletWorksWithStandardRouteGroup(t *testing.T) {
+	fake := &fakeZeroQuotaCache{} // 若误走 standard platform quota 会被 limit=0 拦截
+	cfg := &config.Config{}
+	cfg.Billing.UserPlatformQuotaCacheTTLSeconds = 60
+	s := &BillingCacheService{
+		cache:                 fake,
+		cfg:                   cfg,
+		userPlatformQuotaRepo: &fakeQuotaRepo{},
+	}
+
+	subGroup := &Group{
+		ID:               10,
+		SubscriptionType: SubscriptionTypeSubscription,
+		Status:           StatusActive,
+	}
+	routeGroup := &Group{
+		ID:               20,
+		Platform:         PlatformOpenAI,
+		SubscriptionType: SubscriptionTypeStandard,
+		Status:           StatusActive,
+	}
+	sub := &UserSubscription{
+		Status:    SubscriptionStatusActive,
+		GroupID:   subGroup.ID,
+		Group:     subGroup,
+		ExpiresAt: time.Now().Add(30 * 24 * time.Hour),
+	}
+	user := &User{ID: 42, Balance: 0}
+	apiKey := &APIKey{ID: 99, User: user, GroupID: &routeGroup.ID, Group: routeGroup}
+
+	err := s.CheckBillingEligibility(context.Background(), user, apiKey, routeGroup, sub, PlatformOpenAI)
+	if err != nil {
+		t.Fatalf("subscription wallet should allow standard route group with zero balance, got: %v", err)
+	}
+	if fake.called {
+		t.Error("subscription wallet mode must not query user×platform quota for the standard route group")
 	}
 }
 
@@ -769,9 +811,9 @@ func TestHasUserPlatformQuotaLimit(t *testing.T) {
 	daily := 5.0
 
 	tests := []struct {
-		name    string
-		setup   func() *BillingCacheService
-		want    bool
+		name  string
+		setup func() *BillingCacheService
+		want  bool
 	}{
 		{
 			name: "has_limit",

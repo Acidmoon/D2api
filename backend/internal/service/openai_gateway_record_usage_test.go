@@ -1276,7 +1276,8 @@ func TestOpenAIGatewayServiceRecordUsage_SubscriptionBillingSetsSubscriptionFiel
 	userRepo := &openAIRecordUsageUserRepoStub{}
 	subRepo := &openAIRecordUsageSubRepoStub{}
 	svc := newOpenAIRecordUsageServiceForTest(usageRepo, userRepo, subRepo, nil)
-	subscription := &UserSubscription{ID: 99}
+	subscriptionGroup := &Group{ID: 88, SubscriptionType: SubscriptionTypeSubscription}
+	subscription := &UserSubscription{ID: 99, GroupID: subscriptionGroup.ID, Group: subscriptionGroup}
 
 	err := svc.RecordUsage(context.Background(), &OpenAIRecordUsageInput{
 		Result: &OpenAIForwardResult{

@@ -106,14 +106,21 @@ func (r *usageBillingRepository) claimUsageBillingKey(ctx context.Context, tx *s
 }
 
 func (r *usageBillingRepository) applyUsageBillingEffects(ctx context.Context, tx *sql.Tx, cmd *service.UsageBillingCommand, result *service.UsageBillingApplyResult) error {
-	if cmd.SubscriptionCost > 0 && cmd.SubscriptionID != nil {
-		if err := incrementUsageBillingSubscription(ctx, tx, *cmd.SubscriptionID, cmd.SubscriptionCost); err != nil {
+	subscriptionCost, balanceCost, err := allocateUsageBillingCosts(ctx, tx, cmd)
+	if err != nil {
+		return err
+	}
+	result.SubscriptionCost = subscriptionCost
+	result.BalanceCost = balanceCost
+
+	if subscriptionCost > 0 && cmd.SubscriptionID != nil {
+		if err := incrementUsageBillingSubscription(ctx, tx, *cmd.SubscriptionID, subscriptionCost); err != nil {
 			return err
 		}
 	}
 
-	if cmd.BalanceCost > 0 {
-		newBalance, err := deductUsageBillingBalance(ctx, tx, cmd.UserID, cmd.BalanceCost)
+	if balanceCost > 0 {
+		newBalance, err := deductUsageBillingBalance(ctx, tx, cmd.UserID, balanceCost)
 		if err != nil {
 			return err
 		}
@@ -145,13 +152,122 @@ func (r *usageBillingRepository) applyUsageBillingEffects(ctx context.Context, t
 	return nil
 }
 
+func allocateUsageBillingCosts(ctx context.Context, tx *sql.Tx, cmd *service.UsageBillingCommand) (subscriptionCost float64, balanceCost float64, err error) {
+	total := cmd.SubscriptionCost + cmd.BalanceCost
+	if total <= 0 {
+		return 0, 0, nil
+	}
+	if cmd.SubscriptionID == nil || cmd.SubscriptionCost <= 0 {
+		return 0, total, nil
+	}
+
+	remaining, err := usageBillingSubscriptionRemaining(ctx, tx, *cmd.SubscriptionID)
+	if err != nil {
+		if errors.Is(err, service.ErrSubscriptionNotFound) {
+			return 0, total, nil
+		}
+		return 0, 0, err
+	}
+	if remaining <= 0 {
+		return 0, total, nil
+	}
+	if remaining >= total {
+		return total, 0, nil
+	}
+	return remaining, total - remaining, nil
+}
+
+func usageBillingSubscriptionRemaining(ctx context.Context, tx *sql.Tx, subscriptionID int64) (float64, error) {
+	const q = `
+		WITH sub AS (
+			SELECT
+				us.*,
+				g.daily_limit_usd,
+				g.weekly_limit_usd,
+				g.monthly_limit_usd,
+				(
+					us.daily_window_start IS NOT NULL
+					AND us.expires_at > us.starts_at + INTERVAL '1 day'
+					AND NOW() >= us.daily_window_start + INTERVAL '24 hours'
+				) AS daily_expired,
+				(
+					us.weekly_window_start IS NOT NULL
+					AND NOW() >= us.weekly_window_start + INTERVAL '7 days'
+				) AS weekly_expired,
+				(
+					us.monthly_window_start IS NOT NULL
+					AND NOW() >= us.monthly_window_start + INTERVAL '30 days'
+				) AS monthly_expired
+			FROM user_subscriptions us
+			JOIN groups g ON g.id = us.group_id AND g.deleted_at IS NULL
+			WHERE us.id = $1
+				AND us.deleted_at IS NULL
+				AND us.status = $2
+				AND g.subscription_type = $3
+				AND us.expires_at > NOW()
+			FOR UPDATE OF us
+		)
+		SELECT LEAST(
+			CASE WHEN daily_limit_usd IS NULL OR daily_limit_usd <= 0 THEN 1e100 ELSE GREATEST(daily_limit_usd - CASE WHEN daily_expired THEN 0 ELSE daily_usage_usd END, 0) END,
+			CASE WHEN weekly_limit_usd IS NULL OR weekly_limit_usd <= 0 THEN 1e100 ELSE GREATEST(weekly_limit_usd - CASE WHEN weekly_expired THEN 0 ELSE weekly_usage_usd END, 0) END,
+			CASE WHEN monthly_limit_usd IS NULL OR monthly_limit_usd <= 0 THEN 1e100 ELSE GREATEST(monthly_limit_usd - CASE WHEN monthly_expired THEN 0 ELSE monthly_usage_usd END, 0) END
+		)
+		FROM sub
+	`
+	var remaining float64
+	if err := tx.QueryRowContext(ctx, q, subscriptionID, service.SubscriptionStatusActive, service.SubscriptionTypeSubscription).Scan(&remaining); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return 0, service.ErrSubscriptionNotFound
+		}
+		return 0, err
+	}
+	return remaining, nil
+}
+
 func incrementUsageBillingSubscription(ctx context.Context, tx *sql.Tx, subscriptionID int64, costUSD float64) error {
 	const updateSQL = `
 		UPDATE user_subscriptions us
 		SET
-			daily_usage_usd = us.daily_usage_usd + $1,
-			weekly_usage_usd = us.weekly_usage_usd + $1,
-			monthly_usage_usd = us.monthly_usage_usd + $1,
+			daily_usage_usd = CASE
+				WHEN us.daily_window_start IS NOT NULL
+					AND us.expires_at > us.starts_at + INTERVAL '1 day'
+					AND NOW() >= us.daily_window_start + INTERVAL '24 hours'
+				THEN $1
+				ELSE us.daily_usage_usd + $1
+			END,
+			weekly_usage_usd = CASE
+				WHEN us.weekly_window_start IS NOT NULL
+					AND NOW() >= us.weekly_window_start + INTERVAL '7 days'
+				THEN $1
+				ELSE us.weekly_usage_usd + $1
+			END,
+			monthly_usage_usd = CASE
+				WHEN us.monthly_window_start IS NOT NULL
+					AND NOW() >= us.monthly_window_start + INTERVAL '30 days'
+				THEN $1
+				ELSE us.monthly_usage_usd + $1
+			END,
+			daily_window_start = CASE
+				WHEN us.daily_window_start IS NULL
+					OR (
+						us.expires_at > us.starts_at + INTERVAL '1 day'
+						AND NOW() >= us.daily_window_start + INTERVAL '24 hours'
+					)
+				THEN date_trunc('day', NOW())
+				ELSE us.daily_window_start
+			END,
+			weekly_window_start = CASE
+				WHEN us.weekly_window_start IS NULL
+					OR NOW() >= us.weekly_window_start + INTERVAL '7 days'
+				THEN date_trunc('day', NOW())
+				ELSE us.weekly_window_start
+			END,
+			monthly_window_start = CASE
+				WHEN us.monthly_window_start IS NULL
+					OR NOW() >= us.monthly_window_start + INTERVAL '30 days'
+				THEN NOW()
+				ELSE us.monthly_window_start
+			END,
 			updated_at = NOW()
 		FROM groups g
 		WHERE us.id = $2

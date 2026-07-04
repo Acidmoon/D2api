@@ -58,14 +58,12 @@ func APIKeyAuthWithSubscriptionGoogle(apiKeyService *service.APIKeyService, subs
 			abortWithGoogleError(c, 401, "User account is not active")
 			return
 		}
-		if _, message, ok := validateAPIKeyGroupAvailable(apiKey); !ok {
-			service.MarkOpsClientBusinessLimited(c, service.OpsClientBusinessLimitedReasonAPIKeyGroupUnavailable)
-			abortWithGoogleError(c, 403, message)
-			return
-		}
-
 		// 简易模式：跳过余额和订阅检查
 		if cfg.RunMode == config.RunModeSimple {
+			if groupErr := selectAPIKeyGroupForRequest(c.Request.Context(), apiKey, nil, true); groupErr != nil {
+				abortGoogleAPIKeyGroupSelectionError(c, groupErr)
+				return
+			}
 			c.Set(string(ContextKeyAPIKey), apiKey)
 			c.Set(string(ContextKeyUser), AuthSubject{
 				UserID:      apiKey.User.ID,
@@ -78,41 +76,13 @@ func APIKeyAuthWithSubscriptionGoogle(apiKeyService *service.APIKeyService, subs
 			return
 		}
 
-		isSubscriptionType := apiKey.Group != nil && apiKey.Group.IsSubscriptionType()
-		if isSubscriptionType && subscriptionService != nil {
-			subscription, err := subscriptionService.GetActiveSubscription(
-				c.Request.Context(),
-				apiKey.User.ID,
-				apiKey.Group.ID,
-			)
-			if err != nil {
-				abortWithGoogleError(c, 403, "No active subscription found for this group")
-				return
-			}
-
-			needsMaintenance, err := subscriptionService.ValidateAndCheckLimits(subscription, apiKey.Group)
-			if err != nil {
-				status := 403
-				if errors.Is(err, service.ErrDailyLimitExceeded) ||
-					errors.Is(err, service.ErrWeeklyLimitExceeded) ||
-					errors.Is(err, service.ErrMonthlyLimitExceeded) {
-					status = 429
-				}
-				abortWithGoogleError(c, status, err.Error())
-				return
-			}
-
+		if groupErr := selectAPIKeyGroupForRequest(c.Request.Context(), apiKey, subscriptionService, false); groupErr != nil {
+			abortGoogleAPIKeyGroupSelectionError(c, groupErr)
+			return
+		}
+		subscription := apiKey.SelectedSubscription
+		if subscription != nil {
 			c.Set(string(ContextKeySubscription), subscription)
-
-			if needsMaintenance {
-				maintenanceCopy := *subscription
-				subscriptionService.DoWindowMaintenance(&maintenanceCopy)
-			}
-		} else {
-			if apiKey.User.Balance <= 0 {
-				abortWithGoogleError(c, 403, "Insufficient account balance")
-				return
-			}
 		}
 
 		c.Set(string(ContextKeyAPIKey), apiKey)
@@ -175,4 +145,16 @@ func abortWithGoogleError(c *gin.Context, status int, message string) {
 		},
 	})
 	c.Abort()
+}
+
+func abortGoogleAPIKeyGroupSelectionError(c *gin.Context, err error) {
+	var selectionErr *apiKeyGroupSelectionError
+	if !errors.As(err, &selectionErr) {
+		abortWithGoogleError(c, 500, "Failed to select API key group")
+		return
+	}
+	if selectionErr.markOps {
+		service.MarkOpsClientBusinessLimited(c, service.OpsClientBusinessLimitedReasonAPIKeyGroupUnavailable)
+	}
+	abortWithGoogleError(c, selectionErr.status, selectionErr.message)
 }

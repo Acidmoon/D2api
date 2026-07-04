@@ -172,13 +172,6 @@ func apiKeyAuthWithSubscription(apiKeyService *service.APIKeyService, subscripti
 				return
 			}
 
-			if subscription == nil {
-				// 非订阅模式 或 订阅模式但 subscriptionService 未注入：回退到余额检查
-				if apiKey.User.Balance <= 0 {
-					AbortWithError(c, 403, "INSUFFICIENT_BALANCE", "Insufficient account balance")
-					return
-				}
-			}
 		} else if groupErr := selectAPIKeyGroupForRequest(c.Request.Context(), apiKey, subscriptionService, true); groupErr != nil {
 			abortAPIKeyGroupSelectionError(c, groupErr)
 			return
@@ -340,15 +333,21 @@ func selectAPIKeyGroupForRequest(ctx context.Context, apiKey *service.APIKey, su
 		if candidate.id == nil && candidate.group == nil {
 			continue
 		}
-		group, subscription, err := validateAPIKeyGroupCandidate(ctx, apiKey, candidate.id, candidate.group, subscriptionService, skipBilling)
+		group, _, err := validateAPIKeyGroupCandidate(ctx, apiKey, candidate.id, candidate.group, subscriptionService, skipBilling)
 		if err != nil {
 			lastErr = err
 			continue
 		}
 		apiKey.GroupID = &group.ID
 		apiKey.Group = group
-		apiKey.SelectedSubscription = subscription
 		applyGroupRPMOverride(apiKey.User, group.ID)
+		if subscriptionService != nil {
+			if sub, err := activeBillingSubscriptionForRequest(ctx, subscriptionService, apiKey.User.ID, skipBilling); err == nil {
+				apiKey.SelectedSubscription = sub
+			} else {
+				apiKey.SelectedSubscription = nil
+			}
+		}
 		return nil
 	}
 
@@ -356,6 +355,29 @@ func selectAPIKeyGroupForRequest(ctx context.Context, apiKey *service.APIKey, su
 		return lastErr
 	}
 	return newAPIKeyGroupSelectionError(403, "GROUP_NOT_SELECTED", "API Key 未绑定可用分组", true)
+}
+
+func activeBillingSubscriptionForRequest(ctx context.Context, subscriptionService *service.SubscriptionService, userID int64, skipBilling bool) (*service.UserSubscription, error) {
+	subscription, err := subscriptionService.GetActiveBillingSubscription(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	if skipBilling || subscription.Group == nil {
+		return subscription, nil
+	}
+
+	needsMaintenance, validateErr := subscriptionService.ValidateAndCheckLimits(subscription, subscription.Group)
+	if validateErr != nil &&
+		!errors.Is(validateErr, service.ErrDailyLimitExceeded) &&
+		!errors.Is(validateErr, service.ErrWeeklyLimitExceeded) &&
+		!errors.Is(validateErr, service.ErrMonthlyLimitExceeded) {
+		return nil, validateErr
+	}
+	if needsMaintenance {
+		maintenanceCopy := *subscription
+		subscriptionService.DoWindowMaintenance(&maintenanceCopy)
+	}
+	return subscription, nil
 }
 
 func validateAPIKeyGroupCandidate(ctx context.Context, apiKey *service.APIKey, groupID *int64, group *service.Group, subscriptionService *service.SubscriptionService, skipBilling bool) (*service.Group, *service.UserSubscription, *apiKeyGroupSelectionError) {
@@ -370,39 +392,7 @@ func validateAPIKeyGroupCandidate(ctx context.Context, apiKey *service.APIKey, g
 		return nil, nil, newAPIKeyGroupSelectionError(403, "GROUP_NOT_SELECTED", "API Key 未绑定可用分组", true)
 	}
 
-	if !group.IsSubscriptionType() {
-		return group, nil, nil
-	}
-	if subscriptionService == nil {
-		return group, nil, nil
-	}
-	subscription, subErr := subscriptionService.GetActiveSubscription(ctx, apiKey.User.ID, group.ID)
-	if subErr != nil {
-		if skipBilling {
-			return group, nil, nil
-		}
-		return nil, nil, newAPIKeyGroupSelectionError(403, "SUBSCRIPTION_NOT_FOUND", "No active subscription found for this group", false)
-	}
-	if skipBilling {
-		return group, subscription, nil
-	}
-	needsMaintenance, validateErr := subscriptionService.ValidateAndCheckLimits(subscription, group)
-	if validateErr != nil {
-		code := "SUBSCRIPTION_INVALID"
-		status := 403
-		if errors.Is(validateErr, service.ErrDailyLimitExceeded) ||
-			errors.Is(validateErr, service.ErrWeeklyLimitExceeded) ||
-			errors.Is(validateErr, service.ErrMonthlyLimitExceeded) {
-			code = "USAGE_LIMIT_EXCEEDED"
-			status = 429
-		}
-		return nil, nil, newAPIKeyGroupSelectionError(status, code, validateErr.Error(), false)
-	}
-	if needsMaintenance {
-		maintenanceCopy := *subscription
-		subscriptionService.DoWindowMaintenance(&maintenanceCopy)
-	}
-	return group, subscription, nil
+	return group, nil, nil
 }
 
 func applyGroupRPMOverride(user *service.User, groupID int64) {

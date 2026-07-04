@@ -212,10 +212,22 @@ func TestAPIContracts(t *testing.T) {
 			}`,
 		},
 		{
-			name:   "POST /api/v1/keys",
+			name: "POST /api/v1/keys",
+			setup: func(t *testing.T, deps *contractDeps) {
+				t.Helper()
+				deps.groupRepo.SetActive([]service.Group{{
+					ID:               10,
+					Name:             "Group One",
+					Platform:         service.PlatformAnthropic,
+					Status:           service.StatusActive,
+					SubscriptionType: service.SubscriptionTypeStandard,
+					CreatedAt:        deps.now,
+					UpdatedAt:        deps.now,
+				}})
+			},
 			method: http.MethodPost,
 			path:   "/api/v1/keys",
-			body:   `{"name":"Key One","custom_key":"sk_custom_1234567890"}`,
+			body:   `{"name":"Key One","custom_key":"sk_custom_1234567890","group_id":10}`,
 			headers: map[string]string{
 				"Content-Type": "application/json",
 			},
@@ -228,7 +240,37 @@ func TestAPIContracts(t *testing.T) {
 					"user_id": 1,
 					"key": "sk_custom_1234567890",
 					"name": "Key One",
-					"group_id": null,
+					"primary_group_id": null,
+					"group_id": 10,
+					"group": {
+						"id": 10,
+						"name": "Group One",
+						"description": "",
+						"platform": "anthropic",
+						"rate_multiplier": 0,
+						"is_exclusive": false,
+						"status": "active",
+						"subscription_type": "standard",
+						"daily_limit_usd": null,
+						"weekly_limit_usd": null,
+						"monthly_limit_usd": null,
+						"image_price_1k": null,
+						"image_price_2k": null,
+						"image_price_4k": null,
+						"allow_image_generation": false,
+						"image_rate_independent": false,
+						"image_rate_multiplier": 0,
+						"claude_code_only": false,
+						"allow_messages_dispatch": false,
+						"fallback_group_id": null,
+						"fallback_group_id_on_invalid_request": null,
+						"require_oauth_only": false,
+						"require_privacy_set": false,
+						"rpm_limit": 0,
+						"unavailable_alert_enabled": false,
+						"created_at": "2025-01-02T03:04:05Z",
+						"updated_at": "2025-01-02T03:04:05Z"
+					},
 					"status": "active",
 					"ip_whitelist": null,
 					"ip_blacklist": null,
@@ -347,6 +389,7 @@ func TestAPIContracts(t *testing.T) {
 						"is_exclusive": false,
 						"status": "active",
 						"subscription_type": "standard",
+						"unavailable_alert_enabled": false,
 						"daily_limit_usd": null,
 						"weekly_limit_usd": null,
 						"monthly_limit_usd": null,
@@ -1556,7 +1599,13 @@ func (stubGroupRepo) Create(ctx context.Context, group *service.Group) error {
 	return errors.New("not implemented")
 }
 
-func (stubGroupRepo) GetByID(ctx context.Context, id int64) (*service.Group, error) {
+func (r *stubGroupRepo) GetByID(ctx context.Context, id int64) (*service.Group, error) {
+	for i := range r.active {
+		if r.active[i].ID == id {
+			clone := r.active[i]
+			return &clone, nil
+		}
+	}
 	return nil, service.ErrGroupNotFound
 }
 

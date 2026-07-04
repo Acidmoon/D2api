@@ -15,6 +15,8 @@ func TestBuildUsageBillingCommand_SubscriptionAppliesRateMultiplier(t *testing.T
 
 	groupID := int64(7)
 	subID := int64(42)
+	limit := 100.0
+	subscriptionGroup := &Group{ID: 99, SubscriptionType: SubscriptionTypeSubscription, DailyLimitUSD: &limit}
 
 	tests := []struct {
 		name           string
@@ -66,7 +68,7 @@ func TestBuildUsageBillingCommand_SubscriptionAppliesRateMultiplier(t *testing.T
 				User:               &User{ID: 1},
 				APIKey:             &APIKey{ID: 2, GroupID: &groupID},
 				Account:            &Account{ID: 3},
-				Subscription:       &UserSubscription{ID: subID},
+				Subscription:       &UserSubscription{ID: subID, GroupID: subscriptionGroup.ID, Group: subscriptionGroup},
 				IsSubscriptionBill: tt.isSubscription,
 			}
 
@@ -81,5 +83,71 @@ func TestBuildUsageBillingCommand_SubscriptionAppliesRateMultiplier(t *testing.T
 				t.Errorf("BalanceCost = %v, want %v", cmd.BalanceCost, tt.wantBalance)
 			}
 		})
+	}
+}
+
+func TestBuildUsageBillingCommand_SubscriptionIsUserWalletAcrossRequestGroups(t *testing.T) {
+	t.Parallel()
+
+	openAIGroupID := int64(7)
+	apcGroupID := int64(42)
+	limit := 3.0
+	p := &postUsageBillingParams{
+		Cost: &CostBreakdown{TotalCost: 2, ActualCost: 2},
+		User: &User{ID: 1},
+		APIKey: &APIKey{
+			ID:      2,
+			GroupID: &openAIGroupID,
+			Group:   &Group{ID: openAIGroupID, Platform: PlatformOpenAI, SubscriptionType: SubscriptionTypeStandard},
+		},
+		Account: &Account{ID: 3},
+		Subscription: &UserSubscription{
+			ID:            4,
+			GroupID:       apcGroupID,
+			Group:         &Group{ID: apcGroupID, Platform: PlatformAnthropic, SubscriptionType: SubscriptionTypeSubscription, DailyLimitUSD: &limit},
+			DailyUsageUSD: 1,
+		},
+		IsSubscriptionBill: true,
+	}
+
+	cmd := buildUsageBillingCommand("req-cross-group", nil, p)
+	if cmd == nil {
+		t.Fatal("buildUsageBillingCommand returned nil")
+	}
+	if cmd.SubscriptionID == nil || *cmd.SubscriptionID != p.Subscription.ID {
+		t.Fatalf("SubscriptionID = %v, want %d", cmd.SubscriptionID, p.Subscription.ID)
+	}
+	if cmd.SubscriptionCost != 2 {
+		t.Errorf("SubscriptionCost = %v, want 2", cmd.SubscriptionCost)
+	}
+	if cmd.BalanceCost != 0 {
+		t.Errorf("BalanceCost = %v, want 0", cmd.BalanceCost)
+	}
+}
+
+func TestBuildUsageBillingCommand_SubscriptionRemainderFallsBackToBalance(t *testing.T) {
+	t.Parallel()
+
+	groupID := int64(7)
+	subID := int64(42)
+	limit := 5.0
+	p := &postUsageBillingParams{
+		Cost:               &CostBreakdown{TotalCost: 2, ActualCost: 2},
+		User:               &User{ID: 1},
+		APIKey:             &APIKey{ID: 2, GroupID: &groupID},
+		Account:            &Account{ID: 3},
+		Subscription:       &UserSubscription{ID: subID, GroupID: groupID, Group: &Group{ID: groupID, SubscriptionType: SubscriptionTypeSubscription, DailyLimitUSD: &limit}, DailyUsageUSD: 4.25},
+		IsSubscriptionBill: true,
+	}
+
+	cmd := buildUsageBillingCommand("req-split", nil, p)
+	if cmd == nil {
+		t.Fatal("buildUsageBillingCommand returned nil")
+	}
+	if cmd.SubscriptionCost != 0.75 {
+		t.Errorf("SubscriptionCost = %v, want 0.75", cmd.SubscriptionCost)
+	}
+	if cmd.BalanceCost != 1.25 {
+		t.Errorf("BalanceCost = %v, want 1.25", cmd.BalanceCost)
 	}
 }

@@ -128,6 +128,114 @@ func TestUsageBillingRepositoryApply_DeduplicatesSubscriptionBilling(t *testing.
 	require.InDelta(t, 2.5, dailyUsage, 0.000001)
 }
 
+func TestUsageBillingRepositoryApply_SubscriptionRemainderFallsBackToBalance(t *testing.T) {
+	ctx := context.Background()
+	client := testEntClient(t)
+	repo := NewUsageBillingRepository(client, integrationDB)
+
+	user := mustCreateUser(t, client, &service.User{
+		Email:        fmt.Sprintf("usage-billing-split-user-%d@example.com", time.Now().UnixNano()),
+		PasswordHash: "hash",
+		Balance:      10,
+	})
+	limit := 5.0
+	group := mustCreateGroup(t, client, &service.Group{
+		Name:             "usage-billing-split-group-" + uuid.NewString(),
+		Platform:         service.PlatformAnthropic,
+		SubscriptionType: service.SubscriptionTypeSubscription,
+		DailyLimitUSD:    &limit,
+	})
+	apiKey := mustCreateApiKey(t, client, &service.APIKey{
+		UserID: user.ID,
+		Key:    "sk-usage-billing-split-" + uuid.NewString(),
+		Name:   "billing-split",
+	})
+	subscription := mustCreateSubscription(t, client, &service.UserSubscription{
+		UserID:        user.ID,
+		GroupID:       group.ID,
+		DailyUsageUSD: 4.25,
+	})
+
+	result, err := repo.Apply(ctx, &service.UsageBillingCommand{
+		RequestID:        uuid.NewString(),
+		APIKeyID:         apiKey.ID,
+		UserID:           user.ID,
+		AccountID:        0,
+		SubscriptionID:   &subscription.ID,
+		SubscriptionCost: 2,
+	})
+	require.NoError(t, err)
+	require.True(t, result.Applied)
+	require.InDelta(t, 0.75, result.SubscriptionCost, 0.000001)
+	require.InDelta(t, 1.25, result.BalanceCost, 0.000001)
+
+	var dailyUsage float64
+	require.NoError(t, integrationDB.QueryRowContext(ctx, "SELECT daily_usage_usd FROM user_subscriptions WHERE id = $1", subscription.ID).Scan(&dailyUsage))
+	require.InDelta(t, 5.0, dailyUsage, 0.000001)
+
+	var balance float64
+	require.NoError(t, integrationDB.QueryRowContext(ctx, "SELECT balance FROM users WHERE id = $1", user.ID).Scan(&balance))
+	require.InDelta(t, 8.75, balance, 0.000001)
+}
+
+func TestUsageBillingRepositoryApply_SubscriptionExpiredWindowUsesFreshQuota(t *testing.T) {
+	ctx := context.Background()
+	client := testEntClient(t)
+	repo := NewUsageBillingRepository(client, integrationDB)
+
+	user := mustCreateUser(t, client, &service.User{
+		Email:        fmt.Sprintf("usage-billing-window-user-%d@example.com", time.Now().UnixNano()),
+		PasswordHash: "hash",
+		Balance:      10,
+	})
+	limit := 5.0
+	group := mustCreateGroup(t, client, &service.Group{
+		Name:             "usage-billing-window-group-" + uuid.NewString(),
+		Platform:         service.PlatformAnthropic,
+		SubscriptionType: service.SubscriptionTypeSubscription,
+		DailyLimitUSD:    &limit,
+	})
+	apiKey := mustCreateApiKey(t, client, &service.APIKey{
+		UserID: user.ID,
+		Key:    "sk-usage-billing-window-" + uuid.NewString(),
+		Name:   "billing-window",
+	})
+	startsAt := time.Now().Add(-48 * time.Hour)
+	oldWindow := startsAt
+	expiresAt := time.Now().Add(48 * time.Hour)
+	subscription := mustCreateSubscription(t, client, &service.UserSubscription{
+		UserID:           user.ID,
+		GroupID:          group.ID,
+		StartsAt:         startsAt,
+		ExpiresAt:        expiresAt,
+		DailyWindowStart: &oldWindow,
+		DailyUsageUSD:    5,
+	})
+
+	result, err := repo.Apply(ctx, &service.UsageBillingCommand{
+		RequestID:        uuid.NewString(),
+		APIKeyID:         apiKey.ID,
+		UserID:           user.ID,
+		AccountID:        0,
+		SubscriptionID:   &subscription.ID,
+		SubscriptionCost: 2,
+	})
+	require.NoError(t, err)
+	require.True(t, result.Applied)
+	require.InDelta(t, 2, result.SubscriptionCost, 0.000001)
+	require.InDelta(t, 0, result.BalanceCost, 0.000001)
+
+	var dailyUsage float64
+	var dailyWindowStart time.Time
+	require.NoError(t, integrationDB.QueryRowContext(ctx, "SELECT daily_usage_usd, daily_window_start FROM user_subscriptions WHERE id = $1", subscription.ID).Scan(&dailyUsage, &dailyWindowStart))
+	require.InDelta(t, 2, dailyUsage, 0.000001)
+	require.True(t, dailyWindowStart.After(oldWindow), "daily window should be refreshed before applying the charge")
+
+	var balance float64
+	require.NoError(t, integrationDB.QueryRowContext(ctx, "SELECT balance FROM users WHERE id = $1", user.ID).Scan(&balance))
+	require.InDelta(t, 10, balance, 0.000001)
+}
+
 func TestUsageBillingRepositoryApply_RequestFingerprintConflict(t *testing.T) {
 	ctx := context.Background()
 	client := testEntClient(t)

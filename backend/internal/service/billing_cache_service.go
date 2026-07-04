@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 	"sync"
@@ -703,7 +704,7 @@ func (s *BillingCacheService) IncrementUserPlatformQuotaUsage(userID int64, plat
 
 // CheckBillingEligibility 检查用户是否有资格发起请求
 // 余额模式：检查缓存余额 > 0
-// 订阅模式：检查缓存用量未超过限额（Group限额从参数传入）
+// 订阅优先模式：有效订阅可以发起请求；订阅额度耗尽时允许余额兜底
 // platform 为请求的目标平台（如 "anthropic"），传空串 "" 时跳过 user × platform quota 检查。
 func (s *BillingCacheService) CheckBillingEligibility(ctx context.Context, user *User, apiKey *APIKey, group *Group, subscription *UserSubscription, platform string) error {
 	// 简易模式：跳过所有计费检查
@@ -714,12 +715,19 @@ func (s *BillingCacheService) CheckBillingEligibility(ctx context.Context, user 
 		return ErrBillingServiceUnavailable
 	}
 
-	// 判断计费模式
-	isSubscriptionMode := group != nil && group.IsSubscriptionType() && subscription != nil
+	// 订阅是用户级预付额度；请求分组只决定路由和倍率，不再决定是否能使用订阅额度。
+	isSubscriptionMode := subscription != nil && subscription.Group != nil && subscription.Group.IsSubscriptionType()
 
 	if isSubscriptionMode {
-		if err := s.checkSubscriptionEligibility(ctx, user.ID, group, subscription); err != nil {
-			return err
+		if err := s.checkSubscriptionEligibility(ctx, user.ID, subscription.Group, subscription); err != nil {
+			if !errors.Is(err, ErrDailyLimitExceeded) &&
+				!errors.Is(err, ErrWeeklyLimitExceeded) &&
+				!errors.Is(err, ErrMonthlyLimitExceeded) {
+				return err
+			}
+			if balanceErr := s.checkBalanceEligibility(ctx, user.ID); balanceErr != nil {
+				return balanceErr
+			}
 		}
 	} else {
 		if err := s.checkBalanceEligibility(ctx, user.ID); err != nil {

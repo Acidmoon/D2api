@@ -675,6 +675,59 @@ func (s *SubscriptionService) ListActiveUserSubscriptions(ctx context.Context, u
 	return subs, nil
 }
 
+// GetActiveBillingSubscription returns the user's best subscription wallet.
+// It intentionally does not filter by request group: subscriptions are billed as
+// user-level prepaid quota and API keys keep selecting routing groups normally.
+func (s *SubscriptionService) GetActiveBillingSubscription(ctx context.Context, userID int64) (*UserSubscription, error) {
+	subs, err := s.userSubRepo.ListActiveByUserID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	var selected *UserSubscription
+	selectedRemaining := 0.0
+	for i := range subs {
+		sub := &subs[i]
+		if sub.Group == nil || !sub.Group.IsSubscriptionType() {
+			continue
+		}
+		remaining := subscriptionRemainingForBilling(sub)
+		if remaining <= 0 {
+			if selected == nil {
+				cp := *sub
+				selected = &cp
+			}
+			continue
+		}
+		if selected == nil || selectedRemaining <= 0 || remaining > selectedRemaining {
+			cp := *sub
+			selected = &cp
+			selectedRemaining = remaining
+		}
+	}
+	if selected == nil {
+		return nil, ErrSubscriptionNotFound
+	}
+	return selected, nil
+}
+
+func subscriptionRemainingForBilling(sub *UserSubscription) float64 {
+	if sub == nil || sub.Group == nil {
+		return 0
+	}
+	cp := *sub
+	if cp.NeedsDailyReset() {
+		cp.DailyUsageUSD = 0
+	}
+	if cp.NeedsWeeklyReset() {
+		cp.WeeklyUsageUSD = 0
+	}
+	if cp.NeedsMonthlyReset() {
+		cp.MonthlyUsageUSD = 0
+	}
+	return cp.RemainingQuotaUSD(cp.Group)
+}
+
 // ListGroupSubscriptions 获取分组的所有订阅
 func (s *SubscriptionService) ListGroupSubscriptions(ctx context.Context, groupID int64, page, pageSize int) ([]UserSubscription, *pagination.PaginationResult, error) {
 	params := pagination.PaginationParams{Page: page, PageSize: pageSize}

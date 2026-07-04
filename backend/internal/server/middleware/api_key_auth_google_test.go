@@ -25,6 +25,7 @@ type fakeAPIKeyRepo struct {
 
 type fakeGoogleSubscriptionRepo struct {
 	getActive      func(ctx context.Context, userID, groupID int64) (*service.UserSubscription, error)
+	listActive     func(ctx context.Context, userID int64) ([]service.UserSubscription, error)
 	updateStatus   func(ctx context.Context, subscriptionID int64, status string) error
 	activateWindow func(ctx context.Context, id int64, start time.Time) error
 	resetDaily     func(ctx context.Context, id int64, start time.Time) error
@@ -136,6 +137,9 @@ func (f fakeGoogleSubscriptionRepo) ListByUserID(ctx context.Context, userID int
 	return nil, errors.New("not implemented")
 }
 func (f fakeGoogleSubscriptionRepo) ListActiveByUserID(ctx context.Context, userID int64) ([]service.UserSubscription, error) {
+	if f.listActive != nil {
+		return f.listActive(ctx, userID)
+	}
 	return nil, errors.New("not implemented")
 }
 func (f fakeGoogleSubscriptionRepo) ListByGroupID(ctx context.Context, groupID int64, params pagination.PaginationParams) ([]service.UserSubscription, *pagination.PaginationResult, error) {
@@ -188,6 +192,23 @@ func (f fakeGoogleSubscriptionRepo) IncrementUsage(ctx context.Context, id int64
 }
 func (f fakeGoogleSubscriptionRepo) BatchUpdateExpiredStatus(ctx context.Context) (int64, error) {
 	return 0, errors.New("not implemented")
+}
+
+func attachGoogleTestGroup(apiKey *service.APIKey) *service.APIKey {
+	if apiKey == nil {
+		return nil
+	}
+	group := &service.Group{
+		ID:               770,
+		Name:             "google-standard",
+		Status:           service.StatusActive,
+		Platform:         service.PlatformGemini,
+		Hydrated:         true,
+		SubscriptionType: service.SubscriptionTypeStandard,
+	}
+	apiKey.GroupID = &group.ID
+	apiKey.Group = group
+	return apiKey
 }
 
 type googleErrorResponse struct {
@@ -329,7 +350,7 @@ func TestApiKeyAuthWithSubscriptionGoogle_QueryKeyAllowedOnV1Beta(t *testing.T) 
 	r := gin.New()
 	apiKeyService := newTestAPIKeyService(fakeAPIKeyRepo{
 		getByKey: func(ctx context.Context, key string) (*service.APIKey, error) {
-			return &service.APIKey{
+			return attachGoogleTestGroup(&service.APIKey{
 				ID:     1,
 				Key:    key,
 				Status: service.StatusActive,
@@ -337,7 +358,7 @@ func TestApiKeyAuthWithSubscriptionGoogle_QueryKeyAllowedOnV1Beta(t *testing.T) 
 					ID:     123,
 					Status: service.StatusActive,
 				},
-			}, nil
+			}), nil
 		},
 	})
 	cfg := &config.Config{RunMode: config.RunModeSimple}
@@ -496,13 +517,13 @@ func TestApiKeyAuthWithSubscriptionGoogle_DisabledKey(t *testing.T) {
 	require.Equal(t, "UNAUTHENTICATED", resp.Error.Status)
 }
 
-func TestApiKeyAuthWithSubscriptionGoogle_InsufficientBalance(t *testing.T) {
+func TestApiKeyAuthWithSubscriptionGoogle_DoesNotPrecheckSnapshotBalance(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	r := gin.New()
 	apiKeyService := newTestAPIKeyService(fakeAPIKeyRepo{
 		getByKey: func(ctx context.Context, key string) (*service.APIKey, error) {
-			return &service.APIKey{
+			return attachGoogleTestGroup(&service.APIKey{
 				ID:     1,
 				Key:    key,
 				Status: service.StatusActive,
@@ -511,7 +532,7 @@ func TestApiKeyAuthWithSubscriptionGoogle_InsufficientBalance(t *testing.T) {
 					Status:  service.StatusActive,
 					Balance: 0,
 				},
-			}, nil
+			}), nil
 		},
 	})
 	r.Use(APIKeyAuthWithSubscriptionGoogle(apiKeyService, nil, &config.Config{}))
@@ -522,12 +543,7 @@ func TestApiKeyAuthWithSubscriptionGoogle_InsufficientBalance(t *testing.T) {
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 
-	require.Equal(t, http.StatusForbidden, rec.Code)
-	var resp googleErrorResponse
-	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
-	require.Equal(t, http.StatusForbidden, resp.Error.Code)
-	require.Equal(t, "Insufficient account balance", resp.Error.Message)
-	require.Equal(t, "PERMISSION_DENIED", resp.Error.Status)
+	require.Equal(t, http.StatusOK, rec.Code)
 }
 
 func TestApiKeyAuthWithSubscriptionGoogle_TouchesLastUsedOnSuccess(t *testing.T) {
@@ -547,6 +563,7 @@ func TestApiKeyAuthWithSubscriptionGoogle_TouchesLastUsedOnSuccess(t *testing.T)
 		Status: service.StatusActive,
 		User:   user,
 	}
+	attachGoogleTestGroup(apiKey)
 
 	var touchedID int64
 	var touchedAt time.Time
@@ -596,6 +613,7 @@ func TestApiKeyAuthWithSubscriptionGoogle_TouchFailureDoesNotBlock(t *testing.T)
 		Status: service.StatusActive,
 		User:   user,
 	}
+	attachGoogleTestGroup(apiKey)
 
 	touchCalls := 0
 	r := gin.New()
@@ -642,6 +660,7 @@ func TestApiKeyAuthWithSubscriptionGoogle_TouchesLastUsedInStandardMode(t *testi
 		Status: service.StatusActive,
 		User:   user,
 	}
+	attachGoogleTestGroup(apiKey)
 
 	touchCalls := 0
 	r := gin.New()
@@ -671,7 +690,7 @@ func TestApiKeyAuthWithSubscriptionGoogle_TouchesLastUsedInStandardMode(t *testi
 	require.Equal(t, 1, touchCalls)
 }
 
-func TestApiKeyAuthWithSubscriptionGoogle_SubscriptionLimitExceededReturns429(t *testing.T) {
+func TestApiKeyAuthWithSubscriptionGoogle_SubscriptionLimitExceededAllowsBalanceFallback(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	limit := 1.0
@@ -722,12 +741,13 @@ func TestApiKeyAuthWithSubscriptionGoogle_SubscriptionLimitExceededReturns429(t 
 		DailyUsageUSD:    10,
 	}
 	subscriptionService := service.NewSubscriptionService(nil, fakeGoogleSubscriptionRepo{
-		getActive: func(ctx context.Context, userID, groupID int64) (*service.UserSubscription, error) {
-			if userID != user.ID || groupID != group.ID {
+		listActive: func(ctx context.Context, userID int64) ([]service.UserSubscription, error) {
+			if userID != user.ID {
 				return nil, service.ErrSubscriptionNotFound
 			}
 			clone := *sub
-			return &clone, nil
+			clone.Group = group
+			return []service.UserSubscription{clone}, nil
 		},
 		updateStatus:   func(ctx context.Context, subscriptionID int64, status string) error { return nil },
 		activateWindow: func(ctx context.Context, id int64, start time.Time) error { return nil },
@@ -745,10 +765,5 @@ func TestApiKeyAuthWithSubscriptionGoogle_SubscriptionLimitExceededReturns429(t 
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 
-	require.Equal(t, http.StatusTooManyRequests, rec.Code)
-	var resp googleErrorResponse
-	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
-	require.Equal(t, http.StatusTooManyRequests, resp.Error.Code)
-	require.Equal(t, "RESOURCE_EXHAUSTED", resp.Error.Status)
-	require.Contains(t, resp.Error.Message, "daily usage limit exceeded")
+	require.Equal(t, http.StatusOK, rec.Code)
 }

@@ -76,9 +76,10 @@ func TestSimpleModeBypassesQuotaCheck(t *testing.T) {
 		}
 		maintenanceCalled := make(chan struct{}, 1)
 		subscriptionRepo := &stubUserSubscriptionRepo{
-			getActive: func(ctx context.Context, userID, groupID int64) (*service.UserSubscription, error) {
+			listActive: func(ctx context.Context, userID int64) ([]service.UserSubscription, error) {
 				clone := *sub
-				return &clone, nil
+				clone.Group = group
+				return []service.UserSubscription{clone}, nil
 			},
 			updateStatus:   func(ctx context.Context, subscriptionID int64, status string) error { return nil },
 			activateWindow: func(ctx context.Context, id int64, start time.Time) error { return nil },
@@ -136,7 +137,7 @@ func TestSimpleModeBypassesQuotaCheck(t *testing.T) {
 		require.Equal(t, http.StatusOK, w.Code)
 	})
 
-	t.Run("standard_mode_enforces_quota_check", func(t *testing.T) {
+	t.Run("standard_mode_allows_subscription_quota_exhausted_balance_fallback", func(t *testing.T) {
 		cfg := &config.Config{RunMode: config.RunModeStandard}
 		apiKeyService := service.NewAPIKeyService(apiKeyRepo, nil, nil, nil, nil, nil, cfg)
 
@@ -172,8 +173,7 @@ func TestSimpleModeBypassesQuotaCheck(t *testing.T) {
 		req.Header.Set("x-api-key", apiKey.Key)
 		router.ServeHTTP(w, req)
 
-		require.Equal(t, http.StatusTooManyRequests, w.Code)
-		require.Contains(t, w.Body.String(), "USAGE_LIMIT_EXCEEDED")
+		require.Equal(t, http.StatusOK, w.Code)
 	})
 }
 
@@ -235,7 +235,7 @@ func TestAPIKeyAuthSetsGroupContext(t *testing.T) {
 	require.Equal(t, http.StatusOK, w.Code)
 }
 
-func TestAPIKeyAuthFallsBackToSecondaryGroupWhenPrimarySubscriptionLimitExceeded(t *testing.T) {
+func TestAPIKeyAuthKeepsSelectedGroupWhenBillingSubscriptionLimitExceeded(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	limit := 1.0
@@ -289,19 +289,18 @@ func TestAPIKeyAuthFallsBackToSecondaryGroupWhenPrimarySubscriptionLimitExceeded
 		},
 	}
 	subscriptionRepo := &stubUserSubscriptionRepo{
-		getActive: func(ctx context.Context, userID, groupID int64) (*service.UserSubscription, error) {
+		listActive: func(ctx context.Context, userID int64) ([]service.UserSubscription, error) {
 			sub := &service.UserSubscription{
-				ID:               groupID,
+				ID:               primaryGroup.ID,
 				UserID:           userID,
-				GroupID:          groupID,
+				GroupID:          primaryGroup.ID,
+				Group:            primaryGroup,
 				Status:           service.SubscriptionStatusActive,
 				ExpiresAt:        now.Add(24 * time.Hour),
 				DailyWindowStart: &now,
+				DailyUsageUSD:    1,
 			}
-			if groupID == primaryGroup.ID {
-				sub.DailyUsageUSD = 1
-			}
-			return sub, nil
+			return []service.UserSubscription{*sub}, nil
 		},
 		updateStatus:   func(ctx context.Context, subscriptionID int64, status string) error { return nil },
 		activateWindow: func(ctx context.Context, id int64, start time.Time) error { return nil },
@@ -328,8 +327,8 @@ func TestAPIKeyAuthFallsBackToSecondaryGroupWhenPrimarySubscriptionLimitExceeded
 	router.ServeHTTP(w, req)
 
 	require.Equal(t, http.StatusOK, w.Code)
-	require.Contains(t, w.Body.String(), `"group_id":202`)
-	require.Contains(t, w.Body.String(), `"subscription_group_id":202`)
+	require.Contains(t, w.Body.String(), `"group_id":101`)
+	require.Contains(t, w.Body.String(), `"subscription_group_id":101`)
 }
 
 func TestAPIKeyAuthRejectsExclusiveGroupWhenUserNoLongerAllowed(t *testing.T) {
@@ -807,6 +806,13 @@ func TestAPIKeyAuthIPRestrictionDoesNotTrustForwardedClientIPByDefault(t *testin
 func TestAPIKeyAuthIPRestrictionCanTrustForwardedClientIPForReverseProxy(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
+	group := &service.Group{
+		ID:       88,
+		Name:     "standard",
+		Status:   service.StatusActive,
+		Platform: service.PlatformAnthropic,
+		Hydrated: true,
+	}
 	user := &service.User{
 		ID:          7,
 		Role:        service.RoleUser,
@@ -820,6 +826,8 @@ func TestAPIKeyAuthIPRestrictionCanTrustForwardedClientIPForReverseProxy(t *test
 		Key:         "test-key",
 		Status:      service.StatusActive,
 		User:        user,
+		GroupID:     &group.ID,
+		Group:       group,
 		IPWhitelist: []string{"1.2.3.4"},
 	}
 
@@ -858,6 +866,13 @@ func TestAPIKeyAuthIPRestrictionCanTrustForwardedClientIPForReverseProxy(t *test
 func TestAPIKeyAuthTouchesLastUsedOnSuccess(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
+	group := &service.Group{
+		ID:       88,
+		Name:     "standard",
+		Status:   service.StatusActive,
+		Platform: service.PlatformAnthropic,
+		Hydrated: true,
+	}
 	user := &service.User{
 		ID:          7,
 		Role:        service.RoleUser,
@@ -866,11 +881,13 @@ func TestAPIKeyAuthTouchesLastUsedOnSuccess(t *testing.T) {
 		Concurrency: 3,
 	}
 	apiKey := &service.APIKey{
-		ID:     100,
-		UserID: user.ID,
-		Key:    "touch-ok",
-		Status: service.StatusActive,
-		User:   user,
+		ID:      100,
+		UserID:  user.ID,
+		Key:     "touch-ok",
+		Status:  service.StatusActive,
+		User:    user,
+		GroupID: &group.ID,
+		Group:   group,
 	}
 
 	var touchedID int64
@@ -907,6 +924,13 @@ func TestAPIKeyAuthTouchesLastUsedOnSuccess(t *testing.T) {
 func TestAPIKeyAuthTouchLastUsedFailureDoesNotBlock(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
+	group := &service.Group{
+		ID:       89,
+		Name:     "standard",
+		Status:   service.StatusActive,
+		Platform: service.PlatformAnthropic,
+		Hydrated: true,
+	}
 	user := &service.User{
 		ID:          8,
 		Role:        service.RoleUser,
@@ -915,11 +939,13 @@ func TestAPIKeyAuthTouchLastUsedFailureDoesNotBlock(t *testing.T) {
 		Concurrency: 3,
 	}
 	apiKey := &service.APIKey{
-		ID:     101,
-		UserID: user.ID,
-		Key:    "touch-fail",
-		Status: service.StatusActive,
-		User:   user,
+		ID:      101,
+		UserID:  user.ID,
+		Key:     "touch-fail",
+		Status:  service.StatusActive,
+		User:    user,
+		GroupID: &group.ID,
+		Group:   group,
 	}
 
 	touchCalls := 0
@@ -953,6 +979,13 @@ func TestAPIKeyAuthTouchLastUsedFailureDoesNotBlock(t *testing.T) {
 func TestAPIKeyAuthTouchesLastUsedInStandardMode(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
+	group := &service.Group{
+		ID:       90,
+		Name:     "standard",
+		Status:   service.StatusActive,
+		Platform: service.PlatformAnthropic,
+		Hydrated: true,
+	}
 	user := &service.User{
 		ID:          9,
 		Role:        service.RoleUser,
@@ -961,11 +994,13 @@ func TestAPIKeyAuthTouchesLastUsedInStandardMode(t *testing.T) {
 		Concurrency: 3,
 	}
 	apiKey := &service.APIKey{
-		ID:     102,
-		UserID: user.ID,
-		Key:    "touch-standard",
-		Status: service.StatusActive,
-		User:   user,
+		ID:      102,
+		UserID:  user.ID,
+		Key:     "touch-standard",
+		Status:  service.StatusActive,
+		User:    user,
+		GroupID: &group.ID,
+		Group:   group,
 	}
 
 	touchCalls := 0
@@ -1112,6 +1147,7 @@ func (r *stubApiKeyRepo) GetRateLimitData(ctx context.Context, id int64) (*servi
 
 type stubUserSubscriptionRepo struct {
 	getActive      func(ctx context.Context, userID, groupID int64) (*service.UserSubscription, error)
+	listActive     func(ctx context.Context, userID int64) ([]service.UserSubscription, error)
 	updateStatus   func(ctx context.Context, subscriptionID int64, status string) error
 	activateWindow func(ctx context.Context, id int64, start time.Time) error
 	resetDaily     func(ctx context.Context, id int64, start time.Time) error
@@ -1186,6 +1222,9 @@ func (r *stubUserSubscriptionRepo) ListByUserID(ctx context.Context, userID int6
 }
 
 func (r *stubUserSubscriptionRepo) ListActiveByUserID(ctx context.Context, userID int64) ([]service.UserSubscription, error) {
+	if r.listActive != nil {
+		return r.listActive(ctx, userID)
+	}
 	return nil, errors.New("not implemented")
 }
 

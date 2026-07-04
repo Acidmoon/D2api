@@ -1,6 +1,9 @@
 package service
 
-import "time"
+import (
+	"math"
+	"time"
+)
 
 type UserSubscription struct {
 	ID      int64
@@ -29,6 +32,13 @@ type UserSubscription struct {
 	User           *User
 	Group          *Group
 	AssignedByUser *User
+}
+
+// SubscriptionUsageAllocation describes how much of a request can be charged to
+// subscription quota before the remainder falls back to the user's balance.
+type SubscriptionUsageAllocation struct {
+	SubscriptionCost float64
+	BalanceCost      float64
 }
 
 func (s *UserSubscription) IsActive() bool {
@@ -139,4 +149,49 @@ func (s *UserSubscription) CheckAllLimits(group *Group, additionalCost float64) 
 	weekly = s.CheckWeeklyLimit(group, additionalCost)
 	monthly = s.CheckMonthlyLimit(group, additionalCost)
 	return
+}
+
+func (s *UserSubscription) RemainingQuotaUSD(group *Group) float64 {
+	if s == nil || group == nil {
+		return 0
+	}
+
+	remaining := -1.0
+	applyLimit := func(limit *float64, used float64) {
+		if limit == nil || *limit <= 0 {
+			return
+		}
+		left := *limit - used
+		if left < 0 {
+			left = 0
+		}
+		if remaining < 0 || left < remaining {
+			remaining = left
+		}
+	}
+
+	applyLimit(group.DailyLimitUSD, s.DailyUsageUSD)
+	applyLimit(group.WeeklyLimitUSD, s.WeeklyUsageUSD)
+	applyLimit(group.MonthlyLimitUSD, s.MonthlyUsageUSD)
+	if remaining < 0 {
+		return math.MaxFloat64
+	}
+	return remaining
+}
+
+func (s *UserSubscription) AllocateUsageCost(group *Group, costUSD float64) SubscriptionUsageAllocation {
+	if costUSD <= 0 || s == nil || group == nil {
+		return SubscriptionUsageAllocation{}
+	}
+	remaining := s.RemainingQuotaUSD(group)
+	if remaining <= 0 {
+		return SubscriptionUsageAllocation{BalanceCost: costUSD}
+	}
+	if remaining >= costUSD {
+		return SubscriptionUsageAllocation{SubscriptionCost: costUSD}
+	}
+	return SubscriptionUsageAllocation{
+		SubscriptionCost: remaining,
+		BalanceCost:      costUSD - remaining,
+	}
 }

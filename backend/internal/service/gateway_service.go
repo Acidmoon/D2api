@@ -8411,20 +8411,16 @@ func postUsageBilling(ctx context.Context, p *postUsageBillingParams, deps *bill
 	defer cancel()
 
 	cost := p.Cost
+	allocation := p.subscriptionUsageAllocation()
 
-	if p.IsSubscriptionBill {
-		// Subscription usage tracked by ActualCost so group rate multiplier
-		// consumes the quota at the expected speed.
-		if cost.ActualCost > 0 {
-			if err := deps.userSubRepo.IncrementUsage(billingCtx, p.Subscription.ID, cost.ActualCost); err != nil {
-				slog.Error("increment subscription usage failed", "subscription_id", p.Subscription.ID, "error", err)
-			}
+	if allocation.SubscriptionCost > 0 {
+		if err := deps.userSubRepo.IncrementUsage(billingCtx, p.Subscription.ID, allocation.SubscriptionCost); err != nil {
+			slog.Error("increment subscription usage failed", "subscription_id", p.Subscription.ID, "error", err)
 		}
-	} else {
-		if cost.ActualCost > 0 {
-			if err := deps.userRepo.DeductBalance(billingCtx, p.User.ID, cost.ActualCost); err != nil {
-				slog.Error("deduct balance failed", "user_id", p.User.ID, "error", err)
-			}
+	}
+	if allocation.BalanceCost > 0 {
+		if err := deps.userRepo.DeductBalance(billingCtx, p.User.ID, allocation.BalanceCost); err != nil {
+			slog.Error("deduct balance failed", "user_id", p.User.ID, "error", err)
 		}
 	}
 
@@ -8453,14 +8449,14 @@ func postUsageBilling(ctx context.Context, p *postUsageBillingParams, deps *bill
 	//   - flusher_enabled=false（降级）:保留原有同步直写 DB
 	//   - flusher_enabled=true:跳过直写 DB，由 flusher 异步批量刷（markDirty 在 IncrementUserPlatformQuotaUsage 内部完成）
 	//   - 失败仅记 ALERT log + counter，不阻断主扣费流程
-	if !p.IsSubscriptionBill && p.Platform != "" && cost.ActualCost > 0 && p.User != nil && deps.userPlatformQuotaRepo != nil {
+	if allocation.BalanceCost > 0 && p.Platform != "" && p.User != nil && deps.userPlatformQuotaRepo != nil {
 		if deps.billingCacheService.HasUserPlatformQuotaLimit(billingCtx, p.User.ID, p.Platform) {
-			deps.billingCacheService.IncrementUserPlatformQuotaUsage(p.User.ID, p.Platform, cost.ActualCost)
+			deps.billingCacheService.IncrementUserPlatformQuotaUsage(p.User.ID, p.Platform, allocation.BalanceCost)
 			if deps.cfg == nil || !deps.cfg.Database.UserPlatformQuotaFlusherEnabled {
 				// 降级路径:flusher 未启用时保留原有同步直写 DB
-				if err := deps.userPlatformQuotaRepo.IncrementUsageWithReset(billingCtx, p.User.ID, p.Platform, cost.ActualCost, time.Now().UTC()); err != nil {
+				if err := deps.userPlatformQuotaRepo.IncrementUsageWithReset(billingCtx, p.User.ID, p.Platform, allocation.BalanceCost, time.Now().UTC()); err != nil {
 					userPlatformQuotaDBIncrLegacyErrorTotal.Add(1)
-					logger.LegacyPrintf("service.gateway", "ALERT: legacy incr user platform quota DB failed user=%d platform=%s cost=%f: %v", p.User.ID, p.Platform, cost.ActualCost, err)
+					logger.LegacyPrintf("service.gateway", "ALERT: legacy incr user platform quota DB failed user=%d platform=%s cost=%f: %v", p.User.ID, p.Platform, allocation.BalanceCost, err)
 				}
 			}
 			// flusher_enabled=true:不直写 DB，flusher 异步批量刷
@@ -8535,15 +8531,13 @@ func buildUsageBillingCommand(requestID string, usageLog *UsageLog, p *postUsage
 		}
 	}
 
-	// Record subscription / balance cost using ActualCost so the group (and any
-	// user-specific) rate multiplier consumes subscription quota at the expected
-	// speed. TotalCost remains the raw (pre-multiplier) value; downstream guards
-	// on "> 0" still correctly skip free subscriptions (RateMultiplier == 0).
-	if p.IsSubscriptionBill && p.Subscription != nil && p.Cost.TotalCost > 0 {
+	allocation := p.subscriptionUsageAllocation()
+	if allocation.SubscriptionCost > 0 {
 		cmd.SubscriptionID = &p.Subscription.ID
-		cmd.SubscriptionCost = p.Cost.ActualCost
-	} else if p.Cost.ActualCost > 0 {
-		cmd.BalanceCost = p.Cost.ActualCost
+		cmd.SubscriptionCost = allocation.SubscriptionCost
+	}
+	if allocation.BalanceCost > 0 {
+		cmd.BalanceCost = allocation.BalanceCost
 	}
 
 	if p.shouldDeductAPIKeyQuota() {
@@ -8558,6 +8552,26 @@ func buildUsageBillingCommand(requestID string, usageLog *UsageLog, p *postUsage
 
 	cmd.Normalize()
 	return cmd
+}
+
+func (p *postUsageBillingParams) subscriptionUsageAllocation() SubscriptionUsageAllocation {
+	if p == nil || p.Cost == nil || p.Cost.ActualCost <= 0 {
+		return SubscriptionUsageAllocation{}
+	}
+	if !p.IsSubscriptionBill || p.Subscription == nil || p.Subscription.Group == nil {
+		return SubscriptionUsageAllocation{BalanceCost: p.Cost.ActualCost}
+	}
+	return p.Subscription.AllocateUsageCost(p.Subscription.Group, p.Cost.ActualCost)
+}
+
+func (p *postUsageBillingParams) appliedUsageAllocation(result *UsageBillingApplyResult) SubscriptionUsageAllocation {
+	if result != nil && (result.SubscriptionCost > 0 || result.BalanceCost > 0) {
+		return SubscriptionUsageAllocation{
+			SubscriptionCost: result.SubscriptionCost,
+			BalanceCost:      result.BalanceCost,
+		}
+	}
+	return p.subscriptionUsageAllocation()
 }
 
 func applyUsageBilling(ctx context.Context, requestID string, usageLog *UsageLog, p *postUsageBillingParams, deps *billingDeps, repo UsageBillingRepository) (bool, error) {
@@ -8599,12 +8613,14 @@ func finalizePostUsageBilling(ctx context.Context, p *postUsageBillingParams, de
 		return
 	}
 
-	if p.IsSubscriptionBill {
-		if p.Cost.ActualCost > 0 && p.User != nil && p.APIKey != nil && p.APIKey.GroupID != nil {
-			deps.billingCacheService.QueueUpdateSubscriptionUsage(p.User.ID, *p.APIKey.GroupID, p.Cost.ActualCost)
+	allocation := p.appliedUsageAllocation(result)
+	if allocation.SubscriptionCost > 0 {
+		if p.User != nil && p.Subscription != nil {
+			deps.billingCacheService.QueueUpdateSubscriptionUsage(p.User.ID, p.Subscription.GroupID, allocation.SubscriptionCost)
 		}
-	} else if p.Cost.ActualCost > 0 && p.User != nil {
-		deps.billingCacheService.QueueDeductBalance(p.User.ID, p.Cost.ActualCost)
+	}
+	if allocation.BalanceCost > 0 && p.User != nil {
+		deps.billingCacheService.QueueDeductBalance(p.User.ID, allocation.BalanceCost)
 	}
 
 	if p.Cost.ActualCost > 0 && p.APIKey != nil && p.APIKey.HasRateLimits() {
@@ -8620,13 +8636,13 @@ func finalizePostUsageBilling(ctx context.Context, p *postUsageBillingParams, de
 	//     限制在并发 in-flight 请求数量内（旧实现的异步入队会让超支无限累积直到 worker 处理）
 	//   - DB 异步(flusher_enabled=false):在独立 goroutine 中走 detached context,失败用 ALERT log 触发 oncall 对账
 	//   - flusher_enabled=true:不直写 DB,由 flusher 异步批量刷（markDirty 已在 IncrementUserPlatformQuotaUsage 内部完成）
-	if !p.IsSubscriptionBill && p.Platform != "" && p.Cost.ActualCost > 0 && p.User != nil && deps.userPlatformQuotaRepo != nil {
+	if allocation.BalanceCost > 0 && p.Platform != "" && p.User != nil && deps.userPlatformQuotaRepo != nil {
 		if deps.billingCacheService.HasUserPlatformQuotaLimit(ctx, p.User.ID, p.Platform) {
-			deps.billingCacheService.IncrementUserPlatformQuotaUsage(p.User.ID, p.Platform, p.Cost.ActualCost)
+			deps.billingCacheService.IncrementUserPlatformQuotaUsage(p.User.ID, p.Platform, allocation.BalanceCost)
 			if deps.cfg == nil || !deps.cfg.Database.UserPlatformQuotaFlusherEnabled {
 				// 降级路径:flusher 未启用时保留原有异步直写 DB
 				dbCtx, dbCancel := detachUpstreamContext(ctx)
-				userID, platform, cost := p.User.ID, p.Platform, p.Cost.ActualCost
+				userID, platform, cost := p.User.ID, p.Platform, allocation.BalanceCost
 				go func() {
 					defer func() {
 						if r := recover(); r != nil {
@@ -8662,7 +8678,8 @@ func notifyBalanceLow(p *postUsageBillingParams, deps *billingDeps, result *Usag
 			slog.Error("panic in notifyBalanceLow", "recover", r)
 		}
 	}()
-	if p.IsSubscriptionBill || p.Cost.ActualCost <= 0 || p.User == nil || deps.balanceNotifyService == nil {
+	allocation := p.appliedUsageAllocation(result)
+	if allocation.BalanceCost <= 0 || p.User == nil || deps.balanceNotifyService == nil {
 		slog.Debug("notifyBalanceLow: skipped",
 			"is_subscription", p.IsSubscriptionBill,
 			"actual_cost", p.Cost.ActualCost,
@@ -8676,19 +8693,20 @@ func notifyBalanceLow(p *postUsageBillingParams, deps *billingDeps, result *Usag
 	slog.Debug("notifyBalanceLow: calling CheckBalanceAfterDeduction",
 		"user_id", p.User.ID,
 		"old_balance", oldBalance,
-		"cost", p.Cost.ActualCost,
+		"cost", allocation.BalanceCost,
 		"notify_enabled", p.User.BalanceNotifyEnabled,
 		"threshold", p.User.BalanceNotifyThreshold,
 		"result_has_new_balance", result != nil && result.NewBalance != nil,
 	)
-	deps.balanceNotifyService.CheckBalanceAfterDeduction(context.Background(), p.User, oldBalance, p.Cost.ActualCost)
+	deps.balanceNotifyService.CheckBalanceAfterDeduction(context.Background(), p.User, oldBalance, allocation.BalanceCost)
 }
 
 // resolveOldBalance returns the pre-deduction balance.
 // Prefers the DB transaction result (newBalance + cost) over snapshot.
 func resolveOldBalance(p *postUsageBillingParams, result *UsageBillingApplyResult) float64 {
+	allocation := p.appliedUsageAllocation(result)
 	if result != nil && result.NewBalance != nil {
-		return *result.NewBalance + p.Cost.ActualCost
+		return *result.NewBalance + allocation.BalanceCost
 	}
 	// Legacy fallback: snapshot balance from request context
 	return p.User.Balance
@@ -8946,7 +8964,7 @@ func (s *GatewayService) recordUsageCore(ctx context.Context, input *recordUsage
 	cost := s.calculateRecordUsageCost(ctx, result, apiKey, billingModel, multiplier, imageMultiplier, opts)
 
 	// 判断计费方式：订阅模式 vs 余额模式
-	isSubscriptionBilling := subscription != nil && apiKey.Group != nil && apiKey.Group.IsSubscriptionType()
+	isSubscriptionBilling := subscription != nil && subscription.Group != nil && subscription.Group.IsSubscriptionType()
 	billingType := BillingTypeBalance
 	if isSubscriptionBilling {
 		billingType = BillingTypeSubscription
