@@ -542,7 +542,7 @@ func (r *userSubscriptionRepository) listSubscriptionBalances(ctx context.Contex
 			sb.daily_limit_usd, sb.weekly_limit_usd, sb.monthly_limit_usd,
 			sb.daily_usage_usd, sb.weekly_usage_usd, sb.monthly_usage_usd,
 			sb.assigned_by, sb.assigned_at, sb.notes, sb.created_at, sb.updated_at,
-			u.email, u.name,
+			u.email, u.username,
 			g.name, g.platform, g.rate_multiplier, g.subscription_type
 		FROM subscription_balances sb
 		LEFT JOIN users u ON u.id = sb.user_id
