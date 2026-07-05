@@ -153,19 +153,16 @@ BEGIN
     END IF;
 END $$;
 
+ALTER TABLE billing_usage_entries DROP CONSTRAINT IF EXISTS billing_usage_entries_subscription_id_fkey;
 DO $$
 BEGIN
-    IF to_regclass('public.billing_usage_entries') IS NOT NULL THEN
-        ALTER TABLE billing_usage_entries DROP CONSTRAINT IF EXISTS billing_usage_entries_subscription_id_fkey;
-
-        IF NOT EXISTS (
-            SELECT 1 FROM pg_constraint
-            WHERE conname = 'billing_usage_entries_subscription_balances_fkey'
-        ) THEN
-            ALTER TABLE billing_usage_entries
-                ADD CONSTRAINT billing_usage_entries_subscription_balances_fkey
-                FOREIGN KEY (subscription_id) REFERENCES subscription_balances(id) ON DELETE SET NULL;
-        END IF;
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conname = 'billing_usage_entries_subscription_balances_fkey'
+    ) THEN
+        ALTER TABLE billing_usage_entries
+            ADD CONSTRAINT billing_usage_entries_subscription_balances_fkey
+            FOREIGN KEY (subscription_id) REFERENCES subscription_balances(id) ON DELETE SET NULL;
     END IF;
 END $$;
 
