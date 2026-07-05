@@ -301,11 +301,26 @@ func deductUsageBillingBalance(ctx context.Context, tx *sql.Tx, userID int64, am
 		UPDATE users
 		SET balance = balance - $1,
 			updated_at = NOW()
-		WHERE id = $2 AND deleted_at IS NULL
+		WHERE id = $2 AND deleted_at IS NULL AND balance >= $1
 		RETURNING balance
 	`, amount, userID).Scan(&newBalance)
 	if errors.Is(err, sql.ErrNoRows) {
-		return 0, service.ErrUserNotFound
+		var exists bool
+		lookupErr := tx.QueryRowContext(ctx, `
+			SELECT TRUE
+			FROM users
+			WHERE id = $1 AND deleted_at IS NULL
+		`, userID).Scan(&exists)
+		if errors.Is(lookupErr, sql.ErrNoRows) {
+			return 0, service.ErrUserNotFound
+		}
+		if lookupErr != nil {
+			return 0, lookupErr
+		}
+		// The billing transaction must not create negative balances. Legacy
+		// user balance helpers may allow overdraft, but request billing should
+		// fail atomically when the subscription remainder cannot be covered.
+		return 0, service.ErrInsufficientBalance
 	}
 	if err != nil {
 		return 0, err

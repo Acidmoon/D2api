@@ -178,6 +178,54 @@ func TestUsageBillingRepositoryApply_SubscriptionRemainderFallsBackToBalance(t *
 	require.InDelta(t, 8.75, balance, 0.000001)
 }
 
+func TestUsageBillingRepositoryApply_SubscriptionRemainderRequiresSufficientBalance(t *testing.T) {
+	ctx := context.Background()
+	client := testEntClient(t)
+	repo := NewUsageBillingRepository(client, integrationDB)
+
+	user := mustCreateUser(t, client, &service.User{
+		Email:        fmt.Sprintf("usage-billing-insufficient-user-%d@example.com", time.Now().UnixNano()),
+		PasswordHash: "hash",
+		Balance:      1,
+	})
+	limit := 5.0
+	group := mustCreateGroup(t, client, &service.Group{
+		Name:             "usage-billing-insufficient-group-" + uuid.NewString(),
+		Platform:         service.PlatformAnthropic,
+		SubscriptionType: service.SubscriptionTypeSubscription,
+		DailyLimitUSD:    &limit,
+	})
+	apiKey := mustCreateApiKey(t, client, &service.APIKey{
+		UserID: user.ID,
+		Key:    "sk-usage-billing-insufficient-" + uuid.NewString(),
+		Name:   "billing-insufficient",
+	})
+	subscription := mustCreateSubscription(t, client, &service.UserSubscription{
+		UserID:        user.ID,
+		GroupID:       group.ID,
+		DailyUsageUSD: 4.25,
+	})
+
+	result, err := repo.Apply(ctx, &service.UsageBillingCommand{
+		RequestID:        uuid.NewString(),
+		APIKeyID:         apiKey.ID,
+		UserID:           user.ID,
+		AccountID:        0,
+		SubscriptionID:   &subscription.ID,
+		SubscriptionCost: 2,
+	})
+	require.ErrorIs(t, err, service.ErrInsufficientBalance)
+	require.Nil(t, result)
+
+	var dailyUsage float64
+	require.NoError(t, integrationDB.QueryRowContext(ctx, "SELECT daily_usage_usd FROM user_subscriptions WHERE id = $1", subscription.ID).Scan(&dailyUsage))
+	require.InDelta(t, 4.25, dailyUsage, 0.000001)
+
+	var balance float64
+	require.NoError(t, integrationDB.QueryRowContext(ctx, "SELECT balance FROM users WHERE id = $1", user.ID).Scan(&balance))
+	require.InDelta(t, 1, balance, 0.000001)
+}
+
 func TestUsageBillingRepositoryApply_SubscriptionExpiredWindowUsesFreshQuota(t *testing.T) {
 	ctx := context.Background()
 	client := testEntClient(t)

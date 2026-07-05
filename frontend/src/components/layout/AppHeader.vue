@@ -50,26 +50,116 @@
         <!-- Balance Display -->
         <div
           v-if="user"
-          class="hidden min-h-11 items-center gap-2 border px-3 py-1.5 sm:flex"
-          style="border-color: var(--nm-border); border-radius: var(--nm-radius); background: var(--nm-surface)"
+          ref="walletRef"
+          class="relative hidden sm:block"
         >
-          <svg
-            class="h-4 w-4"
-            style="color: var(--nm-accent-text)"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            stroke-width="1.5"
+          <button
+            class="flex min-h-11 items-center gap-2 border px-3 py-1.5 transition-colors"
+            style="border-color: var(--nm-border); border-radius: var(--nm-radius); background: var(--nm-surface)"
+            :title="t('subscriptionProgress.walletTitle')"
+            @click="toggleWalletPanel"
           >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z"
-            />
-          </svg>
-          <span class="text-sm font-semibold" style="color: var(--nm-ink)">
-            ${{ user.balance?.toFixed(2) || '0.00' }}
-          </span>
+            <Icon name="dollar" size="sm" style="color: var(--nm-accent-text)" />
+            <span class="text-sm font-semibold" style="color: var(--nm-ink)">
+              ${{ user.balance?.toFixed(2) || '0.00' }}
+            </span>
+          </button>
+
+          <transition name="dropdown">
+            <div v-if="walletOpen" class="dropdown right-0 mt-2 w-[360px] overflow-hidden">
+              <div class="border-b p-4" style="border-color: var(--nm-border-light)">
+                <div class="flex items-center justify-between gap-3">
+                  <div>
+                    <h3 class="text-sm font-semibold" style="color: var(--nm-ink)">
+                      {{ t('subscriptionProgress.walletTitle') }}
+                    </h3>
+                    <p class="mt-1 text-xs leading-5" style="color: var(--nm-ink-muted)">
+                      {{ t('subscriptionProgress.walletHint') }}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    class="btn-ghost btn-icon"
+                    :title="t('common.refresh')"
+                    :disabled="subscriptionStore.loading"
+                    @click="refreshWallet"
+                  >
+                    <Icon name="refresh" size="sm" :class="subscriptionStore.loading ? 'animate-spin' : ''" />
+                  </button>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-2 gap-2 p-3">
+                <div class="wallet-metric">
+                  <span>{{ t('subscriptionProgress.subscriptionQuota') }}</span>
+                  <strong>{{ subscriptionQuotaLabel }}</strong>
+                </div>
+                <div class="wallet-metric">
+                  <span>{{ t('subscriptionProgress.accountBalance') }}</span>
+                  <strong>${{ formatUSD(user.balance || 0) }}</strong>
+                </div>
+              </div>
+
+              <div class="max-h-64 overflow-y-auto border-t" style="border-color: var(--nm-border-light)">
+                <div
+                  v-if="activeSubscriptions.length === 0"
+                  class="px-4 py-5 text-center text-sm"
+                  style="color: var(--nm-ink-muted)"
+                >
+                  {{ t('subscriptionProgress.noActiveWallets') }}
+                </div>
+                <div
+                  v-for="subscription in activeSubscriptions.slice(0, 5)"
+                  :key="subscription.id"
+                  class="border-b px-4 py-3 last:border-b-0"
+                  style="border-color: var(--nm-border-light)"
+                >
+                  <div class="flex items-center justify-between gap-3">
+                    <span class="truncate text-sm font-medium" style="color: var(--nm-ink)">
+                      {{ subscription.plan_name || subscription.group?.name || `Subscription #${subscription.id}` }}
+                    </span>
+                    <span class="shrink-0 text-xs" style="color: var(--nm-ink-muted)">
+                      {{ formatSubscriptionExpiry(subscription.expires_at) }}
+                    </span>
+                  </div>
+                  <div class="mt-2 space-y-1">
+                    <div
+                      v-for="period in walletPeriods(subscription)"
+                      :key="period.label"
+                      class="flex items-center gap-2 text-xs"
+                      style="color: var(--nm-ink-muted)"
+                    >
+                      <span class="w-10 shrink-0">{{ period.label }}</span>
+                      <div class="metric-progress h-1.5 min-w-0 flex-1">
+                        <div
+                          class="metric-progress-bar h-full"
+                          :class="period.percent >= 90 ? 'metric-progress-bar-danger' : period.percent >= 70 ? 'metric-progress-bar-warning' : 'metric-progress-bar-success'"
+                          :style="{ width: `${period.percent}%` }"
+                        />
+                      </div>
+                      <span class="w-24 shrink-0 text-right">{{ period.text }}</span>
+                    </div>
+                    <div
+                      v-if="walletPeriods(subscription).length === 0"
+                      class="text-xs font-medium"
+                      style="color: var(--nm-success-text)"
+                    >
+                      {{ t('subscriptionProgress.quotaUnlimited') }}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-2 gap-2 border-t p-2" style="border-color: var(--nm-border-light)">
+                <router-link to="/subscriptions" class="subscription-link py-1.5 text-center text-xs" @click="closeWalletPanel">
+                  {{ t('subscriptionProgress.viewAll') }}
+                </router-link>
+                <router-link to="/purchase" class="subscription-link py-1.5 text-center text-xs" @click="closeWalletPanel">
+                  {{ t('subscriptionProgress.viewRecharge') }}
+                </router-link>
+              </div>
+            </div>
+          </transition>
         </div>
 
         <!-- User Dropdown -->
@@ -112,14 +202,14 @@
               </div>
 
               <!-- Balance (mobile only) -->
-              <div class="border-b px-4 py-2 sm:hidden" style="border-color: var(--nm-border-light)">
+              <button class="block w-full border-b px-4 py-2 text-left sm:hidden" style="border-color: var(--nm-border-light)" @click="openWalletFromUserMenu">
                 <div class="text-xs" style="color: var(--nm-ink-muted)">
                   {{ t('common.balance') }}
                 </div>
                 <div class="text-sm font-semibold" style="color: var(--nm-accent-text)">
                   ${{ user.balance?.toFixed(2) || '0.00' }}
                 </div>
-              </div>
+              </button>
 
               <div class="py-1">
                 <router-link to="/profile" @click="closeDropdown" class="dropdown-item">
@@ -223,12 +313,13 @@
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { useAppStore, useAuthStore, useOnboardingStore } from '@/stores'
+import { useAppStore, useAuthStore, useOnboardingStore, useSubscriptionStore } from '@/stores'
 import { useAdminSettingsStore } from '@/stores/adminSettings'
 import LocaleSwitcher from '@/components/common/LocaleSwitcher.vue'
 import SubscriptionProgressMini from '@/components/common/SubscriptionProgressMini.vue'
 import AnnouncementBell from '@/components/common/AnnouncementBell.vue'
 import Icon from '@/components/icons/Icon.vue'
+import type { UserSubscription } from '@/types'
 
 const router = useRouter()
 const route = useRoute()
@@ -237,13 +328,24 @@ const appStore = useAppStore()
 const authStore = useAuthStore()
 const adminSettingsStore = useAdminSettingsStore()
 const onboardingStore = useOnboardingStore()
+const subscriptionStore = useSubscriptionStore()
 
 const user = computed(() => authStore.user)
 const dropdownOpen = ref(false)
+const walletOpen = ref(false)
 const dropdownRef = ref<HTMLElement | null>(null)
+const walletRef = ref<HTMLElement | null>(null)
 const contactInfo = computed(() => appStore.contactInfo)
 const docUrl = computed(() => appStore.docUrl)
 const avatarUrl = computed(() => user.value?.avatar_url?.trim() || '')
+const activeSubscriptions = computed(() => subscriptionStore.activeSubscriptions)
+const subscriptionQuotaLabel = computed(() => {
+  if (activeSubscriptions.value.some((subscription) => walletPeriods(subscription).length === 0)) {
+    return t('subscriptionProgress.unlimited')
+  }
+  const total = activeSubscriptions.value.reduce((sum, subscription) => sum + subscriptionRemaining(subscription), 0)
+  return `$${formatUSD(total)}`
+})
 
 // 只在标准模式的管理员下显示新手引导按钮
 const showOnboardingButton = computed(() => {
@@ -305,6 +407,31 @@ function closeDropdown() {
   dropdownOpen.value = false
 }
 
+async function toggleWalletPanel() {
+  walletOpen.value = !walletOpen.value
+  if (walletOpen.value) {
+    closeDropdown()
+    await refreshWallet()
+  }
+}
+
+function closeWalletPanel() {
+  walletOpen.value = false
+}
+
+async function openWalletFromUserMenu() {
+  closeDropdown()
+  await router.push('/subscriptions')
+}
+
+async function refreshWallet() {
+  try {
+    await subscriptionStore.fetchActiveSubscriptions(true)
+  } catch (error) {
+    console.error('Failed to refresh subscription wallet:', error)
+  }
+}
+
 async function handleLogout() {
   closeDropdown()
   try {
@@ -322,9 +449,60 @@ function handleReplayGuide() {
 }
 
 function handleClickOutside(event: MouseEvent) {
-  if (dropdownRef.value && !dropdownRef.value.contains(event.target as Node)) {
+  const target = event.target as Node
+  if (dropdownRef.value && !dropdownRef.value.contains(target)) {
     closeDropdown()
   }
+  if (walletRef.value && !walletRef.value.contains(target)) {
+    closeWalletPanel()
+  }
+}
+
+function formatUSD(value: number): string {
+  return Number.isFinite(value) ? value.toFixed(2) : '0.00'
+}
+
+interface WalletPeriod {
+  label: string
+  remaining: number
+  percent: number
+  text: string
+}
+
+function subscriptionLimit(subscription: UserSubscription, period: 'daily' | 'weekly' | 'monthly'): number | null {
+  const direct = subscription?.[`${period}_limit_usd`]
+  const legacy = subscription?.group?.[`${period}_limit_usd`]
+  const value = direct ?? legacy ?? null
+  return value && value > 0 ? Number(value) : null
+}
+
+function subscriptionRemaining(subscription: UserSubscription): number {
+  const remaining = walletPeriods(subscription).map((period) => period.remaining)
+  return remaining.length > 0 ? Math.min(...remaining) : Number.POSITIVE_INFINITY
+}
+
+function walletPeriods(subscription: UserSubscription): WalletPeriod[] {
+  return (['daily', 'weekly', 'monthly'] as const)
+    .map((period) => {
+      const limit = subscriptionLimit(subscription, period)
+      if (!limit) return null
+      const used = Number(subscription?.[`${period}_usage_usd`] || 0)
+      const remaining = Math.max(limit - used, 0)
+      return {
+        label: t(`subscriptionProgress.${period}`),
+        remaining,
+        percent: Math.min((used / limit) * 100, 100),
+        text: `$${formatUSD(remaining)}`
+      }
+    })
+    .filter((period): period is WalletPeriod => Boolean(period))
+}
+
+function formatSubscriptionExpiry(expiresAt?: string | null): string {
+  if (!expiresAt) return ''
+  const days = Math.ceil((new Date(expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+  if (days <= 0) return t('subscriptionProgress.expiresToday')
+  return t('subscriptionProgress.daysRemaining', { days })
 }
 
 onMounted(() => {
@@ -354,5 +532,25 @@ onBeforeUnmount(() => {
 
 .logout-item:hover {
   background: var(--nm-danger-soft);
+}
+
+.wallet-metric {
+  border: 1px solid var(--nm-border-light);
+  border-radius: var(--nm-radius);
+  background: var(--nm-surface-soft);
+  padding: 0.75rem;
+}
+
+.wallet-metric span {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--nm-ink-muted);
+}
+
+.wallet-metric strong {
+  display: block;
+  margin-top: 0.25rem;
+  color: var(--nm-ink);
+  font-size: 1rem;
 }
 </style>

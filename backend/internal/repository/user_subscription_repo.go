@@ -461,39 +461,16 @@ func (r *userSubscriptionRepository) insertSubscriptionBalance(ctx context.Conte
 
 func (r *userSubscriptionRepository) updateSubscriptionBalance(ctx context.Context, sub *service.UserSubscription) error {
 	err := r.execSubscriptionBalanceUpdate(ctx, `
-		WITH updated AS (
-			UPDATE subscription_balances
-			SET user_id = $1,
-				source_group_id = $2,
-				plan_name = $3,
-				starts_at = $4,
-				expires_at = $5,
-				status = $6,
-				daily_limit_usd = $7,
-				weekly_limit_usd = $8,
-				monthly_limit_usd = $9,
-				daily_usage_usd = $10,
-				weekly_usage_usd = $11,
-				monthly_usage_usd = $12,
-				daily_window_start = $13,
-				weekly_window_start = $14,
-				monthly_window_start = $15,
-				assigned_by = $16,
-				assigned_at = $17,
-				notes = $18,
-				updated_at = NOW()
-			WHERE id = $19 AND deleted_at IS NULL
-			RETURNING legacy_user_subscription_id, user_id, source_group_id, starts_at, expires_at, status,
-				daily_window_start, weekly_window_start, monthly_window_start,
-				daily_usage_usd, weekly_usage_usd, monthly_usage_usd,
-				assigned_by, assigned_at, notes, updated_at
-		)
-		UPDATE user_subscriptions us
+		UPDATE subscription_balances
 		SET user_id = $1,
-			group_id = COALESCE(updated.source_group_id, us.group_id),
+			source_group_id = $2,
+			plan_name = $3,
 			starts_at = $4,
 			expires_at = $5,
 			status = $6,
+			daily_limit_usd = $7,
+			weekly_limit_usd = $8,
+			monthly_limit_usd = $9,
 			daily_usage_usd = $10,
 			weekly_usage_usd = $11,
 			monthly_usage_usd = $12,
@@ -504,8 +481,7 @@ func (r *userSubscriptionRepository) updateSubscriptionBalance(ctx context.Conte
 			assigned_at = $17,
 			notes = $18,
 			updated_at = NOW()
-		FROM updated
-		WHERE us.id = updated.legacy_user_subscription_id
+		WHERE id = $19 AND deleted_at IS NULL
 	`,
 		sub.UserID, nullableInt64(sub.SourceGroupID, sub.GroupID), sub.PlanName,
 		sub.StartsAt, sub.ExpiresAt, sub.Status,
@@ -517,7 +493,7 @@ func (r *userSubscriptionRepository) updateSubscriptionBalance(ctx context.Conte
 	if err != nil {
 		return err
 	}
-	return nil
+	return r.syncLegacySubscriptionSnapshot(ctx, sub.ID)
 }
 
 func (r *userSubscriptionRepository) getSubscriptionBalanceByID(ctx context.Context, id int64) (*service.UserSubscription, error) {

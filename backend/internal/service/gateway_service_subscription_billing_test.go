@@ -16,7 +16,7 @@ func TestBuildUsageBillingCommand_SubscriptionAppliesRateMultiplier(t *testing.T
 	groupID := int64(7)
 	subID := int64(42)
 	limit := 100.0
-	subscriptionGroup := &Group{ID: 99, SubscriptionType: SubscriptionTypeSubscription, DailyLimitUSD: &limit}
+	subscriptionGroup := &Group{ID: 99, SubscriptionType: SubscriptionTypeSubscription}
 
 	tests := []struct {
 		name           string
@@ -68,7 +68,7 @@ func TestBuildUsageBillingCommand_SubscriptionAppliesRateMultiplier(t *testing.T
 				User:               &User{ID: 1},
 				APIKey:             &APIKey{ID: 2, GroupID: &groupID},
 				Account:            &Account{ID: 3},
-				Subscription:       &UserSubscription{ID: subID, GroupID: subscriptionGroup.ID, Group: subscriptionGroup},
+				Subscription:       &UserSubscription{ID: subID, GroupID: subscriptionGroup.ID, Group: subscriptionGroup, DailyLimitUSD: &limit},
 				IsSubscriptionBill: tt.isSubscription,
 			}
 
@@ -104,7 +104,8 @@ func TestBuildUsageBillingCommand_SubscriptionIsUserWalletAcrossRequestGroups(t 
 		Subscription: &UserSubscription{
 			ID:            4,
 			GroupID:       apcGroupID,
-			Group:         &Group{ID: apcGroupID, Platform: PlatformAnthropic, SubscriptionType: SubscriptionTypeSubscription, DailyLimitUSD: &limit},
+			Group:         &Group{ID: apcGroupID, Platform: PlatformAnthropic, SubscriptionType: SubscriptionTypeSubscription},
+			DailyLimitUSD: &limit,
 			DailyUsageUSD: 1,
 		},
 		IsSubscriptionBill: true,
@@ -136,7 +137,7 @@ func TestBuildUsageBillingCommand_SubscriptionRemainderFallsBackToBalance(t *tes
 		User:               &User{ID: 1},
 		APIKey:             &APIKey{ID: 2, GroupID: &groupID},
 		Account:            &Account{ID: 3},
-		Subscription:       &UserSubscription{ID: subID, GroupID: groupID, Group: &Group{ID: groupID, SubscriptionType: SubscriptionTypeSubscription, DailyLimitUSD: &limit}, DailyUsageUSD: 4.25},
+		Subscription:       &UserSubscription{ID: subID, GroupID: groupID, Group: &Group{ID: groupID, SubscriptionType: SubscriptionTypeSubscription}, DailyLimitUSD: &limit, DailyUsageUSD: 4.25},
 		IsSubscriptionBill: true,
 	}
 

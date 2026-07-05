@@ -6785,7 +6785,17 @@ export default {
     expiresTomorrow: '明天到期',
     viewAll: '查看全部订阅',
     noSubscriptions: '暂无有效订阅',
-    unlimited: '无限制'
+    unlimited: '无限制',
+    walletTitle: '余额与订阅额度',
+    walletHint: '请求会优先消耗订阅额度，订阅额度耗尽后再扣除账户余额。',
+    accountBalance: '账户余额',
+    subscriptionQuota: '订阅额度',
+    availableTotal: '可用总额',
+    remainingQuota: '剩余额度',
+    fallbackBalance: '余额兜底',
+    viewRecharge: '充值/订阅',
+    quotaUnlimited: '订阅额度无限制',
+    noActiveWallets: '暂无有效订阅额度'
   },
 
   // Version Badge

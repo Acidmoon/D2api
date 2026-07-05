@@ -6630,7 +6630,17 @@ export default {
     expiresTomorrow: 'Expires tomorrow',
     viewAll: 'View all subscriptions',
     noSubscriptions: 'No active subscriptions',
-    unlimited: 'Unlimited'
+    unlimited: 'Unlimited',
+    walletTitle: 'Balance and subscription quota',
+    walletHint: 'Requests consume subscription quota first, then fall back to account balance.',
+    accountBalance: 'Account balance',
+    subscriptionQuota: 'Subscription quota',
+    availableTotal: 'Available total',
+    remainingQuota: 'Remaining quota',
+    fallbackBalance: 'Balance fallback',
+    viewRecharge: 'Recharge / subscribe',
+    quotaUnlimited: 'Unlimited subscription quota',
+    noActiveWallets: 'No active subscription quota'
   },
 
   // Version Badge
