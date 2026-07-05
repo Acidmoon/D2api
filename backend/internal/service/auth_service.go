@@ -751,13 +751,16 @@ func (s *AuthService) assignSubscriptions(ctx context.Context, userID int64, ite
 		return
 	}
 	for _, item := range items {
+		monthlyLimit := item.Value
 		if _, _, err := s.defaultSubAssigner.AssignOrExtendSubscription(ctx, &AssignSubscriptionInput{
-			UserID:       userID,
-			GroupID:      item.GroupID,
-			ValidityDays: item.ValidityDays,
-			Notes:        notes,
+			UserID:          userID,
+			GroupID:         0,
+			PlanName:        "Default subscription balance",
+			MonthlyLimitUSD: &monthlyLimit,
+			ValidityDays:    item.ValidityDays,
+			Notes:           notes,
 		}); err != nil {
-			logger.LegacyPrintf("service.auth", "[Auth] Failed to assign default subscription: user_id=%d group_id=%d err=%v", userID, item.GroupID, err)
+			logger.LegacyPrintf("service.auth", "[Auth] Failed to assign default subscription balance: user_id=%d value=%.4f err=%v", userID, item.Value, err)
 		}
 	}
 }

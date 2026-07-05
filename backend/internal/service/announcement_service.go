@@ -225,10 +225,7 @@ func (s *AnnouncementService) ListForUser(ctx context.Context, userID int64, unr
 	if err != nil {
 		return nil, fmt.Errorf("list active subscriptions: %w", err)
 	}
-	activeGroupIDs := make(map[int64]struct{}, len(activeSubs))
-	for i := range activeSubs {
-		activeGroupIDs[activeSubs[i].GroupID] = struct{}{}
-	}
+	hasActiveSubscription := len(activeSubs) > 0
 
 	now := time.Now()
 	anns, err := s.announcementRepo.ListActive(ctx, now)
@@ -243,7 +240,7 @@ func (s *AnnouncementService) ListForUser(ctx context.Context, userID int64, unr
 		if !a.IsActiveAt(now) {
 			continue
 		}
-		if !a.Targeting.Matches(user.Balance, activeGroupIDs) {
+		if !a.Targeting.Matches(user.Balance, hasActiveSubscription) {
 			continue
 		}
 		visible = append(visible, a)
@@ -310,12 +307,9 @@ func (s *AnnouncementService) MarkRead(ctx context.Context, userID, announcement
 	if err != nil {
 		return fmt.Errorf("list active subscriptions: %w", err)
 	}
-	activeGroupIDs := make(map[int64]struct{}, len(activeSubs))
-	for i := range activeSubs {
-		activeGroupIDs[activeSubs[i].GroupID] = struct{}{}
-	}
+	hasActiveSubscription := len(activeSubs) > 0
 
-	if !a.Targeting.Matches(user.Balance, activeGroupIDs) {
+	if !a.Targeting.Matches(user.Balance, hasActiveSubscription) {
 		return ErrAnnouncementNotFound
 	}
 
@@ -362,10 +356,7 @@ func (s *AnnouncementService) ListUserReadStatus(
 		if err != nil {
 			return nil, nil, fmt.Errorf("list active subscriptions: %w", err)
 		}
-		activeGroupIDs := make(map[int64]struct{}, len(subs))
-		for j := range subs {
-			activeGroupIDs[subs[j].GroupID] = struct{}{}
-		}
+		hasActiveSubscription := len(subs) > 0
 
 		readAt, ok := readMap[u.ID]
 		var ptr *time.Time
@@ -379,7 +370,7 @@ func (s *AnnouncementService) ListUserReadStatus(
 			Email:    u.Email,
 			Username: u.Username,
 			Balance:  u.Balance,
-			Eligible: domain.AnnouncementTargeting(ann.Targeting).Matches(u.Balance, activeGroupIDs),
+			Eligible: domain.AnnouncementTargeting(ann.Targeting).Matches(u.Balance, hasActiveSubscription),
 			ReadAt:   ptr,
 		})
 	}

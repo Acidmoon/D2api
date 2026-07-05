@@ -360,7 +360,7 @@ func (s *PaymentService) sendBalanceRechargeSuccessNotification(ctx context.Cont
 
 func (s *PaymentService) sendSubscriptionPurchaseSuccessNotification(ctx context.Context, o *dbent.PaymentOrder) error {
 	variables := map[string]string{
-		"subscription_group": "Subscription",
+		"subscription_group": "Subscription balance",
 		"subscription_days":  "",
 		"expiry_time":        "",
 		"order_id":           strconv.FormatInt(o.ID, 10),
@@ -368,16 +368,9 @@ func (s *PaymentService) sendSubscriptionPurchaseSuccessNotification(ctx context
 	if o.SubscriptionDays != nil {
 		variables["subscription_days"] = strconv.Itoa(*o.SubscriptionDays)
 	}
-	if o.SubscriptionGroupID != nil {
-		if s.groupRepo != nil {
-			if group, err := s.groupRepo.GetByID(ctx, *o.SubscriptionGroupID); err == nil && group != nil && strings.TrimSpace(group.Name) != "" {
-				variables["subscription_group"] = group.Name
-			}
-		}
-		if s.subscriptionSvc != nil {
-			if sub, err := s.subscriptionSvc.GetActiveSubscription(ctx, o.UserID, *o.SubscriptionGroupID); err == nil && sub != nil {
-				variables["expiry_time"] = sub.ExpiresAt.Format("2006-01-02 15:04")
-			}
+	if s.configService != nil && o.PlanID != nil {
+		if plan, err := s.configService.GetPlan(ctx, *o.PlanID); err == nil && plan != nil && strings.TrimSpace(plan.Name) != "" {
+			variables["subscription_group"] = plan.Name
 		}
 	}
 	return s.notificationEmailService.Send(ctx, NotificationEmailSendInput{
@@ -405,7 +398,7 @@ func (s *PaymentService) ExecuteSubscriptionFulfillment(ctx context.Context, oid
 	if o.Status != OrderStatusPaid && o.Status != OrderStatusFailed {
 		return infraerrors.BadRequest("INVALID_STATUS", "order cannot fulfill in status "+o.Status)
 	}
-	if o.SubscriptionGroupID == nil || o.SubscriptionDays == nil {
+	if o.PlanID == nil || o.SubscriptionDays == nil {
 		return infraerrors.BadRequest("INVALID_STATUS", "missing subscription info")
 	}
 	c, err := s.entClient.PaymentOrder.Update().Where(paymentorder.IDEQ(oid), paymentorder.StatusIn(OrderStatusPaid, OrderStatusFailed)).SetStatus(OrderStatusRecharging).Save(ctx)
@@ -423,23 +416,14 @@ func (s *PaymentService) ExecuteSubscriptionFulfillment(ctx context.Context, oid
 }
 
 func (s *PaymentService) doSub(ctx context.Context, o *dbent.PaymentOrder) error {
-	gid := *o.SubscriptionGroupID
 	days := *o.SubscriptionDays
-	var group *Group
-	if gid > 0 {
-		g, err := s.groupRepo.GetByID(ctx, gid)
-		if err != nil || g.Status != payment.EntityStatusActive {
-			return fmt.Errorf("group %d no longer exists or inactive", gid)
-		}
-		group = g
-	}
 	// Idempotency: check audit log to see if subscription was already assigned.
 	// Prevents double-extension on retry after markCompleted fails.
 	if s.hasAuditLog(ctx, o.ID, "SUBSCRIPTION_SUCCESS") {
-		slog.Info("subscription already assigned for order, skipping", "orderID", o.ID, "groupID", gid)
+		slog.Info("subscription already assigned for order, skipping", "orderID", o.ID)
 		return s.markCompleted(ctx, o, "SUBSCRIPTION_SUCCESS")
 	}
-	planName, dailyLimit, weeklyLimit, monthlyLimit := subscriptionFulfillmentPlanSnapshot(ctx, s.configService, o, group)
+	planName, dailyLimit, weeklyLimit, monthlyLimit := subscriptionFulfillmentPlanSnapshot(ctx, s.configService, o)
 	orderNote := fmt.Sprintf("payment order %d", o.ID)
 	_, _, err := s.subscriptionSvc.AssignOrExtendSubscription(ctx, &AssignSubscriptionInput{
 		UserID:          o.UserID,
@@ -458,15 +442,9 @@ func (s *PaymentService) doSub(ctx context.Context, o *dbent.PaymentOrder) error
 	return s.markCompleted(ctx, o, "SUBSCRIPTION_SUCCESS")
 }
 
-func subscriptionFulfillmentPlanSnapshot(ctx context.Context, configService *PaymentConfigService, o *dbent.PaymentOrder, group *Group) (string, *float64, *float64, *float64) {
+func subscriptionFulfillmentPlanSnapshot(ctx context.Context, configService *PaymentConfigService, o *dbent.PaymentOrder) (string, *float64, *float64, *float64) {
 	planName := "Paid subscription"
 	var dailyLimit, weeklyLimit, monthlyLimit *float64
-	if group != nil {
-		planName = group.Name
-		dailyLimit = group.DailyLimitUSD
-		weeklyLimit = group.WeeklyLimitUSD
-		monthlyLimit = group.MonthlyLimitUSD
-	}
 	if configService != nil && o != nil && o.PlanID != nil {
 		if plan, err := configService.GetPlan(ctx, *o.PlanID); err == nil && plan != nil {
 			if strings.TrimSpace(plan.Name) != "" {

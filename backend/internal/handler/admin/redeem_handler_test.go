@@ -63,7 +63,7 @@ func TestCreateAndRedeem_TypeDefaultsToBalance(t *testing.T) {
 		"omitting type should default to balance and pass validation")
 }
 
-func TestCreateAndRedeem_SubscriptionRequiresGroupID(t *testing.T) {
+func TestCreateAndRedeem_SubscriptionBalanceDoesNotRequireGroupID(t *testing.T) {
 	h := newCreateAndRedeemHandler()
 	code := postCreateAndRedeemValidation(t, h, map[string]any{
 		"code":          "test-sub-no-group",
@@ -71,10 +71,10 @@ func TestCreateAndRedeem_SubscriptionRequiresGroupID(t *testing.T) {
 		"value":         29.9,
 		"user_id":       1,
 		"validity_days": 30,
-		// group_id 缺失
 	})
 
-	assert.Equal(t, http.StatusBadRequest, code)
+	assert.NotEqual(t, http.StatusBadRequest, code,
+		"positive subscription balance grants must not require legacy group_id")
 }
 
 func TestCreateAndRedeem_SubscriptionRequiresNonZeroValidityDays(t *testing.T) {
@@ -95,10 +95,23 @@ func TestCreateAndRedeem_SubscriptionRequiresNonZeroValidityDays(t *testing.T) {
 		assert.Equal(t, http.StatusBadRequest, code)
 	})
 
-	// negative should pass validation (used for refund/reduction)
-	t.Run("negative_passes_validation", func(t *testing.T) {
+	// negative should still require a legacy group_id because it reduces old group subscriptions.
+	t.Run("negative_requires_legacy_group_id", func(t *testing.T) {
 		code := postCreateAndRedeemValidation(t, h, map[string]any{
 			"code":          "test-sub-negative-days",
+			"type":          "subscription",
+			"value":         29.9,
+			"user_id":       1,
+			"validity_days": -7,
+		})
+
+		assert.Equal(t, http.StatusBadRequest, code)
+	})
+
+	// negative should pass validation when the old subscription group is explicitly targeted.
+	t.Run("negative_with_legacy_group_passes_validation", func(t *testing.T) {
+		code := postCreateAndRedeemValidation(t, h, map[string]any{
+			"code":          "test-sub-negative-days-with-group",
 			"type":          "subscription",
 			"value":         29.9,
 			"user_id":       1,
@@ -107,19 +120,17 @@ func TestCreateAndRedeem_SubscriptionRequiresNonZeroValidityDays(t *testing.T) {
 		})
 
 		assert.NotEqual(t, http.StatusBadRequest, code,
-			"negative validity_days should pass validation for refund")
+			"negative validity_days should pass validation only with legacy group_id")
 	})
 }
 
 func TestCreateAndRedeem_SubscriptionValidParamsPassValidation(t *testing.T) {
-	groupID := int64(5)
 	h := newCreateAndRedeemHandler()
 	code := postCreateAndRedeemValidation(t, h, map[string]any{
 		"code":          "test-sub-valid",
 		"type":          "subscription",
 		"value":         29.9,
 		"user_id":       1,
-		"group_id":      groupID,
 		"validity_days": 31,
 	})
 

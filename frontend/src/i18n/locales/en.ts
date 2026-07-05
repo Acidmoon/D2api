@@ -4514,11 +4514,13 @@ export default {
         addOrGroup: 'Add OR group',
         addAndCondition: 'Add AND condition',
         conditionType: 'Condition type',
-        conditionSubscription: 'Subscription',
+        conditionSubscription: 'Subscription status',
         conditionBalance: 'Balance',
         operator: 'Operator',
         balanceValue: 'Balance threshold',
-        selectPackages: 'Select packages'
+        subscriptionStatus: 'Subscription status',
+        subscriptionActive: 'Has active subscription',
+        subscriptionInactive: 'No active subscription'
       },
       operators: {
         gt: '>',
@@ -7185,12 +7187,8 @@ export default {
       plansPageDesc: 'Manage subscription plan configuration',
       tabPlanConfig: 'Plan Configuration',
       tabUserSubs: 'User Subscriptions',
-      selectGroup: 'Optional compatibility group',
-      compatGroup: 'Compatibility Group',
-      groupRequired: 'Please select a subscription group',
       priceRequired: 'Price must be greater than 0',
       validityDaysRequired: 'Validity days must be greater than 0',
-      groupMissing: 'Missing',
       groupInfo: 'Group Info',
       platform: 'Platform',
       rateMultiplierLabel: 'Rate',

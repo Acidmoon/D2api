@@ -250,14 +250,12 @@ func (s *PaymentService) PrepareRefund(ctx context.Context, oid int64, amt float
 func (s *PaymentService) prepDeduct(ctx context.Context, o *dbent.PaymentOrder, p *RefundPlan, force bool) *RefundResult {
 	if o.OrderType == payment.OrderTypeSubscription {
 		p.DeductionType = payment.DeductionTypeSubscription
-		if o.SubscriptionGroupID != nil && o.SubscriptionDays != nil {
+		if o.SubscriptionDays != nil {
 			p.SubDaysToDeduct = *o.SubscriptionDays
-			sub, err := s.subscriptionSvc.GetActiveSubscription(ctx, o.UserID, *o.SubscriptionGroupID)
-			if err == nil && sub != nil {
-				p.SubscriptionID = sub.ID
-			} else if !force {
-				return &RefundResult{Success: false, Warning: "cannot find active subscription for deduction, use force", RequireForce: true}
-			}
+			p.SubscriptionID = s.findRefundSubscriptionID(ctx, o)
+		}
+		if p.SubscriptionID <= 0 && !force {
+			return &RefundResult{Success: false, Warning: "cannot find active subscription for deduction, use force", RequireForce: true}
 		}
 		return nil
 	}
@@ -271,6 +269,26 @@ func (s *PaymentService) prepDeduct(ctx context.Context, o *dbent.PaymentOrder, 
 	p.DeductionType = payment.DeductionTypeBalance
 	p.BalanceToDeduct = math.Min(p.RefundAmount, u.Balance)
 	return nil
+}
+
+func (s *PaymentService) findRefundSubscriptionID(ctx context.Context, o *dbent.PaymentOrder) int64 {
+	if s == nil || s.subscriptionSvc == nil || o == nil {
+		return 0
+	}
+	subs, err := s.subscriptionSvc.ListActiveUserSubscriptions(ctx, o.UserID)
+	if err != nil {
+		return 0
+	}
+	orderNote := fmt.Sprintf("payment order %d", o.ID)
+	for i := range subs {
+		if strings.Contains(subs[i].Notes, orderNote) {
+			return subs[i].ID
+		}
+	}
+	if len(subs) == 1 {
+		return subs[0].ID
+	}
+	return 0
 }
 
 func (s *PaymentService) ExecuteRefund(ctx context.Context, p *RefundPlan) (*RefundResult, error) {

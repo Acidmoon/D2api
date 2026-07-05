@@ -128,7 +128,7 @@ func TestAdminService_CreateUser_AssignsDefaultSubscriptions(t *testing.T) {
 		},
 	}
 	settingService := NewSettingService(&settingRepoStub{values: map[string]string{
-		SettingKeyDefaultSubscriptions: `[{"group_id":5,"validity_days":30}]`,
+		SettingKeyDefaultSubscriptions: `[{"value":5,"validity_days":30}]`,
 	}}, cfg)
 	svc := &adminServiceImpl{
 		userRepo:           repo,
@@ -143,6 +143,8 @@ func TestAdminService_CreateUser_AssignsDefaultSubscriptions(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, assigner.calls, 1)
 	require.Equal(t, int64(21), assigner.calls[0].UserID)
-	require.Equal(t, int64(5), assigner.calls[0].GroupID)
+	require.Zero(t, assigner.calls[0].GroupID)
 	require.Equal(t, 30, assigner.calls[0].ValidityDays)
+	require.NotNil(t, assigner.calls[0].MonthlyLimitUSD)
+	require.Equal(t, 5.0, *assigner.calls[0].MonthlyLimitUSD)
 }

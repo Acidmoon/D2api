@@ -424,7 +424,7 @@ type GenerateRedeemCodesInput struct {
 	Count        int
 	Type         string
 	Value        float64
-	GroupID      *int64 // 订阅类型专用：关联的分组ID
+	GroupID      *int64 // legacy only: old subscription-group reductions
 	ValidityDays int    // 订阅类型专用：有效天数
 	ExpiresAt    *time.Time
 }
@@ -732,13 +732,16 @@ func (s *adminServiceImpl) assignDefaultSubscriptions(ctx context.Context, userI
 	}
 	items := s.settingService.GetDefaultSubscriptions(ctx)
 	for _, item := range items {
+		monthlyLimit := item.Value
 		if _, _, err := s.defaultSubAssigner.AssignOrExtendSubscription(ctx, &AssignSubscriptionInput{
-			UserID:       userID,
-			GroupID:      item.GroupID,
-			ValidityDays: item.ValidityDays,
-			Notes:        "auto assigned by default user subscriptions setting",
+			UserID:          userID,
+			GroupID:         0,
+			PlanName:        "Default subscription balance",
+			MonthlyLimitUSD: &monthlyLimit,
+			ValidityDays:    item.ValidityDays,
+			Notes:           "auto assigned by default user subscriptions setting",
 		}); err != nil {
-			logger.LegacyPrintf("service.admin", "failed to assign default subscription: user_id=%d group_id=%d err=%v", userID, item.GroupID, err)
+			logger.LegacyPrintf("service.admin", "failed to assign default subscription balance: user_id=%d value=%.4f err=%v", userID, item.Value, err)
 		}
 	}
 }
@@ -3245,18 +3248,12 @@ func (s *adminServiceImpl) GenerateRedeemCodes(ctx context.Context, input *Gener
 		return nil, ErrRedeemCodeExpired
 	}
 
-	// 如果是订阅类型，验证必须有 GroupID
 	if input.Type == RedeemTypeSubscription {
-		if input.GroupID == nil {
-			return nil, errors.New("group_id is required for subscription type")
+		if input.ValidityDays < 0 && input.GroupID == nil {
+			return nil, errors.New("group_id is required only when reducing a legacy subscription")
 		}
-		// 验证分组存在且为订阅类型
-		group, err := s.groupRepo.GetByID(ctx, *input.GroupID)
-		if err != nil {
-			return nil, fmt.Errorf("group not found: %w", err)
-		}
-		if !group.IsSubscriptionType() {
-			return nil, errors.New("group must be subscription type")
+		if input.ValidityDays >= 0 && input.Value <= 0 {
+			return nil, errors.New("subscription balance value must be greater than zero")
 		}
 	}
 
@@ -3273,11 +3270,12 @@ func (s *adminServiceImpl) GenerateRedeemCodes(ctx context.Context, input *Gener
 			Status:    StatusUnused,
 			ExpiresAt: input.ExpiresAt,
 		}
-		// 订阅类型专用字段
 		if input.Type == RedeemTypeSubscription {
-			code.GroupID = input.GroupID
 			code.ValidityDays = input.ValidityDays
-			if code.ValidityDays <= 0 {
+			if input.ValidityDays < 0 {
+				code.GroupID = input.GroupID
+			}
+			if code.ValidityDays == 0 {
 				code.ValidityDays = 30 // 默认30天
 			}
 		}

@@ -232,8 +232,9 @@ type SystemSettings struct {
 }
 
 type DefaultSubscriptionSetting struct {
-	GroupID      int64 `json:"group_id"`
-	ValidityDays int   `json:"validity_days"`
+	// Value is the subscription wallet quota granted by this default subscription.
+	Value        float64 `json:"value"`
+	ValidityDays int     `json:"validity_days"`
 }
 
 type PublicSettings struct {

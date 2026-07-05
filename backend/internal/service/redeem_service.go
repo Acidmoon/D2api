@@ -407,11 +407,6 @@ func (s *RedeemService) Redeem(ctx context.Context, userID int64, code string) (
 		return nil, ErrRedeemCodeUsed
 	}
 
-	// 验证兑换码类型的前置条件
-	if redeemCode.Type == RedeemTypeSubscription && redeemCode.GroupID == nil {
-		return nil, infraerrors.BadRequest("REDEEM_CODE_INVALID", "invalid subscription redeem code: missing group_id")
-	}
-
 	// 获取用户信息
 	user, err := s.userRepo.GetByID(ctx, userID)
 	if err != nil {
@@ -463,6 +458,9 @@ func (s *RedeemService) Redeem(ctx context.Context, userID int64, code string) (
 		validityDays := redeemCode.ValidityDays
 		if validityDays < 0 {
 			// 负数天数：缩短订阅，减到 0 则取消订阅
+			if redeemCode.GroupID == nil {
+				return nil, infraerrors.BadRequest("REDEEM_CODE_INVALID", "subscription reduction requires legacy group_id")
+			}
 			if err := s.reduceOrCancelSubscription(txCtx, userID, *redeemCode.GroupID, -validityDays, redeemCode.Code); err != nil {
 				return nil, fmt.Errorf("reduce or cancel subscription: %w", err)
 			}
@@ -470,12 +468,19 @@ func (s *RedeemService) Redeem(ctx context.Context, userID int64, code string) (
 			if validityDays == 0 {
 				validityDays = 30
 			}
+			var monthlyLimit *float64
+			if redeemCode.Value > 0 {
+				limit := redeemCode.Value
+				monthlyLimit = &limit
+			}
 			_, _, err := s.subscriptionService.AssignOrExtendSubscription(txCtx, &AssignSubscriptionInput{
-				UserID:       userID,
-				GroupID:      *redeemCode.GroupID,
-				ValidityDays: validityDays,
-				AssignedBy:   0, // 系统分配
-				Notes:        fmt.Sprintf("通过兑换码 %s 兑换", redeemCode.Code),
+				UserID:          userID,
+				GroupID:         0,
+				PlanName:        "Redeem subscription balance",
+				MonthlyLimitUSD: monthlyLimit,
+				ValidityDays:    validityDays,
+				AssignedBy:      0, // 系统分配
+				Notes:           fmt.Sprintf("通过兑换码 %s 兑换", redeemCode.Code),
 			})
 			if err != nil {
 				return nil, fmt.Errorf("assign or extend subscription: %w", err)

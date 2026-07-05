@@ -259,8 +259,8 @@ type SystemSettings struct {
 }
 
 type DefaultSubscriptionSetting struct {
-	GroupID      int64 `json:"group_id"`
-	ValidityDays int   `json:"validity_days"`
+	Value        float64 `json:"value"`
+	ValidityDays int     `json:"validity_days"`
 }
 
 type PublicSettings struct {

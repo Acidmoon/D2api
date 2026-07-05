@@ -4667,11 +4667,13 @@ export default {
         addOrGroup: '添加 OR 条件组',
         addAndCondition: '添加 AND 条件',
         conditionType: '条件类型',
-        conditionSubscription: '订阅套餐',
+        conditionSubscription: '订阅状态',
         conditionBalance: '余额',
         operator: '运算符',
         balanceValue: '余额阈值',
-        selectPackages: '选择套餐'
+        subscriptionStatus: '订阅状态',
+        subscriptionActive: '有有效订阅',
+        subscriptionInactive: '无有效订阅'
       },
       operators: {
         gt: '>',
@@ -7364,12 +7366,8 @@ export default {
       plansPageDesc: '管理订阅套餐配置',
       tabPlanConfig: '套餐配置',
       tabUserSubs: '用户订阅',
-      selectGroup: '可选兼容分组',
-      compatGroup: '兼容分组',
-      groupRequired: '请选择订阅分组',
       priceRequired: '价格必须大于 0',
       validityDaysRequired: '有效期天数必须大于 0',
-      groupMissing: '缺失',
       groupInfo: '分组信息',
       platform: '平台',
       rateMultiplierLabel: '倍率',

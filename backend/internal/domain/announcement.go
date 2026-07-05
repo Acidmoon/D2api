@@ -24,12 +24,11 @@ const (
 )
 
 const (
-	AnnouncementOperatorIn  = "in"
+	AnnouncementOperatorEQ  = "eq"
 	AnnouncementOperatorGT  = "gt"
 	AnnouncementOperatorGTE = "gte"
 	AnnouncementOperatorLT  = "lt"
 	AnnouncementOperatorLTE = "lte"
-	AnnouncementOperatorEQ  = "eq"
 )
 
 var (
@@ -52,18 +51,15 @@ type AnnouncementCondition struct {
 	Type string `json:"type"`
 
 	// Operator:
-	// - subscription: in
+	// - subscription: eq
 	// - balance: gt/gte/lt/lte/eq
 	Operator string `json:"operator"`
-
-	// subscription 条件：匹配的订阅套餐（group_id）
-	GroupIDs []int64 `json:"group_ids,omitempty"`
 
 	// balance 条件：比较阈值
 	Value float64 `json:"value,omitempty"`
 }
 
-func (t AnnouncementTargeting) Matches(balance float64, activeSubscriptionGroupIDs map[int64]struct{}) bool {
+func (t AnnouncementTargeting) Matches(balance float64, hasActiveSubscription bool) bool {
 	// 空规则：展示给所有用户
 	if len(t.AnyOf) == 0 {
 		return true
@@ -76,7 +72,7 @@ func (t AnnouncementTargeting) Matches(balance float64, activeSubscriptionGroupI
 		}
 		allMatched := true
 		for _, cond := range group.AllOf {
-			if !cond.Matches(balance, activeSubscriptionGroupIDs) {
+			if !cond.Matches(balance, hasActiveSubscription) {
 				allMatched = false
 				break
 			}
@@ -89,24 +85,13 @@ func (t AnnouncementTargeting) Matches(balance float64, activeSubscriptionGroupI
 	return false
 }
 
-func (c AnnouncementCondition) Matches(balance float64, activeSubscriptionGroupIDs map[int64]struct{}) bool {
+func (c AnnouncementCondition) Matches(balance float64, hasActiveSubscription bool) bool {
 	switch c.Type {
 	case AnnouncementConditionTypeSubscription:
-		if c.Operator != AnnouncementOperatorIn {
+		if c.Operator != AnnouncementOperatorEQ {
 			return false
 		}
-		if len(c.GroupIDs) == 0 {
-			return false
-		}
-		if len(activeSubscriptionGroupIDs) == 0 {
-			return false
-		}
-		for _, gid := range c.GroupIDs {
-			if _, ok := activeSubscriptionGroupIDs[gid]; ok {
-				return true
-			}
-		}
-		return false
+		return hasActiveSubscription == (c.Value > 0)
 
 	case AnnouncementConditionTypeBalance:
 		switch c.Operator {
@@ -156,12 +141,6 @@ func (t AnnouncementTargeting) NormalizeAndValidate() (AnnouncementTargeting, er
 				Operator: strings.TrimSpace(c.Operator),
 				Value:    c.Value,
 			}
-			for _, gid := range c.GroupIDs {
-				if gid <= 0 {
-					return AnnouncementTargeting{}, ErrAnnouncementInvalidTarget
-				}
-				cond.GroupIDs = append(cond.GroupIDs, gid)
-			}
 
 			if err := cond.validate(); err != nil {
 				return AnnouncementTargeting{}, err
@@ -178,10 +157,7 @@ func (t AnnouncementTargeting) NormalizeAndValidate() (AnnouncementTargeting, er
 func (c AnnouncementCondition) validate() error {
 	switch c.Type {
 	case AnnouncementConditionTypeSubscription:
-		if c.Operator != AnnouncementOperatorIn {
-			return ErrAnnouncementInvalidTarget
-		}
-		if len(c.GroupIDs) == 0 {
+		if c.Operator != AnnouncementOperatorEQ {
 			return ErrAnnouncementInvalidTarget
 		}
 		return nil

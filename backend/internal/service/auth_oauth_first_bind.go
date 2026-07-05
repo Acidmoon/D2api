@@ -89,11 +89,14 @@ ON CONFLICT (user_id, provider_type, grant_reason) DO NOTHING`,
 	}
 	if s.defaultSubAssigner != nil {
 		for _, item := range providerDefaults.Subscriptions {
+			monthlyLimit := item.Value
 			if _, _, err := s.defaultSubAssigner.AssignOrExtendSubscription(ctx, &AssignSubscriptionInput{
-				UserID:       userID,
-				GroupID:      item.GroupID,
-				ValidityDays: item.ValidityDays,
-				Notes:        "auto assigned by first bind defaults",
+				UserID:          userID,
+				GroupID:         0,
+				PlanName:        "Default subscription balance",
+				MonthlyLimitUSD: &monthlyLimit,
+				ValidityDays:    item.ValidityDays,
+				Notes:           "auto assigned by first bind defaults",
 			}); err != nil {
 				return fmt.Errorf("apply first bind subscription default: %w", err)
 			}

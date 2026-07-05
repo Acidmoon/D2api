@@ -353,6 +353,20 @@ func (s *redeemRepoStub) Create(ctx context.Context, code *RedeemCode) error {
 	panic("unexpected Create call")
 }
 
+type createRedeemRepoStub struct {
+	redeemRepoStub
+	created []*RedeemCode
+}
+
+func (s *createRedeemRepoStub) Create(ctx context.Context, code *RedeemCode) error {
+	if code == nil {
+		return nil
+	}
+	clone := *code
+	s.created = append(s.created, &clone)
+	return nil
+}
+
 func (s *redeemRepoStub) CreateBatch(ctx context.Context, codes []RedeemCode) error {
 	panic("unexpected CreateBatch call")
 }
@@ -699,6 +713,26 @@ func TestAdminService_DeleteRedeemCode_Error(t *testing.T) {
 	err := svc.DeleteRedeemCode(context.Background(), 1)
 	require.ErrorIs(t, err, deleteErr)
 	require.Equal(t, []int64{1}, repo.deletedIDs)
+}
+
+func TestAdminService_GenerateSubscriptionRedeemCodesUsesBalanceWithoutLegacyGroup(t *testing.T) {
+	repo := &createRedeemRepoStub{}
+	svc := &adminServiceImpl{redeemCodeRepo: repo}
+
+	codes, err := svc.GenerateRedeemCodes(context.Background(), &GenerateRedeemCodesInput{
+		Count:        1,
+		Type:         RedeemTypeSubscription,
+		Value:        25,
+		ValidityDays: 30,
+	})
+
+	require.NoError(t, err)
+	require.Len(t, codes, 1)
+	require.Len(t, repo.created, 1)
+	require.Equal(t, RedeemTypeSubscription, repo.created[0].Type)
+	require.Equal(t, 25.0, repo.created[0].Value)
+	require.Equal(t, 30, repo.created[0].ValidityDays)
+	require.Nil(t, repo.created[0].GroupID, "positive subscription balance codes must not target legacy subscription groups")
 }
 
 func TestAdminService_BatchDeleteRedeemCodes_Success(t *testing.T) {

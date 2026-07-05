@@ -102,10 +102,11 @@
               </div>
 
               <div v-if="cond.type === 'subscription'" class="flex-1">
-                <label class="input-label">{{ t('admin.announcements.form.selectPackages') }}</label>
-                <GroupSelector
-                  v-model="subscriptionSelections[groupIndex][condIndex]"
-                  :groups="groups"
+                <label class="input-label">{{ t('admin.announcements.form.subscriptionStatus') }}</label>
+                <Select
+                  :model-value="cond.value && cond.value > 0 ? 1 : 0"
+                  :options="subscriptionStatusOptions"
+                  @update:model-value="(v) => setSubscriptionStatus(groupIndex, condIndex, Number(v))"
                 />
               </div>
 
@@ -165,10 +166,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, watch } from 'vue'
+import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type {
-  AdminGroup,
   AnnouncementTargeting,
   AnnouncementCondition,
   AnnouncementConditionGroup,
@@ -177,14 +177,12 @@ import type {
 } from '@/types'
 
 import Select from '@/components/common/Select.vue'
-import GroupSelector from '@/components/common/GroupSelector.vue'
 import Icon from '@/components/icons/Icon.vue'
 
 const { t } = useI18n()
 
 const props = defineProps<{
   modelValue: AnnouncementTargeting
-  groups: AdminGroup[]
 }>()
 
 const emit = defineEmits<{
@@ -199,6 +197,11 @@ const mode = computed<Mode>(() => (anyOf.value.length === 0 ? 'all' : 'custom'))
 const conditionTypeOptions = computed(() => [
   { value: 'subscription', label: t('admin.announcements.form.conditionSubscription') },
   { value: 'balance', label: t('admin.announcements.form.conditionBalance') }
+])
+
+const subscriptionStatusOptions = computed(() => [
+  { value: 1, label: t('admin.announcements.form.subscriptionActive') },
+  { value: 0, label: t('admin.announcements.form.subscriptionInactive') }
 ])
 
 const balanceOperatorOptions = computed(() => [
@@ -222,8 +225,8 @@ function setMode(next: Mode) {
 function defaultSubscriptionCondition(): AnnouncementCondition {
   return {
     type: 'subscription' as AnnouncementConditionType,
-    operator: 'in' as AnnouncementOperator,
-    group_ids: []
+    operator: 'eq' as AnnouncementOperator,
+    value: 1
   }
 }
 
@@ -301,6 +304,19 @@ function setOperator(groupIndex: number, condIndex: number, op: AnnouncementOper
   })
 }
 
+function setSubscriptionStatus(groupIndex: number, condIndex: number, value: number) {
+  updateTargeting((draft) => {
+    const group = draft.any_of[groupIndex]
+    if (!group?.all_of) return
+
+    const cond = group.all_of[condIndex]
+    if (!cond) return
+
+    cond.operator = 'eq' as AnnouncementOperator
+    cond.value = value > 0 ? 1 : 0
+  })
+}
+
 function setBalanceValue(groupIndex: number, condIndex: number, raw: string) {
   const n = raw === '' ? 0 : Number(raw)
   updateTargeting((draft) => {
@@ -313,75 +329,6 @@ function setBalanceValue(groupIndex: number, condIndex: number, raw: string) {
     cond.value = Number.isFinite(n) ? n : 0
   })
 }
-
-// We keep group_ids selection in a parallel reactive map because GroupSelector is numeric list.
-// Then we mirror it back to targeting.group_ids via a watcher.
-const subscriptionSelections = reactive<Record<number, Record<number, number[]>>>({})
-
-function ensureSelectionPath(groupIndex: number, condIndex: number) {
-  if (!subscriptionSelections[groupIndex]) subscriptionSelections[groupIndex] = {}
-  if (!subscriptionSelections[groupIndex][condIndex]) subscriptionSelections[groupIndex][condIndex] = []
-}
-
-// Sync from modelValue to subscriptionSelections (one-way: model -> local state)
-watch(
-  () => props.modelValue,
-  (v) => {
-    const groups = v?.any_of ?? []
-    for (let gi = 0; gi < groups.length; gi++) {
-      const allOf = groups[gi]?.all_of ?? []
-      for (let ci = 0; ci < allOf.length; ci++) {
-        const c = allOf[ci]
-        if (c?.type === 'subscription') {
-          ensureSelectionPath(gi, ci)
-          // Only update if different to avoid triggering unnecessary updates
-          const newIds = (c.group_ids ?? []).slice()
-          const currentIds = subscriptionSelections[gi]?.[ci] ?? []
-          if (JSON.stringify(newIds.sort()) !== JSON.stringify(currentIds.sort())) {
-            subscriptionSelections[gi][ci] = newIds
-          }
-        }
-      }
-    }
-  },
-  { immediate: true }
-)
-
-// Sync from subscriptionSelections to modelValue (one-way: local state -> model)
-// Use a debounced approach to avoid infinite loops
-let syncTimeout: ReturnType<typeof setTimeout> | null = null
-watch(
-  () => subscriptionSelections,
-  () => {
-    // Debounce the sync to avoid rapid fire updates
-    if (syncTimeout) clearTimeout(syncTimeout)
-
-    syncTimeout = setTimeout(() => {
-      // Build the new targeting state
-      const newTargeting: TargetingDraft = JSON.parse(JSON.stringify(props.modelValue ?? { any_of: [] }))
-      if (!newTargeting.any_of) newTargeting.any_of = []
-
-      const groups = newTargeting.any_of ?? []
-      for (let gi = 0; gi < groups.length; gi++) {
-        const allOf = groups[gi]?.all_of ?? []
-        for (let ci = 0; ci < allOf.length; ci++) {
-          const c = allOf[ci]
-          if (c?.type === 'subscription') {
-            ensureSelectionPath(gi, ci)
-            c.operator = 'in' as AnnouncementOperator
-            c.group_ids = (subscriptionSelections[gi]?.[ci] ?? []).slice()
-          }
-        }
-      }
-
-      // Only emit if there's an actual change (deep comparison)
-      if (JSON.stringify(props.modelValue) !== JSON.stringify(newTargeting)) {
-        emit('update:modelValue', newTargeting)
-      }
-    }, 0)
-  },
-  { deep: true }
-)
 
 const validationError = computed(() => {
   if (mode.value !== 'custom') return ''
@@ -396,11 +343,6 @@ const validationError = computed(() => {
     if (allOf.length === 0) return t('admin.announcements.form.addAndCondition')
     if (allOf.length > 50) return 'all_of > 50'
 
-    for (const c of allOf) {
-      if (c.type === 'subscription') {
-        if (!c.group_ids || c.group_ids.length === 0) return t('admin.announcements.form.selectPackages')
-      }
-    }
   }
 
   return ''

@@ -288,12 +288,11 @@ export type AnnouncementNotifyMode = 'silent' | 'popup'
 
 export type AnnouncementConditionType = 'subscription' | 'balance'
 
-export type AnnouncementOperator = 'in' | 'gt' | 'gte' | 'lt' | 'lte' | 'eq'
+export type AnnouncementOperator = 'gt' | 'gte' | 'lt' | 'lte' | 'eq'
 
 export interface AnnouncementCondition {
   type: AnnouncementConditionType
   operator: AnnouncementOperator
-  group_ids?: number[]
   value?: number
 }
 
