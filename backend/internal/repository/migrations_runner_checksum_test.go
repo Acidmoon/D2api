@@ -161,4 +161,13 @@ func TestIsMigrationChecksumCompatible(t *testing.T) {
 		)
 		require.False(t, ok)
 	})
+
+	t.Run("154订阅余额迁移兼容已应用的缺表防护前版本", func(t *testing.T) {
+		ok := isMigrationChecksumCompatible(
+			"154_subscription_balances.sql",
+			"409cadc90978407e940856f37f00564c743dbe86d5e45755236f942b705a4998",
+			"f77f2271d970924d98bb753b53262320d17474f48267f053ab29c6488686f393",
+		)
+		require.True(t, ok)
+	})
 }
