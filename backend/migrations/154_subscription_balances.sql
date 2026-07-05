@@ -141,6 +141,13 @@ SELECT setval(
 
 ALTER TABLE usage_logs DROP CONSTRAINT IF EXISTS usage_logs_user_subscriptions_usage_logs;
 ALTER TABLE usage_logs DROP CONSTRAINT IF EXISTS usage_logs_subscription_id_fkey;
+UPDATE usage_logs ul
+SET subscription_id = NULL
+WHERE ul.subscription_id IS NOT NULL
+  AND NOT EXISTS (
+      SELECT 1 FROM subscription_balances sb
+      WHERE sb.id = ul.subscription_id
+  );
 DO $$
 BEGIN
     IF NOT EXISTS (
