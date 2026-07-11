@@ -85,11 +85,17 @@
 
 ### Dev 实例（8081 测试）
 
-以下命令必须在服务器现有的测试副本目录执行；`docker-compose.dev.yml` 不在本仓库内。
+当前服务器测试副本位于 `/opt/d2api-test`，使用该目录私有的
+`docker-compose.yml`。该 Compose 项目、容器、镜像和端口必须分别确认为
+`d2api-test`、`d2api-test`、`ghcr.io/acidmoon/d2api:dev` 和 `8081` 后才能更新。
+
+仓库中的 `deploy/docker-compose.dev.yml` 用于源码开发环境，不是服务器测试副本的
+部署入口；不要在 `/opt/D2api/deploy` 下启动它，也不要操作生产目录或 8080 实例。
 
 ```bash
+cd /opt/d2api-test
 docker pull ghcr.io/acidmoon/d2api:dev
-docker compose -f docker-compose.dev.yml up -d
+docker compose -f docker-compose.yml up -d
 ```
 
 ### 生产实例（8080 上线）
