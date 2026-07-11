@@ -39,9 +39,9 @@
 
 ### Release 构建 (`build-release` job)
 
-1. 前端：`pnpm install` → `pnpm run build`（含 vue-tsc 类型检查）
+1. 前端：`pnpm install --frozen-lockfile` → `pnpm run build`（含 vue-tsc 类型检查）
 2. 后端：GoReleaser 用 `.goreleaser.d2api.yaml` 编译 → `Dockerfile.goreleaser` 打包
-3. 推送到 `ghcr.io/acidmoon/d2api:latest` + `:0.1.x`
+3. 推送到 `ghcr.io/acidmoon/d2api:latest` + `:<版本号>`
 
 ---
 
@@ -49,7 +49,7 @@
 
 ### 1. Dockerfile 中前端构建必须跳过 vue-tsc
 `package.json` 的 `build` 脚本是 `vue-tsc -b && vite build`，但 Docker 容器内 `vue-tsc -b` 会在类型检查阶段失败。
-→ 把 `RUN pnpm run build` 改成 `RUN npx vite build`（Dockerfile 第 32 行）。
+→ 把 `RUN pnpm run build` 改成 `RUN npx vite build`（仓库根目录 `Dockerfile` 的前端构建阶段）。
 
 ### 2. Dockerfile.goreleaser 的 COPY 文件名
 `.goreleaser.d2api.yaml` 编译的二进制叫 `d2api`，但 `Dockerfile.goreleaser` 里 `COPY sub2api`。
@@ -73,18 +73,19 @@
 
 | 文件 | 作用 |
 |------|------|
-| `Dockerfile` | dev 构建用，多阶段：前端→后端→运行时 |
-| `Dockerfile.goreleaser` | release 构建用，只打包预编译的二进制 |
+| `Dockerfile` | 本地或独立环境使用的多阶段完整构建：前端→后端→运行时；当前 dev CI 不直接使用 |
+| `Dockerfile.goreleaser` | dev CI 与 release GoReleaser 均用于打包预编译的二进制 |
 | `.goreleaser.d2api.yaml` | release 用 GoReleaser 配置，镜像 `ghcr.io/acidmoon/d2api` |
 | `.github/workflows/build-d2api.yml` | CI 工作流，`dev` 和 `release` 两个 job |
 | `frontend/vite.config.ts:64` | `outDir: '../backend/internal/web/dist'` — 前端编译输出路径 |
-| `frontend/Dockerfile`（根目录） | 主 Dockerfile，SKIP vue-tsc，node:20 |
 
 ---
 
 ## 服务器部署
 
 ### Dev 实例（8081 测试）
+
+以下命令必须在服务器现有的测试副本目录执行；`docker-compose.dev.yml` 不在本仓库内。
 
 ```bash
 docker pull ghcr.io/acidmoon/d2api:dev
@@ -112,7 +113,7 @@ sed -i 's|ghcr.io/acidmoon/d2api:latest|weishaw/sub2api:latest|' docker-compose.
 docker compose pull && docker compose up -d
 ```
 
-当前版本迁移文件一致，数据库无需恢复。
+回滚前必须备份数据库，并确认目标镜像与当前数据库迁移版本兼容；不得默认数据库无需恢复。
 
 ---
 
@@ -135,5 +136,5 @@ node node_modules/vue-tsc/bin/vue-tsc.js --noEmit   # 类型检查(对应 make t
 
 - [ ] 前端改动已通过上面的本地预检
 - [ ] 代码推送到 `dev` 分支 → 等待 CI 构建 `:dev` → 8081 测试验证
-- [ ] 确认无误后打 tag：`git tag v0.1.x-d2api && git push origin --tags`
-- [ ] 等待 CI 构建 `:latest` → 服务器 `docker compose pull && docker compose up -d`
+- [ ] 仅在明确要求发布 release 时打 tag：`git tag v0.1.x-d2api && git push origin --tags`
+- [ ] 仅在当前会话另行明确授权生产部署后，等待 `:latest` 构建成功并按生产流程更新 8080 实例

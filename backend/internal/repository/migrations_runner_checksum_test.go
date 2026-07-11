@@ -3,8 +3,28 @@ package repository
 import (
 	"testing"
 
+	"github.com/Wei-Shaw/sub2api/migrations"
 	"github.com/stretchr/testify/require"
 )
+
+func TestMigrationChecksumRulesMatchEmbeddedFiles(t *testing.T) {
+	for name, rule := range migrationChecksumCompatibilityRules {
+		content, err := migrations.FS.ReadFile(name)
+		require.NoErrorf(t, err, "read migration %s", name)
+
+		currentChecksum := migrationChecksum(string(content))
+		require.Equalf(t, currentChecksum, rule.fileChecksum, "current checksum mismatch for %s", name)
+		for historicalChecksum := range rule.acceptedDBChecksum {
+			require.Truef(
+				t,
+				isMigrationChecksumCompatible(name, historicalChecksum, currentChecksum),
+				"historical checksum %s is not compatible with current migration %s",
+				historicalChecksum,
+				name,
+			)
+		}
+	}
+}
 
 func TestIsMigrationChecksumCompatible(t *testing.T) {
 	t.Run("054历史checksum可兼容", func(t *testing.T) {
@@ -52,16 +72,16 @@ func TestIsMigrationChecksumCompatible(t *testing.T) {
 		require.False(t, ok)
 	})
 
-	t.Run("109历史checksum可兼容", func(t *testing.T) {
+	t.Run("109历史checksum可兼容当前文件", func(t *testing.T) {
 		ok := isMigrationChecksumCompatible(
 			"109_auth_identity_compat_backfill.sql",
 			"551e498aa5616d2d91096e9d72cf9fb36e418ee22eacc557f8811cadbc9e20ee",
-			"0580b4602d85435edf9aca1633db580bb3932f26517f75134106f80275ec2ace",
+			"2b380305e73ff0c13aa8c811e45897f2b36ca4a438f7b3e8f98e19ecb6bae0b3",
 		)
 		require.True(t, ok)
 	})
 
-	t.Run("109当前checksum可兼容历史checksum", func(t *testing.T) {
+	t.Run("109旧文件checksum仍在兼容集合", func(t *testing.T) {
 		ok := isMigrationChecksumCompatible(
 			"109_auth_identity_compat_backfill.sql",
 			"551e498aa5616d2d91096e9d72cf9fb36e418ee22eacc557f8811cadbc9e20ee",
@@ -73,7 +93,7 @@ func TestIsMigrationChecksumCompatible(t *testing.T) {
 	t.Run("109回滚到历史文件后仍兼容已应用的新checksum", func(t *testing.T) {
 		ok := isMigrationChecksumCompatible(
 			"109_auth_identity_compat_backfill.sql",
-			"0580b4602d85435edf9aca1633db580bb3932f26517f75134106f80275ec2ace",
+			"2b380305e73ff0c13aa8c811e45897f2b36ca4a438f7b3e8f98e19ecb6bae0b3",
 			"551e498aa5616d2d91096e9d72cf9fb36e418ee22eacc557f8811cadbc9e20ee",
 		)
 		require.True(t, ok)
@@ -83,7 +103,7 @@ func TestIsMigrationChecksumCompatible(t *testing.T) {
 		ok := isMigrationChecksumCompatible(
 			"110_pending_auth_and_provider_default_grants.sql",
 			"e3d1f433be2b564cfbdc549adf98fce13c5c7b363ebc20fd05b765d0563b0925",
-			"32cf87ee787b1bb36b5c691367c96eee37518fa3eed6f3322cf68795e3745279",
+			"57a196a9810fb478fa001dfff110f5c76a7d87fb04f15e12e513fcb75402d7a6",
 		)
 		require.True(t, ok)
 	})
@@ -92,7 +112,7 @@ func TestIsMigrationChecksumCompatible(t *testing.T) {
 		ok := isMigrationChecksumCompatible(
 			"112_add_payment_order_provider_key_snapshot.sql",
 			"ffd3e8a2c9295fa9cbefefd629a78268877e5b51bc970a82d9b3f46ec4ebd15e",
-			"b75f8f56d39455682787696a3d92ad25b055444ca328fb7fca9a460a15d68d99",
+			"ab871fc02da1eabe0de6ca74a119ee3cea9c727caed30af2ae07a0cd1176d1b8",
 		)
 		require.True(t, ok)
 	})
@@ -132,7 +152,7 @@ func TestIsMigrationChecksumCompatible(t *testing.T) {
 			ok := isMigrationChecksumCompatible(
 				"118_wechat_dual_mode_and_auth_source_defaults.sql",
 				dbChecksum,
-				"b54194d7a3e4fbf710e0a3590d22a2fe7966804c487052a356e0b55f53ef96b0",
+				"ed272e0840730b6b8e7838513c4cc8817e8b5e488e27c88b5421adbece5e89c9",
 			)
 			require.True(t, ok)
 		}
