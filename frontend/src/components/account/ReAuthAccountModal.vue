@@ -88,7 +88,7 @@
             <span class="reauth-gemini-type-desc">
               {{
                 geminiOAuthType === 'google_one'
-                  ? '个人账号'
+                  ? t('admin.accounts.gemini.oauthType.googleOneDesc')
                   : geminiOAuthType === 'code_assist'
                     ? t('admin.accounts.gemini.oauthType.builtInDesc')
                     : t('admin.accounts.gemini.oauthType.customDesc')

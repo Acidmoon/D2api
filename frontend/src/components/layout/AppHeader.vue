@@ -61,7 +61,14 @@
           >
             <Icon name="dollar" size="sm" style="color: var(--nm-accent-text)" />
             <span class="text-sm font-semibold" style="color: var(--nm-ink)">
-              ${{ user.balance?.toFixed(2) || '0.00' }}
+              {{ formatHeaderMoney(availableBalance) }}
+            </span>
+            <span
+              v-if="frozenBalance > 0"
+              class="rounded-full px-1.5 py-0.5 text-[10px] font-semibold"
+              style="background: var(--nm-warning-soft); color: var(--nm-warning-text)"
+            >
+              {{ t('common.frozenBalance') }} {{ formatHeaderMoney(frozenBalance) }}
             </span>
           </button>
 
@@ -96,7 +103,10 @@
                 </div>
                 <div class="wallet-metric">
                   <span>{{ t('subscriptionProgress.accountBalance') }}</span>
-                  <strong>${{ formatUSD(user.balance || 0) }}</strong>
+                  <strong>{{ formatHeaderMoney(availableBalance) }}</strong>
+                  <small v-if="frozenBalance > 0">
+                    {{ t('common.frozenBalance') }} {{ formatHeaderMoney(frozenBalance) }}
+                  </small>
                 </div>
               </div>
 
@@ -207,7 +217,10 @@
                   {{ t('common.balance') }}
                 </div>
                 <div class="text-sm font-semibold" style="color: var(--nm-accent-text)">
-                  ${{ user.balance?.toFixed(2) || '0.00' }}
+                  {{ formatHeaderMoney(availableBalance) }}
+                </div>
+                <div v-if="frozenBalance > 0" class="mt-1 text-xs" style="color: var(--nm-warning-text)">
+                  {{ t('common.frozenBalance') }} {{ formatHeaderMoney(frozenBalance) }}
                 </div>
               </button>
 
@@ -320,6 +333,7 @@ import SubscriptionProgressMini from '@/components/common/SubscriptionProgressMi
 import AnnouncementBell from '@/components/common/AnnouncementBell.vue'
 import Icon from '@/components/icons/Icon.vue'
 import type { UserSubscription } from '@/types'
+import { sanitizeUrl } from '@/utils/url'
 
 const router = useRouter()
 const route = useRoute()
@@ -336,8 +350,10 @@ const walletOpen = ref(false)
 const dropdownRef = ref<HTMLElement | null>(null)
 const walletRef = ref<HTMLElement | null>(null)
 const contactInfo = computed(() => appStore.contactInfo)
-const docUrl = computed(() => appStore.docUrl)
+const docUrl = computed(() => sanitizeUrl(appStore.docUrl))
 const avatarUrl = computed(() => user.value?.avatar_url?.trim() || '')
+const availableBalance = computed(() => Number(user.value?.balance || 0))
+const frozenBalance = computed(() => Number(user.value?.frozen_balance || 0))
 const activeSubscriptions = computed(() => subscriptionStore.activeSubscriptions)
 const subscriptionQuotaLabel = computed(() => {
   if (activeSubscriptions.value.some((subscription) => walletPeriods(subscription).length === 0)) {
@@ -446,6 +462,11 @@ async function handleLogout() {
 function handleReplayGuide() {
   closeDropdown()
   onboardingStore.replay()
+}
+
+function formatHeaderMoney(value: number) {
+  if (!Number.isFinite(value)) return '$0.00'
+  return `$${value.toFixed(2)}`
 }
 
 function handleClickOutside(event: MouseEvent) {

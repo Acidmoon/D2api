@@ -54,7 +54,13 @@
     </div>
 
     <!-- Plan Edit Dialog -->
-    <PlanEditDialog :show="showPlanDialog" :plan="editingPlan" @close="showPlanDialog = false" @saved="loadPlans" />
+    <PlanEditDialog
+      :show="showPlanDialog"
+      :plan="editingPlan"
+      :payment-config="paymentConfig"
+      @close="showPlanDialog = false"
+      @saved="loadPlans"
+    />
 
     <ConfirmDialog :show="showDeletePlanDialog" :title="t('payment.admin.deletePlan')" :message="t('payment.admin.deletePlanConfirm')" :confirm-text="t('common.delete')" danger @confirm="handleDeletePlan" @cancel="showDeletePlanDialog = false" />
   </AppLayout>
@@ -65,6 +71,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
 import { adminPaymentAPI } from '@/api/admin/payment'
+import type { AdminPaymentConfig } from '@/api/admin/payment'
 import { extractI18nErrorMessage } from '@/utils/apiError'
 import type { SubscriptionPlan } from '@/types/payment'
 import type { Column } from '@/components/common/types'
@@ -81,6 +88,7 @@ const appStore = useAppStore()
 
 const plansLoading = ref(false)
 const plans = ref<SubscriptionPlan[]>([])
+const paymentConfig = ref<AdminPaymentConfig | null>(null)
 const showPlanDialog = ref(false)
 const showDeletePlanDialog = ref(false)
 const editingPlan = ref<SubscriptionPlan | null>(null)
@@ -112,6 +120,15 @@ async function loadPlans() {
   finally { plansLoading.value = false }
 }
 
+async function loadPaymentConfig() {
+  try {
+    const res = await adminPaymentAPI.getConfig()
+    paymentConfig.value = res.data
+  } catch {
+    // The CNY preview is optional and must not block plan management.
+  }
+}
+
 function openPlanEdit(plan: SubscriptionPlan | null) {
   editingPlan.value = plan
   showPlanDialog.value = true
@@ -138,6 +155,7 @@ async function handleDeletePlan() {
 // ==================== Lifecycle ====================
 
 onMounted(() => {
+  loadPaymentConfig()
   loadPlans()
 })
 </script>

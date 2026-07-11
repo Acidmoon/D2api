@@ -41,12 +41,14 @@ type APIKey struct {
 	CompiledIPWhitelist  *ip.CompiledIPRules `json:"-"`
 	CompiledIPBlacklist  *ip.CompiledIPRules `json:"-"`
 	LastUsedAt           *time.Time
+	LastUsedIP           *string
 	CreatedAt            time.Time
 	UpdatedAt            time.Time
 	User                 *User
 	PrimaryGroup         *Group
 	Group                *Group
 	SelectedSubscription *UserSubscription
+	CurrentConcurrency   int
 
 	// Quota fields
 	Quota     float64    // Quota limit in USD (0 = unlimited)

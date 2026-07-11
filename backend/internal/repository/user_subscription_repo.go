@@ -69,6 +69,18 @@ func (r *userSubscriptionRepository) GetByID(ctx context.Context, id int64) (*se
 	return r.getSubscriptionBalanceByID(ctx, id)
 }
 
+// GetByIDIncludeDeleted returns wallet history for administrative recovery.
+func (r *userSubscriptionRepository) GetByIDIncludeDeleted(ctx context.Context, id int64) (*service.UserSubscription, error) {
+	subs, err := r.listSubscriptionBalances(ctx, "WHERE sb.id = $1", []any{id}, "", 1, 0)
+	if err != nil {
+		return nil, err
+	}
+	if len(subs) == 0 {
+		return nil, service.ErrSubscriptionNotFound
+	}
+	return &subs[0], nil
+}
+
 func (r *userSubscriptionRepository) GetByUserIDAndGroupID(ctx context.Context, userID, groupID int64) (*service.UserSubscription, error) {
 	return r.getSubscriptionBalanceByUserSourceGroup(ctx, userID, groupID, false)
 }
@@ -105,6 +117,42 @@ func (r *userSubscriptionRepository) Delete(ctx context.Context, id int64) error
 	return err
 }
 
+// Restore reactivates a soft-deleted wallet and its legacy compatibility row.
+func (r *userSubscriptionRepository) Restore(ctx context.Context, subscriptionID int64, restoredStatus string) (*service.UserSubscription, error) {
+	exec := r.subscriptionBalanceExec()
+	if exec == nil {
+		return nil, errors.New("subscription balance repository db is nil")
+	}
+	result, err := exec.ExecContext(ctx, `
+		WITH restored AS (
+			UPDATE subscription_balances
+			SET status = $1, deleted_at = NULL, updated_at = NOW()
+			WHERE id = $2 AND deleted_at IS NOT NULL
+			RETURNING legacy_user_subscription_id
+		)
+		UPDATE user_subscriptions us
+		SET status = $1, deleted_at = NULL, updated_at = NOW()
+		FROM restored
+		WHERE us.id = restored.legacy_user_subscription_id
+	`, restoredStatus, subscriptionID)
+	if err != nil {
+		return nil, err
+	}
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return nil, err
+	}
+	// A group-less wallet has no legacy row, so confirm restoration from the
+	// source-of-truth table when the compatibility UPDATE reports zero rows.
+	if affected == 0 {
+		var restored bool
+		if err := exec.QueryRowContext(ctx, `SELECT deleted_at IS NULL FROM subscription_balances WHERE id = $1`, subscriptionID).Scan(&restored); err != nil || !restored {
+			return nil, service.ErrSubscriptionNotFound
+		}
+	}
+	return r.GetByID(ctx, subscriptionID)
+}
+
 func (r *userSubscriptionRepository) ListByUserID(ctx context.Context, userID int64) ([]service.UserSubscription, error) {
 	return r.listSubscriptionBalances(ctx, "WHERE sb.user_id = $1 AND sb.deleted_at IS NULL", []any{userID}, "ORDER BY sb.created_at DESC", 0, 0)
 }
@@ -127,7 +175,11 @@ func (r *userSubscriptionRepository) ListByGroupID(ctx context.Context, groupID 
 }
 
 func (r *userSubscriptionRepository) List(ctx context.Context, params pagination.PaginationParams, userID, groupID *int64, status, platform, sortBy, sortOrder string) ([]service.UserSubscription, *pagination.PaginationResult, error) {
-	clauses := []string{"sb.deleted_at IS NULL"}
+	includeSoftDeleted := status == "" || status == service.SubscriptionStatusRevoked
+	clauses := make([]string, 0, 5)
+	if !includeSoftDeleted {
+		clauses = append(clauses, "sb.deleted_at IS NULL")
+	}
 	args := make([]any, 0, 4)
 	if userID != nil {
 		args = append(args, *userID)
@@ -148,13 +200,18 @@ func (r *userSubscriptionRepository) List(ctx context.Context, params pagination
 		clauses = append(clauses, fmt.Sprintf("sb.status = $%d AND sb.expires_at > NOW()", len(args)))
 	case service.SubscriptionStatusExpired:
 		clauses = append(clauses, "(sb.status = 'expired' OR (sb.status = 'active' AND sb.expires_at <= NOW()))")
+	case service.SubscriptionStatusRevoked:
+		clauses = append(clauses, "sb.deleted_at IS NOT NULL")
 	case "":
 	default:
 		args = append(args, status)
 		clauses = append(clauses, fmt.Sprintf("sb.status = $%d", len(args)))
 	}
 
-	where := "WHERE " + strings.Join(clauses, " AND ")
+	where := "WHERE TRUE"
+	if len(clauses) > 0 {
+		where = "WHERE " + strings.Join(clauses, " AND ")
+	}
 	total, err := r.countSubscriptionBalances(ctx, where, args)
 	if err != nil {
 		return nil, nil, err
@@ -175,6 +232,11 @@ func (r *userSubscriptionRepository) List(ctx context.Context, params pagination
 	if err != nil {
 		return nil, nil, err
 	}
+	for i := range subs {
+		if subs[i].DeletedAt != nil {
+			subs[i].Status = service.SubscriptionStatusRevoked
+		}
+	}
 
 	return subs, paginationResultFromTotal(total, params), nil
 }
@@ -186,6 +248,20 @@ func (r *userSubscriptionRepository) ExistsByUserIDAndGroupID(ctx context.Contex
 	}
 	var exists bool
 	err := exec.QueryRowContext(ctx, `SELECT EXISTS (SELECT 1 FROM subscription_balances WHERE user_id = $1 AND source_group_id = $2 AND deleted_at IS NULL)`, userID, groupID).Scan(&exists)
+	return exists, err
+}
+
+func (r *userSubscriptionRepository) ExistsActiveByUserIDAndGroupID(ctx context.Context, userID, groupID int64) (bool, error) {
+	exec := r.subscriptionBalanceExec()
+	if exec == nil {
+		return false, errors.New("subscription balance repository db is nil")
+	}
+	var exists bool
+	err := exec.QueryRowContext(ctx, `SELECT EXISTS (
+		SELECT 1 FROM subscription_balances
+		WHERE user_id = $1 AND source_group_id = $2 AND deleted_at IS NULL
+			AND status = $3 AND expires_at > NOW()
+	)`, userID, groupID, service.SubscriptionStatusActive).Scan(&exists)
 	return exists, err
 }
 
@@ -217,23 +293,60 @@ func (r *userSubscriptionRepository) ActivateWindows(ctx context.Context, id int
 	return r.syncLegacySubscriptionSnapshot(ctx, id)
 }
 
-func (r *userSubscriptionRepository) ResetDailyUsage(ctx context.Context, id int64, newWindowStart time.Time) error {
-	if err := r.execSubscriptionBalanceUpdate(ctx, `UPDATE subscription_balances SET daily_usage_usd = 0, daily_window_start = $1, updated_at = NOW() WHERE id = $2 AND deleted_at IS NULL`, newWindowStart, id); err != nil {
+func (r *userSubscriptionRepository) ResetUsageWindows(ctx context.Context, id int64, resetDaily, resetWeekly, resetMonthly bool, newWindowStart time.Time) error {
+	if err := r.execSubscriptionBalanceUpdate(ctx, `
+		UPDATE subscription_balances
+		SET daily_usage_usd = CASE WHEN $1 THEN 0 ELSE daily_usage_usd END,
+			daily_window_start = CASE WHEN $1 THEN $4 ELSE daily_window_start END,
+			weekly_usage_usd = CASE WHEN $2 THEN 0 ELSE weekly_usage_usd END,
+			weekly_window_start = CASE WHEN $2 THEN $4 ELSE weekly_window_start END,
+			monthly_usage_usd = CASE WHEN $3 THEN 0 ELSE monthly_usage_usd END,
+			monthly_window_start = CASE WHEN $3 THEN $4 ELSE monthly_window_start END,
+			updated_at = NOW()
+		WHERE id = $5 AND deleted_at IS NULL
+	`, resetDaily, resetWeekly, resetMonthly, newWindowStart, id); err != nil {
 		return err
 	}
 	return r.syncLegacySubscriptionSnapshot(ctx, id)
 }
 
-func (r *userSubscriptionRepository) ResetWeeklyUsage(ctx context.Context, id int64, newWindowStart time.Time) error {
-	if err := r.execSubscriptionBalanceUpdate(ctx, `UPDATE subscription_balances SET weekly_usage_usd = 0, weekly_window_start = $1, updated_at = NOW() WHERE id = $2 AND deleted_at IS NULL`, newWindowStart, id); err != nil {
-		return err
-	}
-	return r.syncLegacySubscriptionSnapshot(ctx, id)
+func (r *userSubscriptionRepository) ResetDailyUsage(ctx context.Context, id int64, expectedWindowStart *time.Time, newWindowStart time.Time) error {
+	return r.resetUsageWindow(ctx, id, "daily_usage_usd", "daily_window_start", expectedWindowStart, newWindowStart)
 }
 
-func (r *userSubscriptionRepository) ResetMonthlyUsage(ctx context.Context, id int64, newWindowStart time.Time) error {
-	if err := r.execSubscriptionBalanceUpdate(ctx, `UPDATE subscription_balances SET monthly_usage_usd = 0, monthly_window_start = $1, updated_at = NOW() WHERE id = $2 AND deleted_at IS NULL`, newWindowStart, id); err != nil {
+func (r *userSubscriptionRepository) ResetWeeklyUsage(ctx context.Context, id int64, expectedWindowStart *time.Time, newWindowStart time.Time) error {
+	return r.resetUsageWindow(ctx, id, "weekly_usage_usd", "weekly_window_start", expectedWindowStart, newWindowStart)
+}
+
+func (r *userSubscriptionRepository) ResetMonthlyUsage(ctx context.Context, id int64, expectedWindowStart *time.Time, newWindowStart time.Time) error {
+	return r.resetUsageWindow(ctx, id, "monthly_usage_usd", "monthly_window_start", expectedWindowStart, newWindowStart)
+}
+
+// resetUsageWindow uses compare-and-swap semantics so an older request cannot
+// reset usage after another request has already advanced the window.
+func (r *userSubscriptionRepository) resetUsageWindow(ctx context.Context, id int64, usageColumn, windowColumn string, expectedWindowStart *time.Time, newWindowStart time.Time) error {
+	exec := r.subscriptionBalanceExec()
+	if exec == nil {
+		return errors.New("subscription balance repository db is nil")
+	}
+	query := fmt.Sprintf(`UPDATE subscription_balances SET %s = 0, %s = $1, updated_at = NOW() WHERE id = $2 AND deleted_at IS NULL AND %s IS NOT DISTINCT FROM $3`, usageColumn, windowColumn, windowColumn)
+	result, err := exec.ExecContext(ctx, query, newWindowStart, id, expectedWindowStart)
+	if err != nil {
 		return err
+	}
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if affected == 0 {
+		var exists bool
+		if err := exec.QueryRowContext(ctx, `SELECT EXISTS (SELECT 1 FROM subscription_balances WHERE id = $1 AND deleted_at IS NULL)`, id).Scan(&exists); err != nil {
+			return err
+		}
+		if !exists {
+			return service.ErrSubscriptionNotFound
+		}
+		return nil
 	}
 	return r.syncLegacySubscriptionSnapshot(ctx, id)
 }
@@ -546,7 +659,7 @@ func (r *userSubscriptionRepository) listSubscriptionBalances(ctx context.Contex
 			sb.daily_window_start, sb.weekly_window_start, sb.monthly_window_start,
 			sb.daily_limit_usd, sb.weekly_limit_usd, sb.monthly_limit_usd,
 			sb.daily_usage_usd, sb.weekly_usage_usd, sb.monthly_usage_usd,
-			sb.assigned_by, sb.assigned_at, sb.notes, sb.created_at, sb.updated_at,
+			sb.assigned_by, sb.assigned_at, sb.notes, sb.created_at, sb.updated_at, sb.deleted_at,
 			u.email, u.username,
 			g.name, g.platform, g.rate_multiplier, g.subscription_type
 		FROM subscription_balances sb
@@ -597,6 +710,7 @@ func scanSubscriptionBalance(rows *sql.Rows) (*service.UserSubscription, error) 
 		groupPlatform         sql.NullString
 		groupRate             sql.NullFloat64
 		groupSubscriptionType sql.NullString
+		deletedAt             sql.NullTime
 	)
 	if err := rows.Scan(
 		&sub.ID, &sub.UserID, &sub.GroupID, &sourceGroupID, &planName,
@@ -604,7 +718,7 @@ func scanSubscriptionBalance(rows *sql.Rows) (*service.UserSubscription, error) 
 		&dailyStart, &weeklyStart, &monthlyStart,
 		&dailyLimit, &weeklyLimit, &monthlyLimit,
 		&sub.DailyUsageUSD, &sub.WeeklyUsageUSD, &sub.MonthlyUsageUSD,
-		&assignedBy, &sub.AssignedAt, &notes, &sub.CreatedAt, &sub.UpdatedAt,
+		&assignedBy, &sub.AssignedAt, &notes, &sub.CreatedAt, &sub.UpdatedAt, &deletedAt,
 		&userEmail, &userName,
 		&groupName, &groupPlatform, &groupRate, &groupSubscriptionType,
 	); err != nil {
@@ -620,6 +734,7 @@ func scanSubscriptionBalance(rows *sql.Rows) (*service.UserSubscription, error) 
 	sub.MonthlyLimitUSD = subscriptionNullableFloat64Ptr(monthlyLimit)
 	sub.AssignedBy = nullableInt64Ptr(assignedBy)
 	sub.Notes = derefStringFromNull(notes)
+	sub.DeletedAt = nullableTimePtr(deletedAt)
 	if userEmail.Valid || userName.Valid {
 		sub.User = &service.User{ID: sub.UserID, Email: userEmail.String, Username: userName.String}
 	}

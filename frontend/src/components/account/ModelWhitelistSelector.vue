@@ -4,7 +4,7 @@
     <div class="relative mb-3">
       <div
         @click="toggleDropdown"
-        class="model-selector-trigger"
+        class="model-selector-trigger cursor-pointer"
       >
         <div class="grid grid-cols-2 gap-1.5">
           <span
@@ -179,7 +179,7 @@ const normalizedPlatforms = computed(() => {
   )
 })
 
-const upstreamSyncPlatforms = new Set(['anthropic', 'openai', 'gemini', 'antigravity'])
+const upstreamSyncPlatforms = new Set(['anthropic', 'openai', 'gemini', 'antigravity', 'grok'])
 const canSyncUpstream = computed(() => {
   if (props.accountId) {
     if (normalizedPlatforms.value.length === 0) return true

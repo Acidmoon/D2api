@@ -2,10 +2,12 @@ package middleware
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/Wei-Shaw/sub2api/internal/config"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/googleapi"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/ip"
 	"github.com/Wei-Shaw/sub2api/internal/service"
 
 	"github.com/gin-gonic/gin"
@@ -46,10 +48,32 @@ func APIKeyAuthWithSubscriptionGoogle(apiKeyService *service.APIKeyService, subs
 		// user/group/platform。
 		SetOpsFallbackAPIKey(c, apiKey)
 
-		if !apiKey.IsActive() {
+		// disabled / 未知状态 → 无条件拦截（expired 和 quota_exhausted 留给计费阶段，
+		// 与主中间件 api_key_auth.go 保持一致）。
+		if !apiKey.IsActive() &&
+			apiKey.Status != service.StatusAPIKeyExpired &&
+			apiKey.Status != service.StatusAPIKeyQuotaExhausted {
 			abortWithGoogleError(c, 401, "API key is disabled")
 			return
 		}
+
+		// 检查 IP 限制（白名单/黑名单）。与主中间件保持一致，避免 Gemini 端点绕过 Key 的 IP ACL。
+		if len(apiKey.IPWhitelist) > 0 || len(apiKey.IPBlacklist) > 0 {
+			clientIP := ip.GetTrustedClientIP(c)
+			if cfg.TrustForwardedIPForAPIKeyACL() {
+				clientIP = ip.GetClientIP(c)
+			}
+			allowed, _ := ip.CheckIPRestrictionWithCompiledRules(clientIP, apiKey.CompiledIPWhitelist, apiKey.CompiledIPBlacklist)
+			if !allowed {
+				if clientIP == "" {
+					clientIP = "unknown"
+				}
+				service.MarkOpsClientBusinessLimited(c, service.OpsClientBusinessLimitedReasonIPRestriction)
+				abortWithGoogleError(c, 403, fmt.Sprintf("Access denied. Your IP is %s", clientIP))
+				return
+			}
+		}
+
 		if apiKey.User == nil {
 			abortWithGoogleError(c, 401, "User associated with API key not found")
 			return
@@ -64,6 +88,10 @@ func APIKeyAuthWithSubscriptionGoogle(apiKeyService *service.APIKeyService, subs
 				abortGoogleAPIKeyGroupSelectionError(c, groupErr)
 				return
 			}
+			if !validateGoogleAPIKeyGroup(c, apiKey) {
+				return
+			}
+			setAPIKeyUserRequestContext(c, apiKey.User.ID)
 			c.Set(string(ContextKeyAPIKey), apiKey)
 			c.Set(string(ContextKeyUser), AuthSubject{
 				UserID:      apiKey.User.ID,
@@ -76,15 +104,41 @@ func APIKeyAuthWithSubscriptionGoogle(apiKeyService *service.APIKeyService, subs
 			return
 		}
 
+		// D2api selects a usable subscription wallet and its corresponding group
+		// before applying the upstream key and limit checks.
 		if groupErr := selectAPIKeyGroupForRequest(c.Request.Context(), apiKey, subscriptionService, false); groupErr != nil {
 			abortGoogleAPIKeyGroupSelectionError(c, groupErr)
 			return
 		}
 		subscription := apiKey.SelectedSubscription
+		if !validateGoogleAPIKeyGroup(c, apiKey) {
+			return
+		}
+		// Key state and runtime quota checks apply to both wallet-backed and
+		// ordinary balance requests.
+		switch apiKey.Status {
+		case service.StatusAPIKeyQuotaExhausted:
+			abortWithGoogleError(c, 429, "API key 额度已用完")
+			return
+		case service.StatusAPIKeyExpired:
+			abortWithGoogleError(c, 403, "API key 已过期")
+			return
+		}
+		if apiKey.IsExpired() {
+			abortWithGoogleError(c, 403, "API key 已过期")
+			return
+		}
+		if apiKey.IsQuotaExhausted() {
+			abortWithGoogleError(c, 429, "API key 额度已用完")
+			return
+		}
 		if subscription != nil {
+			// Wallet exhaustion is handled atomically during billing, where the
+			// remaining cost may fall back to the user's ordinary balance.
 			c.Set(string(ContextKeySubscription), subscription)
 		}
 
+		setAPIKeyUserRequestContext(c, apiKey.User.ID)
 		c.Set(string(ContextKeyAPIKey), apiKey)
 		c.Set(string(ContextKeyUser), AuthSubject{
 			UserID:      apiKey.User.ID,
@@ -95,6 +149,22 @@ func APIKeyAuthWithSubscriptionGoogle(apiKeyService *service.APIKeyService, subs
 		_ = apiKeyService.TouchLastUsed(c.Request.Context(), apiKey.ID)
 		c.Next()
 	}
+}
+
+// validateGoogleAPIKeyGroup mirrors the standard middleware's group checks
+// after D2api has selected the primary or fallback group for this request.
+func validateGoogleAPIKeyGroup(c *gin.Context, apiKey *service.APIKey) bool {
+	if _, message, ok := validateAPIKeyGroupAvailable(apiKey); !ok {
+		service.MarkOpsClientBusinessLimited(c, service.OpsClientBusinessLimitedReasonAPIKeyGroupUnavailable)
+		abortWithGoogleError(c, 403, message)
+		return false
+	}
+	if !validateAPIKeyGroupAllowed(apiKey) {
+		service.MarkOpsClientBusinessLimited(c, service.OpsClientBusinessLimitedReasonAPIKeyGroupUnavailable)
+		abortWithGoogleError(c, 403, "API Key 所属专属分组不再允许当前用户使用")
+		return false
+	}
+	return true
 }
 
 // extractAPIKeyForGoogle extracts API key for Google/Gemini endpoints.

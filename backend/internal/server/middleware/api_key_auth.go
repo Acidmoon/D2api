@@ -3,6 +3,7 @@ package middleware
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/Wei-Shaw/sub2api/internal/config"
@@ -99,8 +100,11 @@ func apiKeyAuthWithSubscription(apiKeyService *service.APIKeyService, subscripti
 			}
 			allowed, _ := ip.CheckIPRestrictionWithCompiledRules(clientIP, apiKey.CompiledIPWhitelist, apiKey.CompiledIPBlacklist)
 			if !allowed {
+				if clientIP == "" {
+					clientIP = "unknown"
+				}
 				service.MarkOpsClientBusinessLimited(c, service.OpsClientBusinessLimitedReasonIPRestriction)
-				AbortWithError(c, 403, "ACCESS_DENIED", "Access denied")
+				AbortWithError(c, 403, "ACCESS_DENIED", fmt.Sprintf("Access denied. Your IP is %s", clientIP))
 				return
 			}
 		}
@@ -123,6 +127,10 @@ func apiKeyAuthWithSubscription(apiKeyService *service.APIKeyService, subscripti
 				abortAPIKeyGroupSelectionError(c, groupErr)
 				return
 			}
+			if abortIfAPIKeyGroupUnavailable(c, apiKey) || abortIfAPIKeyGroupNotAllowed(c, apiKey) {
+				return
+			}
+			setAPIKeyUserRequestContext(c, apiKey.User.ID)
 			c.Set(string(ContextKeyAPIKey), apiKey)
 			c.Set(string(ContextKeyUser), AuthSubject{
 				UserID:      apiKey.User.ID,
@@ -172,6 +180,9 @@ func apiKeyAuthWithSubscription(apiKeyService *service.APIKeyService, subscripti
 				return
 			}
 
+			// Wallet limits and remaining balance are checked atomically by the
+			// billing repository.  Authentication must allow a request to spill
+			// from an exhausted wallet into the user's ordinary balance.
 		} else if groupErr := selectAPIKeyGroupForRequest(c.Request.Context(), apiKey, subscriptionService, true); groupErr != nil {
 			abortAPIKeyGroupSelectionError(c, groupErr)
 			return
@@ -180,6 +191,10 @@ func apiKeyAuthWithSubscription(apiKeyService *service.APIKeyService, subscripti
 		}
 
 		// ── 7. 设置上下文 → Next ─────────────────────────────────────
+		if abortIfAPIKeyGroupUnavailable(c, apiKey) || abortIfAPIKeyGroupNotAllowed(c, apiKey) {
+			return
+		}
+		setAPIKeyUserRequestContext(c, apiKey.User.ID)
 
 		if subscription != nil {
 			c.Set(string(ContextKeySubscription), subscription)
@@ -195,6 +210,13 @@ func apiKeyAuthWithSubscription(apiKeyService *service.APIKeyService, subscripti
 
 		c.Next()
 	}
+}
+
+// setAPIKeyUserRequestContext exposes the authenticated owner to service-layer
+// policies. The value must come from the API key owner, never request payloads.
+func setAPIKeyUserRequestContext(c *gin.Context, userID int64) {
+	ctx := context.WithValue(c.Request.Context(), ctxkey.UserID, userID)
+	c.Request = c.Request.WithContext(ctx)
 }
 
 // GetAPIKeyFromContext 从上下文中获取API key

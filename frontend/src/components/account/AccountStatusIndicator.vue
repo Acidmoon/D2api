@@ -86,7 +86,7 @@
         </span>
         <!-- 正在走积分（模型限流但积分可用）-->
         <span v-else-if="item.kind === 'credits_active'" class="status-chip status-chip--warning">
-          <Icon name="bolt" size="xs" :stroke-width="2" />
+          <span aria-hidden="true">⚡</span>
           {{ formatScopeName(item.model) }}
           <span class="status-chip-time">{{ formatModelResetTime(item.reset_at) }}</span>
         </span>
