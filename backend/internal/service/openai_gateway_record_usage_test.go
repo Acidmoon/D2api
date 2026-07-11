@@ -1510,13 +1510,13 @@ func TestOpenAIGatewayServiceRecordUsage_UnpricedTokenModelFallsBackToZeroCostUs
 	require.Equal(t, 0, subRepo.incrementCalls)
 }
 
-func TestOpenAIGatewayServiceRecordUsage_SubscriptionBillingSetsSubscriptionFields(t *testing.T) {
+func TestOpenAIGatewayServiceRecordUsage_SubscriptionWalletUsesStandardRouteGroup(t *testing.T) {
 	usageRepo := &openAIRecordUsageLogRepoStub{inserted: true}
 	userRepo := &openAIRecordUsageUserRepoStub{}
 	subRepo := &openAIRecordUsageSubRepoStub{}
 	svc := newOpenAIRecordUsageServiceForTest(usageRepo, userRepo, subRepo, nil)
-	subscriptionGroup := &Group{ID: 88, SubscriptionType: SubscriptionTypeSubscription}
-	subscription := &UserSubscription{ID: 99, GroupID: subscriptionGroup.ID, Group: subscriptionGroup}
+	subscriptionSourceGroup := &Group{ID: 99, SubscriptionType: SubscriptionTypeStandard}
+	subscription := &UserSubscription{ID: 99, GroupID: subscriptionSourceGroup.ID, Group: subscriptionSourceGroup}
 
 	err := svc.RecordUsage(context.Background(), &OpenAIRecordUsageInput{
 		Result: &OpenAIForwardResult{
@@ -1525,7 +1525,7 @@ func TestOpenAIGatewayServiceRecordUsage_SubscriptionBillingSetsSubscriptionFiel
 			Model:     "gpt-5.1",
 			Duration:  time.Second,
 		},
-		APIKey:       &APIKey{ID: 100, GroupID: i64p(88), Group: &Group{ID: 88, SubscriptionType: SubscriptionTypeSubscription, RateMultiplier: 1.0}},
+		APIKey:       &APIKey{ID: 100, GroupID: i64p(88), Group: &Group{ID: 88, SubscriptionType: SubscriptionTypeStandard, RateMultiplier: 1.0}},
 		User:         &User{ID: 200},
 		Account:      &Account{ID: 300},
 		Subscription: subscription,

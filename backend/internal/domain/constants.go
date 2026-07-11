@@ -55,10 +55,10 @@ const (
 	AdjustmentTypeAdminConcurrency = "admin_concurrency" // 管理员调整并发数
 )
 
-// Group subscription type constants
+// Group billing type constants. Group billing no longer selects a subscription
+// wallet: all groups are standard routing groups.
 const (
-	SubscriptionTypeStandard     = "standard"     // 标准计费模式（按余额扣费）
-	SubscriptionTypeSubscription = "subscription" // 订阅模式（按限额控制）
+	SubscriptionTypeStandard = "standard"
 )
 
 // Subscription status constants

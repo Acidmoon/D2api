@@ -749,7 +749,7 @@ func TestApiKeyAuthWithSubscriptionGoogle_SubscriptionLimitExceededAllowsBalance
 		Status:           service.StatusActive,
 		Platform:         service.PlatformGemini,
 		Hydrated:         true,
-		SubscriptionType: service.SubscriptionTypeSubscription,
+		SubscriptionType: service.SubscriptionTypeStandard,
 		DailyLimitUSD:    &limit,
 	}
 	user := &service.User{

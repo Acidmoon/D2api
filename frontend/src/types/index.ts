@@ -493,7 +493,9 @@ export interface PaginationConfig {
 
 export type GroupPlatform = 'anthropic' | 'openai' | 'gemini' | 'antigravity' | 'grok'
 
-export type SubscriptionType = 'standard' | 'subscription'
+// Route groups no longer select a billing mode. This field remains in API
+// responses for backwards compatibility and is always "standard".
+export type SubscriptionType = 'standard'
 
 export interface OpenAIMessagesDispatchModelConfig {
   opus_mapped_model?: string

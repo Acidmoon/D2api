@@ -467,10 +467,10 @@ func TestAdminService_AdminUpdateAPIKeyGroupID_NonExclusiveGroup_NoAllowedGroupU
 	require.False(t, got.AutoGrantedGroupAccess)
 }
 
-func TestAdminService_AdminUpdateAPIKeyGroupID_SubscriptionGroup_AllowsWithoutSubscription(t *testing.T) {
+func TestAdminService_AdminUpdateAPIKeyGroupID_StandardGroupDoesNotReadSubscription(t *testing.T) {
 	existing := &APIKey{ID: 1, UserID: 42, Key: "sk-test", GroupID: nil}
 	apiKeyRepo := &apiKeyRepoStubForGroupUpdate{key: existing}
-	groupRepo := &groupRepoStubForGroupUpdate{group: &Group{ID: 10, Name: "Sub", Status: StatusActive, IsExclusive: false, SubscriptionType: SubscriptionTypeSubscription}}
+	groupRepo := &groupRepoStubForGroupUpdate{group: &Group{ID: 10, Name: "Sub", Status: StatusActive, IsExclusive: false, SubscriptionType: SubscriptionTypeStandard}}
 	userRepo := &userRepoStubForGroupUpdate{}
 	userSubRepo := &userSubRepoStubForGroupUpdate{getActiveErr: ErrSubscriptionNotFound}
 	svc := &adminServiceImpl{apiKeyRepo: apiKeyRepo, groupRepo: groupRepo, userRepo: userRepo, userSubRepo: userSubRepo}
@@ -483,10 +483,10 @@ func TestAdminService_AdminUpdateAPIKeyGroupID_SubscriptionGroup_AllowsWithoutSu
 	require.False(t, userRepo.addGroupCalled)
 }
 
-func TestAdminService_AdminUpdateAPIKeyGroupID_SubscriptionGroup_DoesNotRequireRepo(t *testing.T) {
+func TestAdminService_AdminUpdateAPIKeyGroupID_StandardGroupDoesNotRequireSubscriptionRepo(t *testing.T) {
 	existing := &APIKey{ID: 1, UserID: 42, Key: "sk-test", GroupID: nil}
 	apiKeyRepo := &apiKeyRepoStubForGroupUpdate{key: existing}
-	groupRepo := &groupRepoStubForGroupUpdate{group: &Group{ID: 10, Name: "Sub", Status: StatusActive, IsExclusive: false, SubscriptionType: SubscriptionTypeSubscription}}
+	groupRepo := &groupRepoStubForGroupUpdate{group: &Group{ID: 10, Name: "Sub", Status: StatusActive, IsExclusive: false, SubscriptionType: SubscriptionTypeStandard}}
 	userRepo := &userRepoStubForGroupUpdate{}
 	svc := &adminServiceImpl{apiKeyRepo: apiKeyRepo, groupRepo: groupRepo, userRepo: userRepo}
 
@@ -497,10 +497,10 @@ func TestAdminService_AdminUpdateAPIKeyGroupID_SubscriptionGroup_DoesNotRequireR
 	require.False(t, userRepo.addGroupCalled)
 }
 
-func TestAdminService_AdminUpdateAPIKeyGroupID_SubscriptionExclusiveGroup_NoAllowedGroupUpdate(t *testing.T) {
+func TestAdminService_AdminUpdateAPIKeyGroupID_ExclusiveGroupAutoGrantsAccess(t *testing.T) {
 	existing := &APIKey{ID: 1, UserID: 42, Key: "sk-test", GroupID: nil}
 	apiKeyRepo := &apiKeyRepoStubForGroupUpdate{key: existing}
-	groupRepo := &groupRepoStubForGroupUpdate{group: &Group{ID: 10, Name: "Sub", Status: StatusActive, IsExclusive: true, SubscriptionType: SubscriptionTypeSubscription}}
+	groupRepo := &groupRepoStubForGroupUpdate{group: &Group{ID: 10, Name: "Sub", Status: StatusActive, IsExclusive: true, SubscriptionType: SubscriptionTypeStandard}}
 	userRepo := &userRepoStubForGroupUpdate{}
 	userSubRepo := &userSubRepoStubForGroupUpdate{
 		getActiveSub: &UserSubscription{ID: 99, UserID: 42, GroupID: 10},
@@ -512,7 +512,8 @@ func TestAdminService_AdminUpdateAPIKeyGroupID_SubscriptionExclusiveGroup_NoAllo
 	require.False(t, userSubRepo.called)
 	require.NotNil(t, got.APIKey.GroupID)
 	require.Equal(t, int64(10), *got.APIKey.GroupID)
-	require.False(t, userRepo.addGroupCalled)
+	require.True(t, userRepo.addGroupCalled)
+	require.True(t, got.AutoGrantedGroupAccess)
 }
 
 func TestAdminService_AdminUpdateAPIKeyGroupID_ExclusiveGroup_AllowedGroupAddFails_ReturnsError(t *testing.T) {

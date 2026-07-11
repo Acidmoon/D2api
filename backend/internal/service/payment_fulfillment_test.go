@@ -622,7 +622,7 @@ func TestAlreadyProcessedRecoversStaleRechargingLease(t *testing.T) {
 	require.NoError(t, err)
 
 	groupRepo := &subscriptionGroupRepoStub{
-		group: &Group{ID: 7, Status: payment.EntityStatusActive, SubscriptionType: SubscriptionTypeSubscription},
+		group: &Group{ID: 7, Status: payment.EntityStatusActive, SubscriptionType: SubscriptionTypeStandard},
 	}
 	svc := &PaymentService{
 		entClient:       client,
@@ -723,7 +723,7 @@ func TestExecuteSubscriptionFulfillmentRecoversCommittedAssignmentWithoutExtendi
 		Notes:     "manual note\n" + paymentSubscriptionOrderNote(order.ID) + "\nretained note",
 	})
 	groupRepo := &subscriptionGroupRepoStub{
-		group: &Group{ID: 7, Status: payment.EntityStatusActive, SubscriptionType: SubscriptionTypeSubscription},
+		group: &Group{ID: 7, Status: payment.EntityStatusActive, SubscriptionType: SubscriptionTypeStandard},
 	}
 	svc := &PaymentService{
 		entClient:       client,
@@ -874,11 +874,11 @@ func TestExecuteSubscriptionFulfillmentAppliesAffiliateRebate(t *testing.T) {
 	}}, nil)
 	subRepo := newSubscriptionUserSubRepoStub()
 	subscriptionSvc := NewSubscriptionService(&subscriptionGroupRepoStub{
-		group: &Group{ID: 7, Status: payment.EntityStatusActive, SubscriptionType: SubscriptionTypeSubscription},
+		group: &Group{ID: 7, Status: payment.EntityStatusActive, SubscriptionType: SubscriptionTypeStandard},
 	}, subRepo, nil, nil, nil)
 	svc := &PaymentService{
 		entClient:        client,
-		groupRepo:        &subscriptionGroupRepoStub{group: &Group{ID: 7, Status: payment.EntityStatusActive, SubscriptionType: SubscriptionTypeSubscription}},
+		groupRepo:        &subscriptionGroupRepoStub{group: &Group{ID: 7, Status: payment.EntityStatusActive, SubscriptionType: SubscriptionTypeStandard}},
 		subscriptionSvc:  subscriptionSvc,
 		affiliateService: NewAffiliateService(affiliateRepo, settingSvc, nil, nil),
 	}
@@ -973,11 +973,11 @@ func TestExecuteSubscriptionFulfillmentDoesNotDuplicateWorkAfterLegacySuccessAud
 	}}, nil)
 	subRepo := newSubscriptionUserSubRepoStub()
 	subscriptionSvc := NewSubscriptionService(&subscriptionGroupRepoStub{
-		group: &Group{ID: 7, Status: payment.EntityStatusActive, SubscriptionType: SubscriptionTypeSubscription},
+		group: &Group{ID: 7, Status: payment.EntityStatusActive, SubscriptionType: SubscriptionTypeStandard},
 	}, subRepo, nil, nil, nil)
 	svc := &PaymentService{
 		entClient:        client,
-		groupRepo:        &subscriptionGroupRepoStub{group: &Group{ID: 7, Status: payment.EntityStatusActive, SubscriptionType: SubscriptionTypeSubscription}},
+		groupRepo:        &subscriptionGroupRepoStub{group: &Group{ID: 7, Status: payment.EntityStatusActive, SubscriptionType: SubscriptionTypeStandard}},
 		subscriptionSvc:  subscriptionSvc,
 		affiliateService: NewAffiliateService(affiliateRepo, settingSvc, nil, nil),
 	}

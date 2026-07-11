@@ -32,7 +32,6 @@ var (
 	ErrSubscriptionAssignConflict  = infraerrors.Conflict("SUBSCRIPTION_ASSIGN_CONFLICT", "subscription exists but request conflicts with existing assignment semantics")
 	ErrSubscriptionNotRevoked      = infraerrors.Conflict("SUBSCRIPTION_NOT_REVOKED", "subscription is not revoked")
 	ErrSubscriptionRestoreConflict = infraerrors.Conflict("SUBSCRIPTION_RESTORE_CONFLICT", "subscription already exists for this user and group")
-	ErrGroupNotSubscriptionType    = infraerrors.BadRequest("GROUP_NOT_SUBSCRIPTION_TYPE", "group is not a subscription type")
 	ErrInvalidInput                = infraerrors.BadRequest("INVALID_INPUT", "at least one of resetDaily, resetWeekly, or resetMonthly must be true")
 	ErrDailyLimitExceeded          = infraerrors.TooManyRequests("DAILY_LIMIT_EXCEEDED", "daily usage limit exceeded")
 	ErrWeeklyLimitExceeded         = infraerrors.TooManyRequests("WEEKLY_LIMIT_EXCEEDED", "weekly usage limit exceeded")
@@ -220,15 +219,10 @@ func (s *SubscriptionService) AssignOrExtendSubscription(ctx context.Context, in
 }
 
 func (s *SubscriptionService) assignOrExtendSubscription(ctx context.Context, input *AssignSubscriptionInput, deferCacheInvalidation bool) (*UserSubscription, bool, error) {
-	var group *Group
 	if input.GroupID > 0 {
-		var err error
-		group, err = s.groupRepo.GetByID(ctx, input.GroupID)
+		_, err := s.groupRepo.GetByID(ctx, input.GroupID)
 		if err != nil {
 			return nil, false, fmt.Errorf("group not found: %w", err)
-		}
-		if !group.IsSubscriptionType() {
-			return nil, false, ErrGroupNotSubscriptionType
 		}
 	}
 
@@ -431,9 +425,6 @@ func (s *SubscriptionService) createSubscription(ctx context.Context, input *Ass
 		if err != nil {
 			return nil, fmt.Errorf("group not found: %w", err)
 		}
-		if !group.IsSubscriptionType() {
-			return nil, ErrGroupNotSubscriptionType
-		}
 		sourceGroupID = &input.GroupID
 		if planName == "" {
 			planName = group.Name
@@ -551,13 +542,10 @@ func (s *SubscriptionService) assignSubscriptionWithReuse(ctx context.Context, i
 		return sub, false, err
 	}
 
-	// 检查分组是否存在且为订阅类型。仅旧分组模板/兼容路径需要此校验。
-	group, err := s.groupRepo.GetByID(ctx, input.GroupID)
+	// Validate the optional source group for legacy plan-template compatibility.
+	_, err := s.groupRepo.GetByID(ctx, input.GroupID)
 	if err != nil {
 		return nil, false, fmt.Errorf("group not found: %w", err)
-	}
-	if !group.IsSubscriptionType() {
-		return nil, false, ErrGroupNotSubscriptionType
 	}
 
 	// 检查是否已存在订阅；若已存在，则按幂等成功返回现有订阅

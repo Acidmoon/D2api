@@ -92,7 +92,7 @@ func TestUsageBillingRepositoryApply_DeduplicatesSubscriptionBilling(t *testing.
 	group := mustCreateGroup(t, client, &service.Group{
 		Name:             "usage-billing-group-" + uuid.NewString(),
 		Platform:         service.PlatformAnthropic,
-		SubscriptionType: service.SubscriptionTypeSubscription,
+		SubscriptionType: service.SubscriptionTypeStandard,
 	})
 	apiKey := mustCreateApiKey(t, client, &service.APIKey{
 		UserID:  user.ID,
@@ -142,7 +142,7 @@ func TestUsageBillingRepositoryApply_SubscriptionRemainderFallsBackToBalance(t *
 	group := mustCreateGroup(t, client, &service.Group{
 		Name:             "usage-billing-split-group-" + uuid.NewString(),
 		Platform:         service.PlatformAnthropic,
-		SubscriptionType: service.SubscriptionTypeSubscription,
+		SubscriptionType: service.SubscriptionTypeStandard,
 		DailyLimitUSD:    &limit,
 	})
 	apiKey := mustCreateApiKey(t, client, &service.APIKey{
@@ -192,7 +192,7 @@ func TestUsageBillingRepositoryApply_SubscriptionRemainderRequiresSufficientBala
 	group := mustCreateGroup(t, client, &service.Group{
 		Name:             "usage-billing-insufficient-group-" + uuid.NewString(),
 		Platform:         service.PlatformAnthropic,
-		SubscriptionType: service.SubscriptionTypeSubscription,
+		SubscriptionType: service.SubscriptionTypeStandard,
 		DailyLimitUSD:    &limit,
 	})
 	apiKey := mustCreateApiKey(t, client, &service.APIKey{
@@ -240,7 +240,7 @@ func TestUsageBillingRepositoryApply_SubscriptionExpiredWindowUsesFreshQuota(t *
 	group := mustCreateGroup(t, client, &service.Group{
 		Name:             "usage-billing-window-group-" + uuid.NewString(),
 		Platform:         service.PlatformAnthropic,
-		SubscriptionType: service.SubscriptionTypeSubscription,
+		SubscriptionType: service.SubscriptionTypeStandard,
 		DailyLimitUSD:    &limit,
 	})
 	apiKey := mustCreateApiKey(t, client, &service.APIKey{

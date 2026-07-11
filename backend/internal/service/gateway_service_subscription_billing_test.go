@@ -16,7 +16,7 @@ func TestBuildUsageBillingCommand_SubscriptionAppliesRateMultiplier(t *testing.T
 	groupID := int64(7)
 	subID := int64(42)
 	limit := 100.0
-	subscriptionGroup := &Group{ID: 99, SubscriptionType: SubscriptionTypeSubscription}
+	subscriptionGroup := &Group{ID: 99, SubscriptionType: SubscriptionTypeStandard}
 
 	tests := []struct {
 		name           string
@@ -104,7 +104,7 @@ func TestBuildUsageBillingCommand_SubscriptionIsUserWalletAcrossRequestGroups(t 
 		Subscription: &UserSubscription{
 			ID:            4,
 			GroupID:       apcGroupID,
-			Group:         &Group{ID: apcGroupID, Platform: PlatformAnthropic, SubscriptionType: SubscriptionTypeSubscription},
+			Group:         &Group{ID: apcGroupID, Platform: PlatformAnthropic, SubscriptionType: SubscriptionTypeStandard},
 			DailyLimitUSD: &limit,
 			DailyUsageUSD: 1,
 		},
@@ -137,7 +137,7 @@ func TestBuildUsageBillingCommand_SubscriptionRemainderFallsBackToBalance(t *tes
 		User:               &User{ID: 1},
 		APIKey:             &APIKey{ID: 2, GroupID: &groupID},
 		Account:            &Account{ID: 3},
-		Subscription:       &UserSubscription{ID: subID, GroupID: groupID, Group: &Group{ID: groupID, SubscriptionType: SubscriptionTypeSubscription}, DailyLimitUSD: &limit, DailyUsageUSD: 4.25},
+		Subscription:       &UserSubscription{ID: subID, GroupID: groupID, Group: &Group{ID: groupID, SubscriptionType: SubscriptionTypeStandard}, DailyLimitUSD: &limit, DailyUsageUSD: 4.25},
 		IsSubscriptionBill: true,
 	}
 

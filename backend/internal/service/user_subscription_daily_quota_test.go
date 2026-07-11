@@ -22,7 +22,7 @@ func (r *dailyResetTrackingUserSubRepo) ResetDailyUsage(context.Context, int64, 
 
 func TestAssignOrExtendSubscription_ExpiredDailyCardStartsNewOneTimeQuota(t *testing.T) {
 	groupRepo := &subscriptionGroupRepoStub{
-		group: &Group{ID: 1, SubscriptionType: SubscriptionTypeSubscription},
+		group: &Group{ID: 1, SubscriptionType: SubscriptionTypeStandard},
 	}
 	subRepo := newSubscriptionUserSubRepoStub()
 	oldStart := time.Now().AddDate(0, 0, -3)
@@ -165,7 +165,7 @@ func TestValidateAndCheckLimits_DailyCardDoesNotAllowSecondQuotaAfterMidnight(t 
 		DailyUsageUSD:    dailyLimit + 0.01,
 	}
 	group := &Group{
-		SubscriptionType: SubscriptionTypeSubscription,
+		SubscriptionType: SubscriptionTypeStandard,
 		DailyLimitUSD:    &dailyLimit,
 	}
 	svc := NewSubscriptionService(groupRepoNoop{}, userSubRepoNoop{}, nil, nil, nil)

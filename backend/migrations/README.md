@@ -141,6 +141,22 @@ touch migrations/018_your_new_change.sql
    - Verify data integrity
    - Test rollback
 
+## Billing Type Standardization
+
+Migration `174_standardize_group_billing_type.sql` removes subscription billing
+as a route-group classification. It normalizes every existing
+`groups.subscription_type` value to `standard` and adds a database constraint
+that rejects future `subscription` values.
+
+Subscription balances remain user-scoped wallets. At normal synchronous gateway
+settlement, a request first consumes the selected active wallet's remaining
+quota and charges only the remainder to `users.balance`. The request's route
+group and a wallet's legacy source group do not affect this allocation.
+
+Batch-image jobs keep their separate balance-hold and asynchronous settlement
+workflow. They are intentionally not covered by this migration because safely
+reserving and releasing subscription quota requires dedicated hold state.
+
 ## Example Migration
 
 ```sql

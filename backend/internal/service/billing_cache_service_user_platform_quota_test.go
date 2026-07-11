@@ -609,7 +609,7 @@ func TestCheckBillingEligibility_SubscriptionWalletWorksWithStandardRouteGroup(t
 
 	subGroup := &Group{
 		ID:               10,
-		SubscriptionType: SubscriptionTypeSubscription,
+		SubscriptionType: SubscriptionTypeStandard,
 		Status:           StatusActive,
 	}
 	routeGroup := &Group{

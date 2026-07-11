@@ -258,7 +258,7 @@ func TestGatewayServiceRecordUsage_PeakRateAffectsTokenModeImageOutputTokens(t *
 			Group: &Group{
 				ID:                 groupID,
 				RateMultiplier:     1.0,
-				SubscriptionType:   SubscriptionTypeSubscription,
+				SubscriptionType:   SubscriptionTypeStandard,
 				PeakRateEnabled:    true,
 				PeakStart:          "00:00",
 				PeakEnd:            "23:59",

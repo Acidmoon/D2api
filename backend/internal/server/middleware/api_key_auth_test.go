@@ -28,7 +28,7 @@ func TestSimpleModeBypassesQuotaCheck(t *testing.T) {
 		Name:             "sub",
 		Status:           service.StatusActive,
 		Hydrated:         true,
-		SubscriptionType: service.SubscriptionTypeSubscription,
+		SubscriptionType: service.SubscriptionTypeStandard,
 		DailyLimitUSD:    &limit,
 	}
 	user := &service.User{
@@ -318,7 +318,7 @@ func TestAPIKeyAuthKeepsSelectedGroupWhenBillingSubscriptionLimitExceeded(t *tes
 		Status:           service.StatusActive,
 		Platform:         service.PlatformAnthropic,
 		Hydrated:         true,
-		SubscriptionType: service.SubscriptionTypeSubscription,
+		SubscriptionType: service.SubscriptionTypeStandard,
 		DailyLimitUSD:    &limit,
 	}
 	secondaryGroup := &service.Group{
@@ -327,7 +327,7 @@ func TestAPIKeyAuthKeepsSelectedGroupWhenBillingSubscriptionLimitExceeded(t *tes
 		Status:           service.StatusActive,
 		Platform:         service.PlatformAnthropic,
 		Hydrated:         true,
-		SubscriptionType: service.SubscriptionTypeSubscription,
+		SubscriptionType: service.SubscriptionTypeStandard,
 		DailyLimitUSD:    &limit,
 	}
 	user := &service.User{

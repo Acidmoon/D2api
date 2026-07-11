@@ -65,8 +65,6 @@ const props = withDefaults(defineProps<Props>(), {
 
 const { t } = useI18n()
 
-const isSubscription = computed(() => props.subscriptionType === 'subscription')
-
 // 是否有专属倍率（且与默认倍率不同）
 const hasCustomRate = computed(() => {
   return (
@@ -102,26 +100,12 @@ const peakRateTitle = computed(() => {
 // 是否显示右侧标签
 const showLabel = computed(() => {
   if (!props.showRate) return false
-  // 订阅类型：显示天数或"订阅"
-  if (isSubscription.value) return true
-  // 标准类型：显示倍率（包括专属倍率）
   return props.rateMultiplier !== undefined || hasCustomRate.value
 })
 
 // Label text
 const labelText = computed(() => {
   const rateLabel = props.rateMultiplier !== undefined ? `${props.rateMultiplier}x` : ''
-  if (isSubscription.value && !props.alwaysShowRate) {
-    // 如果有剩余天数，显示天数
-    if (props.daysRemaining !== null && props.daysRemaining !== undefined) {
-      if (props.daysRemaining <= 0) {
-        return t('admin.users.expired')
-      }
-      return t('admin.users.daysRemaining', { days: props.daysRemaining })
-    }
-    // 否则显示"订阅"
-    return t('groups.subscription')
-  }
   return rateLabel
 })
 
@@ -129,30 +113,15 @@ const labelText = computed(() => {
 const labelClass = computed(() => {
   const base = 'group-badge-label px-1.5 py-0.5 text-[10px] font-semibold'
 
-  if (!isSubscription.value) {
-    return `${base} group-badge-label-muted`
-  }
-
-  // 订阅类型：根据剩余天数显示不同颜色
-  if (props.daysRemaining !== null && props.daysRemaining !== undefined) {
-    if (props.daysRemaining <= 0 || props.daysRemaining <= 3) {
-      return `${base} group-badge-label-danger`
-    }
-    if (props.daysRemaining <= 7) {
-      return `${base} group-badge-label-warning`
-    }
-  }
-
-  return `${base} group-badge-label-primary`
+  return `${base} group-badge-label-muted`
 })
 
 const peakRateClass = computed(() => {
   return 'px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
 })
 
-// Badge color based on platform and subscription type
 const badgeClass = computed(() => {
-  return isSubscription.value ? 'group-badge-subscription' : 'group-badge-standard'
+  return 'group-badge-standard'
 })
 </script>
 
@@ -163,12 +132,6 @@ const badgeClass = computed(() => {
   border-radius: var(--nm-radius-sm);
   background: var(--nm-surface);
   color: var(--nm-ink-muted);
-}
-
-.group-badge-subscription {
-  border-color: var(--nm-accent);
-  background: var(--nm-accent-soft);
-  color: var(--nm-accent-text);
 }
 
 .group-badge-standard {
@@ -184,10 +147,6 @@ const badgeClass = computed(() => {
   color: var(--nm-ink-muted);
 }
 
-.group-badge-label-primary {
-  background: var(--nm-surface);
-  color: var(--nm-accent-text);
-}
 
 .group-badge-label-warning {
   background: var(--nm-warning-soft);

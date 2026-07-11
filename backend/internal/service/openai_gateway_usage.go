@@ -195,8 +195,8 @@ func (s *OpenAIGatewayService) RecordUsage(ctx context.Context, input *OpenAIRec
 		cost = &CostBreakdown{BillingMode: string(BillingModeToken)}
 	}
 
-	// Determine billing type
-	isSubscriptionBilling := subscription != nil && apiKey.Group != nil && apiKey.Group.IsSubscriptionType()
+	// An active subscription wallet is user-scoped, independent of the route group.
+	isSubscriptionBilling := subscription != nil
 	billingType := BillingTypeBalance
 	if isSubscriptionBilling {
 		billingType = BillingTypeSubscription

@@ -1183,18 +1183,16 @@ func (s *adminServiceImpl) GenerateRedeemCodes(ctx context.Context, input *Gener
 		return nil, ErrRedeemCodeExpired
 	}
 
-	// 如果是订阅类型，验证必须有 GroupID
+	// Subscription codes may retain an optional source group for plan templates,
+	// but that group never controls the user's runtime billing mode.
 	if input.Type == RedeemTypeSubscription {
 		if input.GroupID == nil {
 			return nil, errors.New("group_id is required for subscription type")
 		}
-		// 验证分组存在且为订阅类型
-		group, err := s.groupRepo.GetByID(ctx, *input.GroupID)
+		// Validate the optional source group exists.
+		_, err := s.groupRepo.GetByID(ctx, *input.GroupID)
 		if err != nil {
 			return nil, fmt.Errorf("group not found: %w", err)
-		}
-		if !group.IsSubscriptionType() {
-			return nil, errors.New("group must be subscription type")
 		}
 	}
 

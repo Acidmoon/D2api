@@ -16,7 +16,7 @@ func init() {
 
 func newPeakGroup(enabled bool, start, end string, mult float64) *Group {
 	return &Group{
-		SubscriptionType:   "subscription",
+		SubscriptionType:   SubscriptionTypeStandard,
 		PeakRateEnabled:    enabled,
 		PeakStart:          start,
 		PeakEnd:            end,
@@ -105,19 +105,17 @@ func TestValidatePeakRateConfig(t *testing.T) {
 		mult    float64
 		wantErr bool
 	}{
-		{"disabled passes through", "subscription", false, "", "", 0, false},
-		{"subscription enabled valid", "subscription", true, "14:00", "18:00", 3.0, false},
-		{"standard enabled rejected", "standard", true, "14:00", "18:00", 3.0, true},
-		{"empty type treated as standard", "", true, "14:00", "18:00", 3.0, true},
-		{"standard disabled passes", "standard", false, "", "", 0, false},
-		{"enabled empty start", "subscription", true, "", "18:00", 1.0, true},
-		{"enabled empty end", "subscription", true, "14:00", "", 1.0, true},
-		{"enabled malformed start", "subscription", true, "99:99", "18:00", 1.0, true},
-		{"enabled malformed end", "subscription", true, "14:00", "25:00", 1.0, true},
-		{"enabled equal start==end", "subscription", true, "14:00", "14:00", 1.0, true},
-		{"enabled cross-day rejected", "subscription", true, "22:00", "02:00", 1.0, true},
-		{"enabled negative multiplier", "subscription", true, "14:00", "18:00", -0.5, true},
-		{"enabled zero multiplier allowed", "subscription", true, "14:00", "18:00", 0, false},
+		{"disabled passes through", "standard", false, "", "", 0, false},
+		{"standard enabled valid", "standard", true, "14:00", "18:00", 3.0, false},
+		{"empty type enabled valid", "", true, "14:00", "18:00", 3.0, false},
+		{"enabled empty start", "standard", true, "", "18:00", 1.0, true},
+		{"enabled empty end", "standard", true, "14:00", "", 1.0, true},
+		{"enabled malformed start", "standard", true, "99:99", "18:00", 1.0, true},
+		{"enabled malformed end", "standard", true, "14:00", "25:00", 1.0, true},
+		{"enabled equal start==end", "standard", true, "14:00", "14:00", 1.0, true},
+		{"enabled cross-day rejected", "standard", true, "22:00", "02:00", 1.0, true},
+		{"enabled negative multiplier", "standard", true, "14:00", "18:00", -0.5, true},
+		{"enabled zero multiplier allowed", "standard", true, "14:00", "18:00", 0, false},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -132,17 +130,11 @@ func TestValidatePeakRateConfig(t *testing.T) {
 	}
 }
 
-func TestPeakMultiplierAt_StandardTypeDegradesToOne(t *testing.T) {
+func TestPeakMultiplierAt_StandardGroupAppliesConfiguredPeakRate(t *testing.T) {
 	g := newPeakGroup(true, "14:00", "18:00", 3.0)
 	g.SubscriptionType = "standard"
-	if got := g.PeakMultiplierAt(at(15, 30)); got != 1.0 {
-		t.Fatalf("standard group must degrade to 1.0, got %v", got)
-	}
-
-	sub := newPeakGroup(true, "14:00", "18:00", 3.0)
-	sub.SubscriptionType = "subscription"
-	if got := sub.PeakMultiplierAt(at(15, 30)); got != 3.0 {
-		t.Fatalf("subscription group peak multiplier: got %v, want 3.0", got)
+	if got := g.PeakMultiplierAt(at(15, 30)); got != 3.0 {
+		t.Fatalf("standard group peak multiplier: got %v, want 3.0", got)
 	}
 }
 

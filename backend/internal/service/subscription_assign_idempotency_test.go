@@ -270,7 +270,7 @@ func (s *subscriptionUserSubRepoStub) Update(_ context.Context, sub *UserSubscri
 func TestAssignSubscriptionReuseWhenSemanticsMatch(t *testing.T) {
 	start := time.Date(2026, 2, 20, 10, 0, 0, 0, time.UTC)
 	groupRepo := &subscriptionGroupRepoStub{
-		group: &Group{ID: 1, SubscriptionType: SubscriptionTypeSubscription},
+		group: &Group{ID: 1, SubscriptionType: SubscriptionTypeStandard},
 	}
 	subRepo := newSubscriptionUserSubRepoStub()
 	subRepo.seed(&UserSubscription{
@@ -297,7 +297,7 @@ func TestAssignSubscriptionReuseWhenSemanticsMatch(t *testing.T) {
 func TestAssignSubscriptionConflictWhenSemanticsMismatch(t *testing.T) {
 	start := time.Date(2026, 2, 20, 10, 0, 0, 0, time.UTC)
 	groupRepo := &subscriptionGroupRepoStub{
-		group: &Group{ID: 1, SubscriptionType: SubscriptionTypeSubscription},
+		group: &Group{ID: 1, SubscriptionType: SubscriptionTypeStandard},
 	}
 	subRepo := newSubscriptionUserSubRepoStub()
 	subRepo.seed(&UserSubscription{
@@ -324,7 +324,7 @@ func TestAssignSubscriptionConflictWhenSemanticsMismatch(t *testing.T) {
 func TestBulkAssignSubscriptionCreatedReusedAndConflict(t *testing.T) {
 	start := time.Date(2026, 2, 20, 10, 0, 0, 0, time.UTC)
 	groupRepo := &subscriptionGroupRepoStub{
-		group: &Group{ID: 1, SubscriptionType: SubscriptionTypeSubscription},
+		group: &Group{ID: 1, SubscriptionType: SubscriptionTypeStandard},
 	}
 	subRepo := newSubscriptionUserSubRepoStub()
 	// user 1: 语义一致，可 reused
@@ -367,7 +367,7 @@ func TestBulkAssignSubscriptionCreatedReusedAndConflict(t *testing.T) {
 
 func TestAssignSubscriptionKeepsWorkingWhenIdempotencyStoreUnavailable(t *testing.T) {
 	groupRepo := &subscriptionGroupRepoStub{
-		group: &Group{ID: 1, SubscriptionType: SubscriptionTypeSubscription},
+		group: &Group{ID: 1, SubscriptionType: SubscriptionTypeStandard},
 	}
 	subRepo := newSubscriptionUserSubRepoStub()
 	SetDefaultIdempotencyCoordinator(NewIdempotencyCoordinator(failingIdempotencyRepo{}, DefaultIdempotencyConfig()))
@@ -432,20 +432,20 @@ func TestDetectAssignSemanticConflictCases(t *testing.T) {
 	require.Equal(t, "notes_mismatch", reason)
 }
 
-func TestAssignSubscriptionGroupTypeValidation(t *testing.T) {
+func TestAssignSubscriptionAcceptsStandardSourceGroup(t *testing.T) {
 	groupRepo := &subscriptionGroupRepoStub{
 		group: &Group{ID: 1, SubscriptionType: SubscriptionTypeStandard},
 	}
 	subRepo := newSubscriptionUserSubRepoStub()
 	svc := NewSubscriptionService(groupRepo, subRepo, nil, nil, nil)
 
-	_, err := svc.AssignSubscription(context.Background(), &AssignSubscriptionInput{
+	sub, err := svc.AssignSubscription(context.Background(), &AssignSubscriptionInput{
 		UserID:       1,
 		GroupID:      1,
 		ValidityDays: 30,
 	})
-	require.Error(t, err)
-	require.Equal(t, infraerrors.Code(ErrGroupNotSubscriptionType), infraerrors.Code(err))
+	require.NoError(t, err)
+	require.NotNil(t, sub)
 }
 
 func strconvFormatInt(v int64) string {

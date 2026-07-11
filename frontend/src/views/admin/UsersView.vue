@@ -1046,7 +1046,7 @@ const getUserGroups = (user: AdminUser) => {
   const exclusive: AdminGroup[] = []
   const publicGroups: AdminGroup[] = []
   for (const g of allGroups.value) {
-    if (g.status !== 'active' || g.subscription_type !== 'standard') continue
+    if (g.status !== 'active') continue
     if (g.is_exclusive) {
       if (user.allowed_groups?.includes(g.id)) {
         exclusive.push(g)
@@ -1064,20 +1064,19 @@ const groupFilterOptions = computed(() => {
     { value: '', label: t('admin.users.allAuthorizedGroups') }
   ]
   for (const g of allGroups.value) {
-    if (g.status !== 'active' || !g.is_exclusive || g.subscription_type !== 'standard') continue
+    if (g.status !== 'active' || !g.is_exclusive) continue
     options.push({ value: g.name, label: g.name })
   }
   return options
 })
 
-// API Key group filter options: "All" + groups partitioned by type (value = group id).
+// API Key group filter options: "All" + groups partitioned by access type (value = group id).
 // Uses allGroupsForApiKeyFilter which includes disabled groups.
 const apiKeyGroupFilterOptions = computed(() =>
   buildApiKeyGroupFilterOptions(allGroupsForApiKeyFilter.value, {
     all: t('admin.users.allApiKeyGroups'),
     exclusive: t('admin.users.apiKeyGroupExclusive'),
     public: t('admin.users.apiKeyGroupPublic'),
-    subscription: t('admin.users.apiKeyGroupSubscription'),
     disabled: t('admin.users.apiKeyGroupDisabled'),
   }) as SelectOption[]
 )
