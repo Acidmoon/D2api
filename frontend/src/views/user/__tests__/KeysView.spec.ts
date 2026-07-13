@@ -284,6 +284,7 @@ describe('user KeysView column settings', () => {
     expect(visibleColumnKeys(wrapper)).toEqual([
       'name',
       'key',
+      'primary_group',
       'group',
       'current_concurrency',
       'usage',
@@ -306,9 +307,9 @@ describe('user KeysView column settings', () => {
 
     expect(visibleColumnKeys(wrapper)).toContain('rate_limit')
     expect(localStorage.getItem('api-key-hidden-columns')).toBe(
-      JSON.stringify(['primary_group', 'last_used_at', 'last_used_ip'])
+      JSON.stringify(['last_used_at', 'last_used_ip'])
     )
-    expect(localStorage.getItem('api-key-column-settings-version')).toBe('2')
+    expect(localStorage.getItem('api-key-column-settings-version')).toBe('3')
   })
 
   it('shows the last used IP column when toggled', async () => {
@@ -338,6 +339,7 @@ describe('user KeysView column settings', () => {
     expect(visibleColumnKeys(wrapper)).toEqual([
       'name',
       'key',
+      'primary_group',
       'current_concurrency',
       'usage',
       'rate_limit',
@@ -347,9 +349,21 @@ describe('user KeysView column settings', () => {
       'actions',
     ])
     expect(localStorage.getItem('api-key-hidden-columns')).toBe(
-      JSON.stringify(['group', 'created_at', 'primary_group', 'last_used_ip'])
+      JSON.stringify(['group', 'created_at', 'last_used_ip'])
     )
-    expect(localStorage.getItem('api-key-column-settings-version')).toBe('2')
+    expect(localStorage.getItem('api-key-column-settings-version')).toBe('3')
+  })
+
+  it('restores the primary group column hidden by version 2 migration', async () => {
+    localStorage.setItem('api-key-hidden-columns', JSON.stringify(['primary_group', 'last_used_ip']))
+    localStorage.setItem('api-key-column-settings-version', '2')
+
+    const wrapper = await mountView()
+
+    expect(visibleColumnKeys(wrapper)).toContain('primary_group')
+    expect(visibleColumnKeys(wrapper)).not.toContain('last_used_ip')
+    expect(localStorage.getItem('api-key-hidden-columns')).toBe(JSON.stringify(['last_used_ip']))
+    expect(localStorage.getItem('api-key-column-settings-version')).toBe('3')
   })
 
   it('does not include always-visible columns in the toggleable menu', async () => {

@@ -1149,12 +1149,17 @@ const allColumns = computed<Column[]>(() => [
 ])
 
 const ALWAYS_VISIBLE_COLUMNS = new Set(['name', 'actions'])
-const DEFAULT_HIDDEN_COLUMNS = ['primary_group', 'rate_limit', 'last_used_at', 'last_used_ip']
+const DEFAULT_HIDDEN_COLUMNS = ['rate_limit', 'last_used_at', 'last_used_ip']
 const HIDDEN_COLUMNS_KEY = 'api-key-hidden-columns'
 const COLUMN_SETTINGS_VERSION_KEY = 'api-key-column-settings-version'
-const COLUMN_SETTINGS_VERSION = 2
+const COLUMN_SETTINGS_VERSION = 3
 const VERSION_NEW_HIDDEN_COLUMNS: Record<number, string[]> = {
   2: ['primary_group', 'last_used_ip']
+}
+const VERSION_NEW_VISIBLE_COLUMNS: Record<number, string[]> = {
+  // Version 2 accidentally hid the primary group for every user. Restore it
+  // once during migration while preserving all other column preferences.
+  3: ['primary_group']
 }
 
 const toggleableColumns = computed(() =>
@@ -1193,6 +1198,9 @@ const loadSavedColumns = () => {
             if (validColumnKeys.has(key) && !ALWAYS_VISIBLE_COLUMNS.has(key)) {
               hiddenColumns.add(key)
             }
+          }
+          for (const key of VERSION_NEW_VISIBLE_COLUMNS[v] ?? []) {
+            hiddenColumns.delete(key)
           }
         }
         saveColumnsToStorage()
