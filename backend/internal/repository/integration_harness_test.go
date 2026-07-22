@@ -205,6 +205,18 @@ func testEntClient(t *testing.T) *dbent.Client {
 	return integrationEntClient
 }
 
+// cleanSubscriptionTables 清空订阅相关表（subscription_balances 与 legacy
+// user_subscriptions）。不回滚的集成测试套件应在每个用例前调用，
+// 使 List/计数类全局断言不受其他用例及其他套件已提交数据的影响。
+func cleanSubscriptionTables(t *testing.T) {
+	t.Helper()
+	ctx := context.Background()
+	_, err := integrationDB.ExecContext(ctx, `DELETE FROM subscription_balances`)
+	require.NoError(t, err, "clean subscription_balances")
+	_, err = integrationDB.ExecContext(ctx, `DELETE FROM user_subscriptions`)
+	require.NoError(t, err, "clean user_subscriptions")
+}
+
 // testEntTx 返回一个 ent 事务，用于需要事务隔离的测试。
 // 测试结束后会自动回滚，不会影响数据库状态。
 func testEntTx(t *testing.T) *dbent.Tx {

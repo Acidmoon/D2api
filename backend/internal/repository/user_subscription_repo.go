@@ -22,7 +22,9 @@ type subscriptionBalanceExecutor interface {
 
 type userSubscriptionRepository struct {
 	client *dbent.Client
-	db     *sql.DB
+	// db 是对 subscription_balances 执行原生 SQL 的 executor。
+	// 生产环境是 *sql.DB；测试可注入 *sql.Tx 以便与 ent 事务共享同一条事务。
+	db subscriptionBalanceExecutor
 }
 
 func NewUserSubscriptionRepository(client *dbent.Client, dbOpt ...*sql.DB) service.UserSubscriptionRepository {
@@ -35,7 +37,12 @@ func NewUserSubscriptionRepository(client *dbent.Client, dbOpt ...*sql.DB) servi
 			db = drv.DB()
 		}
 	}
-	return &userSubscriptionRepository{client: client, db: db}
+	// 注意：不能把类型化 nil *sql.DB 直接装入接口，否则 nil 判断会失效。
+	var exec subscriptionBalanceExecutor
+	if db != nil {
+		exec = db
+	}
+	return &userSubscriptionRepository{client: client, db: exec}
 }
 
 func (r *userSubscriptionRepository) subscriptionBalanceExec() subscriptionBalanceExecutor {
@@ -642,10 +649,12 @@ func (r *userSubscriptionRepository) listSubscriptionBalances(ctx context.Contex
 			sb.daily_usage_usd, sb.weekly_usage_usd, sb.monthly_usage_usd,
 			sb.assigned_by, sb.assigned_at, sb.notes, sb.created_at, sb.updated_at, sb.deleted_at,
 			u.email, u.username,
-			g.name, g.platform, g.rate_multiplier, g.subscription_type
+			g.name, g.platform, g.rate_multiplier, g.subscription_type,
+			au.email, au.username
 		FROM subscription_balances sb
 		LEFT JOIN users u ON u.id = sb.user_id
 		LEFT JOIN groups g ON g.id = sb.source_group_id
+		LEFT JOIN users au ON au.id = sb.assigned_by
 		` + where + " " + order
 	if limit > 0 {
 		args = append(args, limit)
@@ -692,6 +701,8 @@ func scanSubscriptionBalance(rows *sql.Rows) (*service.UserSubscription, error) 
 		groupRate             sql.NullFloat64
 		groupSubscriptionType sql.NullString
 		deletedAt             sql.NullTime
+		assignerEmail         sql.NullString
+		assignerName          sql.NullString
 	)
 	if err := rows.Scan(
 		&sub.ID, &sub.UserID, &sub.GroupID, &sourceGroupID, &planName,
@@ -702,6 +713,7 @@ func scanSubscriptionBalance(rows *sql.Rows) (*service.UserSubscription, error) 
 		&assignedBy, &sub.AssignedAt, &notes, &sub.CreatedAt, &sub.UpdatedAt, &deletedAt,
 		&userEmail, &userName,
 		&groupName, &groupPlatform, &groupRate, &groupSubscriptionType,
+		&assignerEmail, &assignerName,
 	); err != nil {
 		return nil, err
 	}
@@ -714,6 +726,9 @@ func scanSubscriptionBalance(rows *sql.Rows) (*service.UserSubscription, error) 
 	sub.WeeklyLimitUSD = subscriptionNullableFloat64Ptr(weeklyLimit)
 	sub.MonthlyLimitUSD = subscriptionNullableFloat64Ptr(monthlyLimit)
 	sub.AssignedBy = nullableInt64Ptr(assignedBy)
+	if sub.AssignedBy != nil && (assignerEmail.Valid || assignerName.Valid) {
+		sub.AssignedByUser = &service.User{ID: *sub.AssignedBy, Email: assignerEmail.String, Username: assignerName.String}
+	}
 	sub.Notes = derefStringFromNull(notes)
 	sub.DeletedAt = nullableTimePtr(deletedAt)
 	if userEmail.Valid || userName.Valid {

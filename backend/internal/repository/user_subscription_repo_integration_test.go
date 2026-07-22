@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"entgo.io/ent/dialect"
+	entsql "entgo.io/ent/dialect/sql"
 	dbent "github.com/Wei-Shaw/sub2api/ent"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/pagination"
 	"github.com/Wei-Shaw/sub2api/internal/service"
@@ -23,9 +25,13 @@ type UserSubscriptionRepoSuite struct {
 
 func (s *UserSubscriptionRepoSuite) SetupTest() {
 	s.ctx = context.Background()
-	tx := testEntTx(s.T())
-	s.client = tx.Client()
-	s.repo = NewUserSubscriptionRepository(s.client).(*userSubscriptionRepository)
+	// 钱包仓储对 subscription_balances 执行原生 SQL，必须拿到真实 *sql.DB；
+	// 且 subscription_balances.user_id 的 FK 要求用户行对钱包连接可见，
+	// 因此本套件使用真实写入的 client（不回滚），并在每个用例前清空订阅相关表，
+	// 保证 List/计数类断言不受其他用例及其他套件已提交数据的影响。
+	s.client = testEntClient(s.T())
+	cleanSubscriptionTables(s.T())
+	s.repo = NewUserSubscriptionRepository(s.client, integrationDB).(*userSubscriptionRepository)
 }
 
 func TestUserSubscriptionRepoSuite(t *testing.T) {
@@ -60,25 +66,26 @@ func (s *UserSubscriptionRepoSuite) mustCreateGroup(name string) *service.Group 
 	return groupEntityToService(g)
 }
 
-func (s *UserSubscriptionRepoSuite) mustCreateSubscription(userID, groupID int64, mutate func(*dbent.UserSubscriptionCreate)) *dbent.UserSubscription {
+func (s *UserSubscriptionRepoSuite) mustCreateSubscription(userID, groupID int64, mutate func(*service.UserSubscription)) *service.UserSubscription {
 	s.T().Helper()
 
 	now := time.Now()
-	create := s.client.UserSubscription.Create().
-		SetUserID(userID).
-		SetGroupID(groupID).
-		SetStartsAt(now.Add(-1 * time.Hour)).
-		SetExpiresAt(now.Add(24 * time.Hour)).
-		SetStatus(service.SubscriptionStatusActive).
-		SetAssignedAt(now).
-		SetNotes("")
-
-	if mutate != nil {
-		mutate(create)
+	sub := &service.UserSubscription{
+		UserID:     userID,
+		GroupID:    groupID,
+		StartsAt:   now.Add(-1 * time.Hour),
+		ExpiresAt:  now.Add(24 * time.Hour),
+		Status:     service.SubscriptionStatusActive,
+		AssignedAt: now,
 	}
 
-	sub, err := create.Save(s.ctx)
-	s.Require().NoError(err, "create user subscription")
+	if mutate != nil {
+		mutate(sub)
+	}
+
+	// 通过钱包仓储写入，确保 subscription_balances 与 legacy user_subscriptions
+	// 双写且共享同一 id（直接 ent 写 legacy 表对钱包查询不可见）。
+	s.Require().NoError(s.repo.Create(s.ctx, sub), "create user subscription")
 	return sub
 }
 
@@ -110,8 +117,8 @@ func (s *UserSubscriptionRepoSuite) TestGetByID_WithPreloads() {
 	group := s.mustCreateGroup("g-preload")
 	admin := s.mustCreateUser("admin@test.com", service.RoleAdmin)
 
-	sub := s.mustCreateSubscription(user.ID, group.ID, func(c *dbent.UserSubscriptionCreate) {
-		c.SetAssignedBy(admin.ID)
+	sub := s.mustCreateSubscription(user.ID, group.ID, func(c *service.UserSubscription) {
+		c.AssignedBy = &admin.ID
 	})
 
 	got, err := s.repo.GetByID(s.ctx, sub.ID)
@@ -160,8 +167,8 @@ func (s *UserSubscriptionRepoSuite) TestDelete() {
 func (s *UserSubscriptionRepoSuite) TestGetByIDIncludeDeleted_PreservesPersistedStatus() {
 	user := s.mustCreateUser("include-deleted@test.com", service.RoleUser)
 	group := s.mustCreateGroup("g-include-deleted")
-	sub := s.mustCreateSubscription(user.ID, group.ID, func(c *dbent.UserSubscriptionCreate) {
-		c.SetStatus(service.SubscriptionStatusActive)
+	sub := s.mustCreateSubscription(user.ID, group.ID, func(c *service.UserSubscription) {
+		c.Status = service.SubscriptionStatusActive
 	})
 
 	s.Require().NoError(s.repo.Delete(s.ctx, sub.ID), "Delete")
@@ -218,8 +225,8 @@ func (s *UserSubscriptionRepoSuite) TestGetActiveByUserIDAndGroupID() {
 	user := s.mustCreateUser("active@test.com", service.RoleUser)
 	group := s.mustCreateGroup("g-active")
 
-	active := s.mustCreateSubscription(user.ID, group.ID, func(c *dbent.UserSubscriptionCreate) {
-		c.SetExpiresAt(time.Now().Add(2 * time.Hour))
+	active := s.mustCreateSubscription(user.ID, group.ID, func(c *service.UserSubscription) {
+		c.ExpiresAt = time.Now().Add(2 * time.Hour)
 	})
 
 	got, err := s.repo.GetActiveByUserIDAndGroupID(s.ctx, user.ID, group.ID)
@@ -231,8 +238,8 @@ func (s *UserSubscriptionRepoSuite) TestGetActiveByUserIDAndGroupID_ExpiredIgnor
 	user := s.mustCreateUser("expired@test.com", service.RoleUser)
 	group := s.mustCreateGroup("g-expired")
 
-	s.mustCreateSubscription(user.ID, group.ID, func(c *dbent.UserSubscriptionCreate) {
-		c.SetExpiresAt(time.Now().Add(-2 * time.Hour))
+	s.mustCreateSubscription(user.ID, group.ID, func(c *service.UserSubscription) {
+		c.ExpiresAt = time.Now().Add(-2 * time.Hour)
 	})
 
 	_, err := s.repo.GetActiveByUserIDAndGroupID(s.ctx, user.ID, group.ID)
@@ -247,9 +254,9 @@ func (s *UserSubscriptionRepoSuite) TestListByUserID() {
 	g2 := s.mustCreateGroup("g-list2")
 
 	s.mustCreateSubscription(user.ID, g1.ID, nil)
-	s.mustCreateSubscription(user.ID, g2.ID, func(c *dbent.UserSubscriptionCreate) {
-		c.SetStatus(service.SubscriptionStatusExpired)
-		c.SetExpiresAt(time.Now().Add(-24 * time.Hour))
+	s.mustCreateSubscription(user.ID, g2.ID, func(c *service.UserSubscription) {
+		c.Status = service.SubscriptionStatusExpired
+		c.ExpiresAt = time.Now().Add(-24 * time.Hour)
 	})
 
 	subs, err := s.repo.ListByUserID(s.ctx, user.ID)
@@ -265,12 +272,12 @@ func (s *UserSubscriptionRepoSuite) TestListActiveByUserID() {
 	g1 := s.mustCreateGroup("g-act1")
 	g2 := s.mustCreateGroup("g-act2")
 
-	s.mustCreateSubscription(user.ID, g1.ID, func(c *dbent.UserSubscriptionCreate) {
-		c.SetExpiresAt(time.Now().Add(24 * time.Hour))
+	s.mustCreateSubscription(user.ID, g1.ID, func(c *service.UserSubscription) {
+		c.ExpiresAt = time.Now().Add(24 * time.Hour)
 	})
-	s.mustCreateSubscription(user.ID, g2.ID, func(c *dbent.UserSubscriptionCreate) {
-		c.SetStatus(service.SubscriptionStatusExpired)
-		c.SetExpiresAt(time.Now().Add(-24 * time.Hour))
+	s.mustCreateSubscription(user.ID, g2.ID, func(c *service.UserSubscription) {
+		c.Status = service.SubscriptionStatusExpired
+		c.ExpiresAt = time.Now().Add(-24 * time.Hour)
 	})
 
 	subs, err := s.repo.ListActiveByUserID(s.ctx, user.ID)
@@ -346,13 +353,13 @@ func (s *UserSubscriptionRepoSuite) TestList_FilterByStatus() {
 	group1 := s.mustCreateGroup("g-stat-1")
 	group2 := s.mustCreateGroup("g-stat-2")
 
-	s.mustCreateSubscription(user1.ID, group1.ID, func(c *dbent.UserSubscriptionCreate) {
-		c.SetStatus(service.SubscriptionStatusActive)
-		c.SetExpiresAt(time.Now().Add(24 * time.Hour))
+	s.mustCreateSubscription(user1.ID, group1.ID, func(c *service.UserSubscription) {
+		c.Status = service.SubscriptionStatusActive
+		c.ExpiresAt = time.Now().Add(24 * time.Hour)
 	})
-	s.mustCreateSubscription(user2.ID, group2.ID, func(c *dbent.UserSubscriptionCreate) {
-		c.SetStatus(service.SubscriptionStatusExpired)
-		c.SetExpiresAt(time.Now().Add(-24 * time.Hour))
+	s.mustCreateSubscription(user2.ID, group2.ID, func(c *service.UserSubscription) {
+		c.Status = service.SubscriptionStatusExpired
+		c.ExpiresAt = time.Now().Add(-24 * time.Hour)
 	})
 
 	subs, _, err := s.repo.List(s.ctx, pagination.PaginationParams{Page: 1, PageSize: 10}, nil, nil, service.SubscriptionStatusExpired, "", "", "")
@@ -370,9 +377,9 @@ func (s *UserSubscriptionRepoSuite) TestList_IncludesRevokedWhenStatusEmpty() {
 	group3 := s.mustCreateGroup("g-allstatus-3")
 
 	s.mustCreateSubscription(user1.ID, group1.ID, nil)
-	s.mustCreateSubscription(user2.ID, group2.ID, func(c *dbent.UserSubscriptionCreate) {
-		c.SetStatus(service.SubscriptionStatusExpired)
-		c.SetExpiresAt(time.Now().Add(-24 * time.Hour))
+	s.mustCreateSubscription(user2.ID, group2.ID, func(c *service.UserSubscription) {
+		c.Status = service.SubscriptionStatusExpired
+		c.ExpiresAt = time.Now().Add(-24 * time.Hour)
 	})
 	revoked := s.mustCreateSubscription(user3.ID, group3.ID, nil)
 	s.Require().NoError(s.repo.Delete(s.ctx, revoked.ID))
@@ -466,9 +473,9 @@ func (s *UserSubscriptionRepoSuite) TestActivateWindows() {
 func (s *UserSubscriptionRepoSuite) TestResetDailyUsage() {
 	user := s.mustCreateUser("resetd@test.com", service.RoleUser)
 	group := s.mustCreateGroup("g-resetd")
-	sub := s.mustCreateSubscription(user.ID, group.ID, func(c *dbent.UserSubscriptionCreate) {
-		c.SetDailyUsageUsd(10.0)
-		c.SetWeeklyUsageUsd(20.0)
+	sub := s.mustCreateSubscription(user.ID, group.ID, func(c *service.UserSubscription) {
+		c.DailyUsageUSD = 10.0
+		c.WeeklyUsageUSD = 20.0
 	})
 
 	resetAt := time.Date(2025, 1, 2, 0, 0, 0, 0, time.UTC)
@@ -487,9 +494,9 @@ func (s *UserSubscriptionRepoSuite) TestResetDailyUsage_StaleResetDoesNotClearNe
 	user := s.mustCreateUser("resetd-cas@test.com", service.RoleUser)
 	group := s.mustCreateGroup("g-resetd-cas")
 	oldWindowStart := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
-	sub := s.mustCreateSubscription(user.ID, group.ID, func(c *dbent.UserSubscriptionCreate) {
-		c.SetDailyWindowStart(oldWindowStart)
-		c.SetDailyUsageUsd(10)
+	sub := s.mustCreateSubscription(user.ID, group.ID, func(c *service.UserSubscription) {
+		c.DailyWindowStart = &oldWindowStart
+		c.DailyUsageUSD = 10
 	})
 
 	newWindowStart := oldWindowStart.Add(24 * time.Hour)
@@ -508,9 +515,9 @@ func (s *UserSubscriptionRepoSuite) TestResetUsageWindows_ClearsUsageAfterAutoma
 	user := s.mustCreateUser("admin-reset-current@test.com", service.RoleUser)
 	group := s.mustCreateGroup("g-admin-reset-current")
 	oldWindowStart := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
-	sub := s.mustCreateSubscription(user.ID, group.ID, func(c *dbent.UserSubscriptionCreate) {
-		c.SetDailyWindowStart(oldWindowStart)
-		c.SetDailyUsageUsd(10)
+	sub := s.mustCreateSubscription(user.ID, group.ID, func(c *service.UserSubscription) {
+		c.DailyWindowStart = &oldWindowStart
+		c.DailyUsageUSD = 10
 	})
 
 	newWindowStart := oldWindowStart.Add(24 * time.Hour)
@@ -527,9 +534,9 @@ func (s *UserSubscriptionRepoSuite) TestResetUsageWindows_ClearsUsageAfterAutoma
 func (s *UserSubscriptionRepoSuite) TestResetWeeklyUsage() {
 	user := s.mustCreateUser("resetw@test.com", service.RoleUser)
 	group := s.mustCreateGroup("g-resetw")
-	sub := s.mustCreateSubscription(user.ID, group.ID, func(c *dbent.UserSubscriptionCreate) {
-		c.SetWeeklyUsageUsd(15.0)
-		c.SetMonthlyUsageUsd(30.0)
+	sub := s.mustCreateSubscription(user.ID, group.ID, func(c *service.UserSubscription) {
+		c.WeeklyUsageUSD = 15.0
+		c.MonthlyUsageUSD = 30.0
 	})
 
 	resetAt := time.Date(2025, 1, 6, 0, 0, 0, 0, time.UTC)
@@ -547,8 +554,8 @@ func (s *UserSubscriptionRepoSuite) TestResetWeeklyUsage() {
 func (s *UserSubscriptionRepoSuite) TestResetMonthlyUsage() {
 	user := s.mustCreateUser("resetm@test.com", service.RoleUser)
 	group := s.mustCreateGroup("g-resetm")
-	sub := s.mustCreateSubscription(user.ID, group.ID, func(c *dbent.UserSubscriptionCreate) {
-		c.SetMonthlyUsageUsd(25.0)
+	sub := s.mustCreateSubscription(user.ID, group.ID, func(c *service.UserSubscription) {
+		c.MonthlyUsageUSD = 25.0
 	})
 
 	resetAt := time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC)
@@ -611,11 +618,11 @@ func (s *UserSubscriptionRepoSuite) TestListExpired() {
 	groupActive := s.mustCreateGroup("g-listexp-active")
 	groupExpired := s.mustCreateGroup("g-listexp-expired")
 
-	s.mustCreateSubscription(user.ID, groupActive.ID, func(c *dbent.UserSubscriptionCreate) {
-		c.SetExpiresAt(time.Now().Add(24 * time.Hour))
+	s.mustCreateSubscription(user.ID, groupActive.ID, func(c *service.UserSubscription) {
+		c.ExpiresAt = time.Now().Add(24 * time.Hour)
 	})
-	s.mustCreateSubscription(user.ID, groupExpired.ID, func(c *dbent.UserSubscriptionCreate) {
-		c.SetExpiresAt(time.Now().Add(-24 * time.Hour))
+	s.mustCreateSubscription(user.ID, groupExpired.ID, func(c *service.UserSubscription) {
+		c.ExpiresAt = time.Now().Add(-24 * time.Hour)
 	})
 
 	expired, err := s.repo.ListExpired(s.ctx)
@@ -628,11 +635,11 @@ func (s *UserSubscriptionRepoSuite) TestBatchUpdateExpiredStatus() {
 	groupFuture := s.mustCreateGroup("g-batch-future")
 	groupPast := s.mustCreateGroup("g-batch-past")
 
-	active := s.mustCreateSubscription(user.ID, groupFuture.ID, func(c *dbent.UserSubscriptionCreate) {
-		c.SetExpiresAt(time.Now().Add(24 * time.Hour))
+	active := s.mustCreateSubscription(user.ID, groupFuture.ID, func(c *service.UserSubscription) {
+		c.ExpiresAt = time.Now().Add(24 * time.Hour)
 	})
-	expiredActive := s.mustCreateSubscription(user.ID, groupPast.ID, func(c *dbent.UserSubscriptionCreate) {
-		c.SetExpiresAt(time.Now().Add(-24 * time.Hour))
+	expiredActive := s.mustCreateSubscription(user.ID, groupPast.ID, func(c *service.UserSubscription) {
+		c.ExpiresAt = time.Now().Add(-24 * time.Hour)
 	})
 
 	affected, err := s.repo.BatchUpdateExpiredStatus(s.ctx)
@@ -687,9 +694,9 @@ func (s *UserSubscriptionRepoSuite) TestCountByGroupID() {
 	group := s.mustCreateGroup("g-count")
 
 	s.mustCreateSubscription(user1.ID, group.ID, nil)
-	s.mustCreateSubscription(user2.ID, group.ID, func(c *dbent.UserSubscriptionCreate) {
-		c.SetStatus(service.SubscriptionStatusExpired)
-		c.SetExpiresAt(time.Now().Add(-24 * time.Hour))
+	s.mustCreateSubscription(user2.ID, group.ID, func(c *service.UserSubscription) {
+		c.Status = service.SubscriptionStatusExpired
+		c.ExpiresAt = time.Now().Add(-24 * time.Hour)
 	})
 
 	count, err := s.repo.CountByGroupID(s.ctx, group.ID)
@@ -702,11 +709,11 @@ func (s *UserSubscriptionRepoSuite) TestCountActiveByGroupID() {
 	user2 := s.mustCreateUser("cntact2@test.com", service.RoleUser)
 	group := s.mustCreateGroup("g-cntact")
 
-	s.mustCreateSubscription(user1.ID, group.ID, func(c *dbent.UserSubscriptionCreate) {
-		c.SetExpiresAt(time.Now().Add(24 * time.Hour))
+	s.mustCreateSubscription(user1.ID, group.ID, func(c *service.UserSubscription) {
+		c.ExpiresAt = time.Now().Add(24 * time.Hour)
 	})
-	s.mustCreateSubscription(user2.ID, group.ID, func(c *dbent.UserSubscriptionCreate) {
-		c.SetExpiresAt(time.Now().Add(-24 * time.Hour)) // expired by time
+	s.mustCreateSubscription(user2.ID, group.ID, func(c *service.UserSubscription) {
+		c.ExpiresAt = time.Now().Add(-24 * time.Hour) // expired by time
 	})
 
 	count, err := s.repo.CountActiveByGroupID(s.ctx, group.ID)
@@ -739,11 +746,11 @@ func (s *UserSubscriptionRepoSuite) TestActiveExpiredBoundaries_UsageAndReset_Ba
 	groupActive := s.mustCreateGroup("g-subr-active")
 	groupExpired := s.mustCreateGroup("g-subr-expired")
 
-	active := s.mustCreateSubscription(user.ID, groupActive.ID, func(c *dbent.UserSubscriptionCreate) {
-		c.SetExpiresAt(time.Now().Add(2 * time.Hour))
+	active := s.mustCreateSubscription(user.ID, groupActive.ID, func(c *service.UserSubscription) {
+		c.ExpiresAt = time.Now().Add(2 * time.Hour)
 	})
-	expiredActive := s.mustCreateSubscription(user.ID, groupExpired.ID, func(c *dbent.UserSubscriptionCreate) {
-		c.SetExpiresAt(time.Now().Add(-2 * time.Hour))
+	expiredActive := s.mustCreateSubscription(user.ID, groupExpired.ID, func(c *service.UserSubscription) {
+		c.ExpiresAt = time.Now().Add(-2 * time.Hour)
 	})
 
 	got, err := s.repo.GetActiveByUserIDAndGroupID(s.ctx, user.ID, groupActive.ID)
@@ -787,14 +794,17 @@ func (s *UserSubscriptionRepoSuite) TestIncrementUsage_SoftDeletedGroup() {
 	group := s.mustCreateGroup("g-softdeleted")
 	sub := s.mustCreateSubscription(user.ID, group.ID, nil)
 
-	// 软删除分组
+	// 软删除来源分组
 	_, err := s.client.Group.UpdateOneID(group.ID).SetDeletedAt(time.Now()).Save(s.ctx)
 	s.Require().NoError(err, "soft delete group")
 
-	// IncrementUsage 应该失败，因为分组已软删除
+	// 独立余额钱包不再 join groups（见迁移 154）：来源分组被软删除不影响钱包用量累加。
 	err = s.repo.IncrementUsage(s.ctx, sub.ID, 1.0)
-	s.Require().Error(err, "should fail for soft-deleted group")
-	s.Require().ErrorIs(err, service.ErrSubscriptionNotFound)
+	s.Require().NoError(err, "wallet usage should not depend on source group state")
+
+	got, err := s.repo.GetByID(s.ctx, sub.ID)
+	s.Require().NoError(err)
+	s.Require().InDelta(1.0, got.DailyUsageUSD, 1e-6)
 }
 
 func (s *UserSubscriptionRepoSuite) TestIncrementUsage_NotFound() {
@@ -851,30 +861,31 @@ func (s *UserSubscriptionRepoSuite) TestIncrementUsage_Concurrent() {
 }
 
 func (s *UserSubscriptionRepoSuite) TestTxContext_RollbackIsolation() {
-	baseClient := testEntClient(s.T())
-	tx, err := baseClient.Tx(context.Background())
-	s.Require().NoError(err, "begin tx")
-	defer func() {
-		if tx != nil {
-			_ = tx.Rollback()
-		}
-	}()
+	ctx := context.Background()
 
-	txCtx := dbent.NewTxContext(context.Background(), tx)
+	// 钱包仓储对 subscription_balances 执行原生 SQL，无法自动感知 ent 事务。
+	// 这里把 ent client 与仓储绑定到同一个 *sql.Tx，验证事务回滚后数据对外不可见。
+	sqlTx, err := integrationDB.BeginTx(ctx, nil)
+	s.Require().NoError(err, "begin tx")
+	defer func() { _ = sqlTx.Rollback() }()
+
+	drv := entsql.NewDriver(dialect.Postgres, entsql.Conn{ExecQuerier: sqlTx})
+	txClient := dbent.NewClient(dbent.Driver(drv))
+
 	suffix := fmt.Sprintf("%d", time.Now().UnixNano())
 
-	userEnt, err := tx.Client().User.Create().
+	userEnt, err := txClient.User.Create().
 		SetEmail("tx-user-" + suffix + "@example.com").
 		SetPasswordHash("test").
-		Save(txCtx)
+		Save(ctx)
 	s.Require().NoError(err, "create user in tx")
 
-	groupEnt, err := tx.Client().Group.Create().
+	groupEnt, err := txClient.Group.Create().
 		SetName("tx-group-" + suffix).
-		Save(txCtx)
+		Save(ctx)
 	s.Require().NoError(err, "create group in tx")
 
-	repo := NewUserSubscriptionRepository(baseClient)
+	repo := &userSubscriptionRepository{client: txClient, db: sqlTx}
 	sub := &service.UserSubscription{
 		UserID:     userEnt.ID,
 		GroupID:    groupEnt.ID,
@@ -883,12 +894,11 @@ func (s *UserSubscriptionRepoSuite) TestTxContext_RollbackIsolation() {
 		AssignedAt: time.Now(),
 		Notes:      "tx",
 	}
-	s.Require().NoError(repo.Create(txCtx, sub), "create subscription in tx")
-	s.Require().NoError(repo.UpdateNotes(txCtx, sub.ID, "tx-note"), "update subscription in tx")
+	s.Require().NoError(repo.Create(ctx, sub), "create subscription in tx")
+	s.Require().NoError(repo.UpdateNotes(ctx, sub.ID, "tx-note"), "update subscription in tx")
 
-	s.Require().NoError(tx.Rollback(), "rollback tx")
-	tx = nil
+	s.Require().NoError(sqlTx.Rollback(), "rollback tx")
 
-	_, err = repo.GetByID(context.Background(), sub.ID)
+	_, err = s.repo.GetByID(context.Background(), sub.ID)
 	s.Require().ErrorIs(err, service.ErrSubscriptionNotFound)
 }

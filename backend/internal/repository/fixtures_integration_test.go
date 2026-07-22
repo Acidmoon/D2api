@@ -383,41 +383,30 @@ func mustCreateSubscription(t *testing.T, client *dbent.Client, s *service.UserS
 	if s.AssignedAt.IsZero() {
 		s.AssignedAt = now
 	}
-	if s.CreatedAt.IsZero() {
-		s.CreatedAt = now
-	}
-	if s.UpdatedAt.IsZero() {
-		s.UpdatedAt = now
+
+	// 订阅的运行时 source of truth 是 subscription_balances（独立余额钱包），
+	// 因此必须通过钱包仓储写入（Create 会双写 legacy user_subscriptions，
+	// 且两侧共享同一 id），直接 ent 写 legacy 表会导致钱包查询不到记录。
+	repo := NewUserSubscriptionRepository(client, integrationDB)
+
+	// 钱包限额来自创建时的分组限额快照（与迁移 154 的回填逻辑一致）。
+	// 调用方未显式指定时从分组补齐，否则限额为 NULL 会被视为无限额度。
+	if s.GroupID > 0 && (s.DailyLimitUSD == nil || s.WeeklyLimitUSD == nil || s.MonthlyLimitUSD == nil) {
+		g, err := client.Group.Get(ctx, s.GroupID)
+		require.NoError(t, err, "load group for subscription limits")
+		if s.DailyLimitUSD == nil {
+			s.DailyLimitUSD = g.DailyLimitUsd
+		}
+		if s.WeeklyLimitUSD == nil {
+			s.WeeklyLimitUSD = g.WeeklyLimitUsd
+		}
+		if s.MonthlyLimitUSD == nil {
+			s.MonthlyLimitUSD = g.MonthlyLimitUsd
+		}
 	}
 
-	create := client.UserSubscription.Create().
-		SetUserID(s.UserID).
-		SetGroupID(s.GroupID).
-		SetStartsAt(s.StartsAt).
-		SetExpiresAt(s.ExpiresAt).
-		SetStatus(s.Status).
-		SetAssignedAt(s.AssignedAt).
-		SetNotes(s.Notes).
-		SetDailyUsageUsd(s.DailyUsageUSD).
-		SetWeeklyUsageUsd(s.WeeklyUsageUSD).
-		SetMonthlyUsageUsd(s.MonthlyUsageUSD)
-
-	if s.AssignedBy != nil {
-		create.SetAssignedBy(*s.AssignedBy)
-	}
-	if !s.CreatedAt.IsZero() {
-		create.SetCreatedAt(s.CreatedAt)
-	}
-	if !s.UpdatedAt.IsZero() {
-		create.SetUpdatedAt(s.UpdatedAt)
-	}
-
-	created, err := create.Save(ctx)
-	require.NoError(t, err, "create user subscription")
-
-	s.ID = created.ID
-	s.CreatedAt = created.CreatedAt
-	s.UpdatedAt = created.UpdatedAt
+	require.NoError(t, repo.Create(ctx, s), "create user subscription")
+	require.NotZero(t, s.ID, "expected subscription ID to be set")
 	return s
 }
 
