@@ -161,7 +161,10 @@ func TestSimpleModeBypassesQuotaCheck(t *testing.T) {
 		}
 	})
 
-	t.Run("standard_mode_revalidates_cas_loser_from_database", func(t *testing.T) {
+	t.Run("standard_mode_allows_balance_spill_when_wallet_daily_limit_exceeded", func(t *testing.T) {
+		// D2api 语义：钱包订阅用量超限不在鉴权阶段 429，请求允许溢出到用户
+		// 普通余额，由 billing 仓库在计费时原子检查。本用例中订阅日用量(2)
+		// 已超过钱包日限额(1)，但用户余额充足，因此鉴权放行。
 		cfg := &config.Config{RunMode: config.RunModeStandard}
 		apiKeyService := service.NewAPIKeyService(apiKeyRepo, nil, nil, nil, nil, nil, cfg)
 
@@ -185,6 +188,10 @@ func TestSimpleModeBypassesQuotaCheck(t *testing.T) {
 		fresh.DailyUsageUSD = 2
 
 		subscriptionRepo := &stubUserSubscriptionRepo{
+			listActive: func(context.Context, int64) ([]service.UserSubscription, error) {
+				clone := fresh
+				return []service.UserSubscription{clone}, nil
+			},
 			getActive: func(context.Context, int64, int64) (*service.UserSubscription, error) {
 				clone := *stale
 				return &clone, nil
@@ -205,7 +212,7 @@ func TestSimpleModeBypassesQuotaCheck(t *testing.T) {
 		req.Header.Set("x-api-key", apiKey.Key)
 		router.ServeHTTP(w, req)
 
-		require.Equal(t, http.StatusTooManyRequests, w.Code)
+		require.Equal(t, http.StatusOK, w.Code)
 	})
 
 	t.Run("simple_mode_bypasses_quota_check", func(t *testing.T) {
@@ -1364,7 +1371,7 @@ func TestAPIKeyAuthBillingInfoSkipsBillingAndSideEffects(t *testing.T) {
 		Name:             "subscription",
 		Status:           service.StatusActive,
 		Hydrated:         true,
-		SubscriptionType: service.SubscriptionTypeSubscription,
+		SubscriptionType: service.SubscriptionTypeStandard,
 	}
 	user := &service.User{
 		ID:          7,
@@ -1425,7 +1432,9 @@ func TestAPIKeyAuthBillingInfoSkipsLastUsedInSimpleMode(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	user := &service.User{ID: 7, Role: service.RoleUser, Status: service.StatusActive}
-	apiKey := &service.APIKey{ID: 100, UserID: user.ID, Key: "billing-info-simple", Status: service.StatusActive, User: user}
+	// D2api 的认证中间件要求 Key 绑定可用分组（simple 模式也不例外）。
+	group := &service.Group{ID: 42, Status: service.StatusActive, Hydrated: true}
+	apiKey := &service.APIKey{ID: 100, UserID: user.ID, Key: "billing-info-simple", Status: service.StatusActive, User: user, GroupID: &group.ID, Group: group}
 	touchCalls := 0
 	apiKeyRepo := &stubApiKeyRepo{
 		getByKey: func(context.Context, string) (*service.APIKey, error) {
@@ -1454,7 +1463,9 @@ func TestAPIKeyAuthUsageStillTouchesLastUsed(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	user := &service.User{ID: 7, Role: service.RoleUser, Status: service.StatusActive, Balance: 10}
-	apiKey := &service.APIKey{ID: 100, UserID: user.ID, Key: "usage-touch", Status: service.StatusActive, User: user}
+	// D2api 的认证中间件要求 Key 绑定可用分组。
+	group := &service.Group{ID: 42, Status: service.StatusActive, Hydrated: true}
+	apiKey := &service.APIKey{ID: 100, UserID: user.ID, Key: "usage-touch", Status: service.StatusActive, User: user, GroupID: &group.ID, Group: group}
 	touchCalls := 0
 	apiKeyRepo := &stubApiKeyRepo{
 		getByKey: func(context.Context, string) (*service.APIKey, error) {

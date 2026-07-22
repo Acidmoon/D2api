@@ -96,10 +96,12 @@ func TestGoogleAPIKeyAuthInvalidAbuseReturnsProtocol429(t *testing.T) {
 func TestInvalidAuthAbuseDoesNotCountValidOrOperationalFailures(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	user := &service.User{ID: 1, Status: service.StatusActive, Role: service.RoleUser, Balance: 1}
+	// D2api 的认证中间件要求 Key 绑定可用分组（simple 模式也不例外）。
+	group := &service.Group{ID: 42, Status: service.StatusActive, Hydrated: true}
 	repo := &stubApiKeyRepo{getByKey: func(_ context.Context, key string) (*service.APIKey, error) {
 		switch key {
 		case "valid-key":
-			return &service.APIKey{ID: 1, UserID: 1, Key: key, Status: service.StatusActive, User: user}, nil
+			return &service.APIKey{ID: 1, UserID: 1, Key: key, Status: service.StatusActive, User: user, GroupID: &group.ID, Group: group}, nil
 		case "db-error":
 			return nil, errors.New("database unavailable")
 		default:

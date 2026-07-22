@@ -499,23 +499,9 @@ func (s *PaymentService) doSub(ctx context.Context, o *dbent.PaymentOrder, lease
 	days := *o.SubscriptionDays
 	// D2api subscriptions are independent balance wallets.  The purchased plan
 	// snapshots its own limits instead of inheriting mutable group limits.
-	if !s.hasAuditLog(ctx, o.ID, "SUBSCRIPTION_SUCCESS") {
-		planName, dailyLimit, weeklyLimit, monthlyLimit := subscriptionFulfillmentPlanSnapshot(ctx, s.configService, o)
-		if _, _, err := s.subscriptionSvc.AssignOrExtendSubscription(ctx, &AssignSubscriptionInput{
-			UserID:          o.UserID,
-			GroupID:         0,
-			PlanName:        planName,
-			DailyLimitUSD:   dailyLimit,
-			WeeklyLimitUSD:  weeklyLimit,
-			MonthlyLimitUSD: monthlyLimit,
-			ValidityDays:    days,
-			AssignedBy:      0,
-			Notes:           paymentSubscriptionOrderNote(o.ID),
-		}); err != nil {
-			return fmt.Errorf("assign subscription wallet: %w", err)
-		}
-	} else {
-		slog.Info("subscription wallet already assigned for order, skipping", "orderID", o.ID)
+	planName, dailyLimit, weeklyLimit, monthlyLimit := subscriptionFulfillmentPlanSnapshot(ctx, s.configService, o)
+	if err := s.ensurePaymentSubscriptionAssigned(ctx, o, days, planName, dailyLimit, weeklyLimit, monthlyLimit); err != nil {
+		return err
 	}
 	if err := s.applyAffiliateRebateForOrder(ctx, o); err != nil {
 		return err
@@ -541,7 +527,11 @@ func subscriptionFulfillmentPlanSnapshot(ctx context.Context, configService *Pay
 	return planName, plan.DailyLimitUsd, plan.WeeklyLimitUsd, plan.MonthlyLimitUsd
 }
 
-func (s *PaymentService) ensurePaymentSubscriptionAssigned(ctx context.Context, o *dbent.PaymentOrder, groupID int64, days int) error {
+// ensurePaymentSubscriptionAssigned 保证同一支付订单的订阅钱包只授予一次。
+// 钱包语义适配：授予与 SUBSCRIPTION_ASSIGNED 审计在同一事务内提交；
+// 崩溃恢复时先按审计（SUBSCRIPTION_ASSIGNED/SUBSCRIPTION_SUCCESS）去重，
+// 审计缺失时按订单 note 找回已授予的钱包订阅，避免重复发放。
+func (s *PaymentService) ensurePaymentSubscriptionAssigned(ctx context.Context, o *dbent.PaymentOrder, days int, planName string, dailyLimit, weeklyLimit, monthlyLimit *float64) error {
 	if s.subscriptionSvc == nil {
 		return errors.New("subscription service is unavailable")
 	}
@@ -562,7 +552,8 @@ func (s *PaymentService) ensurePaymentSubscriptionAssigned(ctx context.Context, 
 	recoveredFromNote := false
 	if !alreadyAssigned {
 		orderNote := paymentSubscriptionOrderNote(o.ID)
-		existing, lookupErr := s.subscriptionSvc.userSubRepo.GetByUserIDAndGroupID(txCtx, o.UserID, groupID)
+		// 钱包订阅的 GroupID 恒为 0（独立余额钱包，不绑定 legacy 订阅分组）。
+		existing, lookupErr := s.subscriptionSvc.userSubRepo.GetByUserIDAndGroupID(txCtx, o.UserID, 0)
 		switch {
 		case lookupErr == nil && existing != nil && hasPaymentSubscriptionOrderNote(existing.Notes, orderNote):
 			recoveredFromNote = true
@@ -570,18 +561,21 @@ func (s *PaymentService) ensurePaymentSubscriptionAssigned(ctx context.Context, 
 			return fmt.Errorf("check existing subscription assignment: %w", lookupErr)
 		default:
 			if _, _, err := s.subscriptionSvc.assignOrExtendSubscription(txCtx, &AssignSubscriptionInput{
-				UserID:       o.UserID,
-				GroupID:      groupID,
-				ValidityDays: days,
-				AssignedBy:   0,
-				Notes:        orderNote,
+				UserID:          o.UserID,
+				GroupID:         0,
+				PlanName:        planName,
+				DailyLimitUSD:   dailyLimit,
+				WeeklyLimitUSD:  weeklyLimit,
+				MonthlyLimitUSD: monthlyLimit,
+				ValidityDays:    days,
+				AssignedBy:      0,
+				Notes:           orderNote,
 			}, true); err != nil {
-				return fmt.Errorf("assign subscription: %w", err)
+				return fmt.Errorf("assign subscription wallet: %w", err)
 			}
 		}
 
 		detail, _ := json.Marshal(map[string]any{
-			"groupID":           groupID,
 			"validityDays":      days,
 			"recoveredFromNote": recoveredFromNote,
 		})
@@ -595,13 +589,13 @@ func (s *PaymentService) ensurePaymentSubscriptionAssigned(ctx context.Context, 
 				_ = tx.Rollback()
 				claimed, checkErr := hasPaymentSubscriptionAssignmentAudit(ctx, s.entClient, o.ID)
 				if checkErr == nil && claimed {
-					return s.subscriptionSvc.invalidateSubscriptionCaches(o.UserID, groupID)
+					return s.subscriptionSvc.invalidateSubscriptionCaches(o.UserID, 0)
 				}
 			}
 			return fmt.Errorf("record subscription assignment audit: %w", err)
 		}
 	} else {
-		slog.Info("subscription already assigned for order, skipping", "orderID", o.ID, "groupID", groupID)
+		slog.Info("subscription wallet already assigned for order, skipping", "orderID", o.ID)
 	}
 
 	if err := tx.Commit(); err != nil {
@@ -609,7 +603,7 @@ func (s *PaymentService) ensurePaymentSubscriptionAssigned(ctx context.Context, 
 	}
 	// Assignment cache invalidation is deferred while this transaction is open,
 	// then performed synchronously against the committed subscription.
-	if err := s.subscriptionSvc.invalidateSubscriptionCaches(o.UserID, groupID); err != nil {
+	if err := s.subscriptionSvc.invalidateSubscriptionCaches(o.UserID, 0); err != nil {
 		return fmt.Errorf("invalidate subscription cache after fulfillment: %w", err)
 	}
 	return nil

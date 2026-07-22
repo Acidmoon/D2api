@@ -1237,10 +1237,9 @@ func (s *adminServiceImpl) GenerateRedeemCodes(ctx context.Context, input *Gener
 
 	// Subscription codes may retain an optional source group for plan templates,
 	// but that group never controls the user's runtime billing mode.
-	if input.Type == RedeemTypeSubscription {
-		if input.GroupID == nil {
-			return nil, errors.New("group_id is required for subscription type")
-		}
+	// 钱包订阅余额码（正数天数）不强制要求 legacy 分组；只有缩减旧订阅分组
+	// （负数天数）的码才需要 group_id。
+	if input.Type == RedeemTypeSubscription && input.GroupID != nil {
 		// Validate the optional source group exists.
 		_, err := s.groupRepo.GetByID(ctx, *input.GroupID)
 		if err != nil {

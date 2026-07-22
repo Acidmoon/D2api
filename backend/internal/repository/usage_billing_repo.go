@@ -374,28 +374,26 @@ func deductUsageBillingBalance(ctx context.Context, tx *sql.Tx, userID int64, am
 	if err == nil {
 		return newBalance, true, nil
 	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		return 0, false, err
+	}
+	// 余额充足性守卫未命中：在同一 DB 事务内原子地走透支出路，
+	// 把溢出债务记录到普通余额（允许为负），由上层通过 sufficient=false
+	// 标记 BalanceOverdrafted；若该行 UPDATE 仍未命中，说明用户不存在。
+	err = tx.QueryRowContext(ctx, `
+		UPDATE users
+		SET balance = balance - $1,
+			updated_at = NOW()
+		WHERE id = $2 AND deleted_at IS NULL
+		RETURNING balance
+	`, amount, userID).Scan(&newBalance)
 	if errors.Is(err, sql.ErrNoRows) {
-		var exists bool
-		lookupErr := tx.QueryRowContext(ctx, `
-			SELECT TRUE
-			FROM users
-			WHERE id = $1 AND deleted_at IS NULL
-		`, userID).Scan(&exists)
-		if errors.Is(lookupErr, sql.ErrNoRows) {
-			return 0, false, service.ErrUserNotFound
-		}
-		if lookupErr != nil {
-			return 0, false, lookupErr
-		}
-		// The billing transaction must not create negative balances. Legacy
-		// user balance helpers may allow overdraft, but request billing should
-		// fail atomically when the subscription remainder cannot be covered.
-		return 0, false, service.ErrInsufficientBalance
+		return 0, false, service.ErrUserNotFound
 	}
 	if err != nil {
 		return 0, false, err
 	}
-	return newBalance, true, nil
+	return newBalance, false, nil
 }
 
 func reserveUsageBillingBatchImageBalance(ctx context.Context, tx *sql.Tx, cmd *service.BatchImageBalanceHoldCommand) (*service.BatchImageBalanceHoldResult, error) {

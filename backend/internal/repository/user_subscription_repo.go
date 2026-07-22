@@ -476,25 +476,6 @@ func userSubscriptionEntityToService(m *dbent.UserSubscription) *service.UserSub
 	return out
 }
 
-func userSubscriptionEntitiesToService(models []*dbent.UserSubscription) []service.UserSubscription {
-	out := make([]service.UserSubscription, 0, len(models))
-	for i := range models {
-		if s := userSubscriptionEntityToService(models[i]); s != nil {
-			out = append(out, *s)
-		}
-	}
-	return out
-}
-
-func applyUserSubscriptionEntityToService(dst *service.UserSubscription, src *dbent.UserSubscription) {
-	if dst == nil || src == nil {
-		return
-	}
-	dst.ID = src.ID
-	dst.CreatedAt = src.CreatedAt
-	dst.UpdatedAt = src.UpdatedAt
-}
-
 func (r *userSubscriptionRepository) insertSubscriptionBalance(ctx context.Context, sub *service.UserSubscription) error {
 	exec := r.subscriptionBalanceExec()
 	if exec == nil {
@@ -678,7 +659,7 @@ func (r *userSubscriptionRepository) listSubscriptionBalances(ctx context.Contex
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var out []service.UserSubscription
 	for rows.Next() {
@@ -857,11 +838,4 @@ func firstNonEmpty(values ...string) string {
 		}
 	}
 	return ""
-}
-
-func translateNoRows(err error) error {
-	if errors.Is(err, sql.ErrNoRows) {
-		return service.ErrSubscriptionNotFound
-	}
-	return err
 }

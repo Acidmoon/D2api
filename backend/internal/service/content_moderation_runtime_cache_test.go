@@ -272,6 +272,14 @@ func TestContentModerationRuntimeSnapshotRefreshFailureKeepsStaleConfig(t *testi
 	require.NoError(t, err)
 	require.True(t, decision.Blocked)
 
+	// 强制快照过期：Windows 时钟粒度约 0.5ms，1ns TTL 下两次 Check 可能落在
+	// 同一时钟刻度（now.Sub(loadedAt)==0），快照被误判为新鲜而不触发异步刷新。
+	current := svc.runtimeSnapshot.Load()
+	require.NotNil(t, current)
+	expired := *current
+	expired.loadedAt = time.Now().Add(-time.Minute)
+	svc.runtimeSnapshot.Store(&expired)
+
 	repo.failMultiple(errors.New("database unavailable"))
 	decision, err = svc.Check(context.Background(), input)
 	require.NoError(t, err)

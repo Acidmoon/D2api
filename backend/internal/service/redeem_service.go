@@ -421,7 +421,9 @@ func (s *RedeemService) Redeem(ctx context.Context, userID int64, code string) (
 	switch redeemCode.Type {
 	case RedeemTypeBalance, RedeemTypeConcurrency:
 	case RedeemTypeSubscription:
-		if redeemCode.GroupID == nil {
+		// 钱包订阅余额码（正数天数）不需要 legacy 分组；只有缩减旧订阅分组
+		// （负数天数）的码才要求 group_id。
+		if redeemCode.GroupID == nil && redeemCode.ValidityDays < 0 {
 			return nil, infraerrors.BadRequest("REDEEM_CODE_INVALID", "invalid subscription redeem code: missing group_id")
 		}
 	default:

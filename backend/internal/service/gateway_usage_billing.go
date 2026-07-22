@@ -258,9 +258,13 @@ func buildUsageBillingCommand(requestID string, usageLog *UsageLog, p *postUsage
 	// user-specific) rate multiplier consumes subscription quota at the expected
 	// speed. TotalCost remains the raw (pre-multiplier) value; downstream guards
 	// on "> 0" still correctly skip free subscriptions (RateMultiplier == 0).
+	// 钱包余量不足时按钱包语义预先拆分：余量部分消耗订阅钱包，溢出部分回退到
+	// 用户普通余额；billing 仓库在 DB 事务内还会原子地二次钳制，保证不超扣。
 	if p.IsSubscriptionBill && p.Subscription != nil && p.Cost.TotalCost > 0 {
 		cmd.SubscriptionID = &p.Subscription.ID
-		cmd.SubscriptionCost = p.Cost.ActualCost
+		allocation := p.Subscription.AllocateUsageCost(p.Cost.ActualCost)
+		cmd.SubscriptionCost = allocation.SubscriptionCost
+		cmd.BalanceCost = allocation.BalanceCost
 	} else if p.Cost.ActualCost > 0 {
 		cmd.BalanceCost = p.Cost.ActualCost
 	}

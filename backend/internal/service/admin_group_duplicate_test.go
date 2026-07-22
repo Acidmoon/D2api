@@ -133,7 +133,7 @@ func TestDuplicateGroupCopiesConfigurationDeeplyAndResetsRuntimeState(t *testing
 		IsExclusive:                     true,
 		Status:                          StatusActive,
 		Hydrated:                        true,
-		SubscriptionType:                SubscriptionTypeSubscription,
+		SubscriptionType:                SubscriptionTypeStandard,
 		DailyLimitUSD:                   groupDuplicateTestPointer(11.0),
 		WeeklyLimitUSD:                  groupDuplicateTestPointer(22.0),
 		MonthlyLimitUSD:                 groupDuplicateTestPointer(33.0),
