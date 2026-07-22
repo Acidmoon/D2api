@@ -24,7 +24,7 @@
         <!-- Logo -->
         <div class="flex items-center">
           <div class="h-10 w-10 overflow-hidden border p-1" style="border-color: var(--nm-border); border-radius: var(--nm-radius)">
-            <img :src="siteLogo || '/logo.png'" alt="Logo" class="h-full w-full object-contain" />
+            <img :src="siteLogo || '/logo.svg'" alt="Logo" class="h-full w-full object-contain" />
           </div>
         </div>
 

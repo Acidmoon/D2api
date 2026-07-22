@@ -90,6 +90,10 @@
           default-sort-order="desc"
           @sort="handleSort"
         >
+          <template #cell-id="{ value }">
+            <span class="font-mono text-xs text-gray-500 dark:text-gray-400">#{{ value }}</span>
+          </template>
+
           <template #cell-key="{ value, row }">
             <div class="flex items-center gap-2">
               <code class="code text-xs">
@@ -1134,6 +1138,7 @@ const { copyToClipboard: clipboardCopy } = useClipboard()
 
 const allColumns = computed<Column[]>(() => [
   { key: 'name', label: t('common.name'), sortable: true },
+  { key: 'id', label: t('keys.id'), sortable: true },
   { key: 'key', label: t('keys.apiKey'), sortable: false },
   { key: 'primary_group', label: t('keys.primaryGroup'), sortable: false },
   { key: 'group', label: t('keys.secondaryGroup'), sortable: false },
@@ -1149,12 +1154,15 @@ const allColumns = computed<Column[]>(() => [
 ])
 
 const ALWAYS_VISIBLE_COLUMNS = new Set(['name', 'actions'])
-const DEFAULT_HIDDEN_COLUMNS = ['rate_limit', 'last_used_at', 'last_used_ip']
+const DEFAULT_HIDDEN_COLUMNS = ['id', 'rate_limit', 'last_used_at', 'last_used_ip']
 const HIDDEN_COLUMNS_KEY = 'api-key-hidden-columns'
 const COLUMN_SETTINGS_VERSION_KEY = 'api-key-column-settings-version'
-const COLUMN_SETTINGS_VERSION = 3
+const COLUMN_SETTINGS_VERSION = 4
 const VERSION_NEW_HIDDEN_COLUMNS: Record<number, string[]> = {
-  2: ['primary_group', 'last_used_ip']
+  2: ['primary_group', 'last_used_ip'],
+  // Version 4 ports the upstream optional ID column (upstream bump 2 -> 3,
+  // but our fork already uses 3 for the primary_group restore migration).
+  4: ['id']
 }
 const VERSION_NEW_VISIBLE_COLUMNS: Record<number, string[]> = {
   // Version 2 accidentally hid the primary group for every user. Restore it

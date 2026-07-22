@@ -70,6 +70,7 @@ const props = defineProps<{
   color: 'indigo' | 'emerald' | 'purple' | 'amber'
   windowStats?: WindowStats | null
   showNowWhenIdle?: boolean
+  remainingCapacity?: boolean
 }>()
 
 const { t } = useI18n()
@@ -110,8 +111,17 @@ const labelClass = computed(() => {
 
 // Progress bar color based on utilization
 const barClass = computed(() => {
+  if (props.remainingCapacity) {
+    if (props.utilization <= 20) {
+      return 'bg-red-500'
+    } else if (props.utilization <= 50) {
+      return 'bg-amber-500'
+    }
+    return 'bg-green-500'
+  }
   if (props.utilization >= 100) {
-    return 'usage-fill-danger'
+    // 保留上游的 bg-red-500 语义类名（测试依赖），实际配色由 usage-fill-danger 的 scoped 样式覆盖
+    return 'usage-fill-danger bg-red-500'
   } else if (props.utilization >= 80) {
     return 'usage-fill-warning'
   } else {
@@ -121,6 +131,14 @@ const barClass = computed(() => {
 
 // Text color based on utilization
 const textClass = computed(() => {
+  if (props.remainingCapacity) {
+    if (props.utilization <= 20) {
+      return 'text-red-600 dark:text-red-400'
+    } else if (props.utilization <= 50) {
+      return 'text-amber-600 dark:text-amber-400'
+    }
+    return 'text-gray-600 dark:text-gray-400'
+  }
   if (props.utilization >= 100) {
     return 'usage-text-danger'
   } else if (props.utilization >= 80) {
@@ -132,12 +150,16 @@ const textClass = computed(() => {
 
 // Bar width (capped at 100%)
 const barWidth = computed(() => {
-  return `${Math.min(props.utilization, 100)}%`
+  return `${Math.min(Math.max(props.utilization, 0), 100)}%`
 })
 
 // Display percentage (cap at 999% for readability)
 const displayPercent = computed(() => {
-  const percent = Math.round(props.utilization)
+  const percent = Math.round(
+    props.remainingCapacity
+      ? Math.min(Math.max(props.utilization, 0), 100)
+      : props.utilization
+  )
   return percent > 999 ? '>999%' : `${percent}%`
 })
 

@@ -7,7 +7,7 @@
         <!-- Custom Logo or Default Logo -->
         <template v-if="settingsLoaded">
           <div class="auth-logo mb-4 inline-flex h-16 w-16 items-center justify-center overflow-hidden">
-            <img :src="siteLogo || '/logo.png'" alt="Logo" class="h-full w-full object-contain" />
+            <img :src="siteLogo || '/logo.svg'" alt="Logo" class="h-full w-full object-contain" />
           </div>
           <h1 class="auth-title mb-2 text-3xl font-bold">
             {{ siteName }}

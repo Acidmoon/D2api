@@ -110,13 +110,6 @@ export default {
         emailsHint:
           'Only enabled recipients receive email; each group controls whether unavailable alerts are active.',
         title: 'Group Unavailable Alert Recipients'
-      },
-      openaiFastPolicy: {
-        addUserId: 'Add user ID',
-        removeUserId: 'Remove user ID',
-        userIdPlaceholder: 'Enter user ID',
-        userIds: 'User IDs',
-        userIdsHint: 'Apply the Fast/Flex policy only to these users. Leave empty to apply globally.'
       }
     },
     subscriptions: {

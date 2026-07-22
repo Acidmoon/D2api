@@ -13,7 +13,7 @@
             {{ methodLabel }}
           </label>
           <div class="flex flex-wrap gap-4">
-            <label class="oauth-method-option">
+            <label v-if="showManualOption" class="oauth-method-option">
               <input
                 v-model="inputMethod"
                 type="radio"
@@ -44,6 +44,17 @@
               />
               <span class="oauth-method-text">{{
                 t(getOAuthKey('refreshTokenAuth'))
+              }}</span>
+            </label>
+            <label v-if="showSsoOption" class="oauth-method-option">
+              <input
+                v-model="inputMethod"
+                type="radio"
+                value="sso_cookie"
+                class="oauth-radio"
+              />
+              <span class="oauth-method-text">{{
+                t(getOAuthKey('ssoCookieAuth'))
               }}</span>
             </label>
             <label v-if="showMobileRefreshTokenOption" class="oauth-method-option">
@@ -88,6 +99,17 @@
               />
               <span class="oauth-method-text">{{
                 t('admin.accounts.oauth.openai.codexSessionAuth')
+              }}</span>
+            </label>
+            <label v-if="showAgentIdentityOption" class="oauth-method-option">
+              <input
+                v-model="inputMethod"
+                type="radio"
+                value="agent_identity"
+                class="oauth-radio"
+              />
+              <span class="oauth-method-text">{{
+                t('admin.accounts.oauth.openai.agentIdentityAuth')
               }}</span>
             </label>
             <label v-if="showCodexPatOption" class="flex cursor-pointer items-center gap-2">
@@ -181,17 +203,85 @@
           </div>
         </div>
 
-        <!-- Codex OAuth/session JSON batch import -->
-        <div v-if="inputMethod === 'codex_session'" class="space-y-4">
+        <!-- SSO Cookie Input (Grok Web -> Grok Build) -->
+        <div v-if="inputMethod === 'sso_cookie'" class="space-y-4">
           <div class="oauth-panel">
             <p class="oauth-copy">
-              {{ t('admin.accounts.oauth.openai.codexSessionDesc') }}
+              {{ t(getOAuthKey('ssoCookieDesc')) }}
             </p>
 
             <div class="mb-4">
               <label class="oauth-field-label">
                 <Icon name="key" size="sm" class="oauth-field-icon" />
-                {{ t('admin.accounts.oauth.openai.codexSessionInputLabel') }}
+                {{ t(getOAuthKey('ssoCookieLabel')) }}
+                <span
+                  v-if="parsedSSOCount > 1"
+                  class="oauth-count-badge"
+                >
+                  {{ t('admin.accounts.oauth.keysCount', { count: parsedSSOCount }) }}
+                </span>
+              </label>
+              <textarea
+                v-model="ssoCookieInput"
+                rows="5"
+                class="input w-full resize-y font-mono text-sm"
+                :placeholder="t(getOAuthKey('ssoCookiePlaceholder'))"
+                spellcheck="false"
+              ></textarea>
+              <p class="oauth-hint oauth-hint--accent">
+                {{ t(getOAuthKey('ssoCookieHint')) }}
+              </p>
+            </div>
+
+            <div v-if="error" class="oauth-error">
+              <p class="oauth-error-text">
+                {{ error }}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              class="btn btn-primary w-full"
+              :disabled="loading || !ssoCookieInput.trim()"
+              @click="handleImportSSO"
+            >
+              <svg
+                v-if="loading"
+                class="-ml-1 mr-2 h-4 w-4 animate-spin"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  class="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  stroke-width="4"
+                ></circle>
+                <path
+                  class="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                ></path>
+              </svg>
+              <Icon v-else name="sparkles" size="sm" class="mr-2" />
+              {{ loading ? t(getOAuthKey('convertingSSO')) : t(getOAuthKey('convertSSOAndCreate')) }}
+            </button>
+          </div>
+        </div>
+
+        <!-- Codex auth.json / session credential batch import -->
+        <div v-if="inputMethod === 'codex_session' || inputMethod === 'agent_identity'" class="space-y-4">
+          <div class="oauth-panel">
+            <p class="oauth-copy">
+              {{ t(isAgentIdentityInput ? 'admin.accounts.oauth.openai.agentIdentityDesc' : 'admin.accounts.oauth.openai.codexSessionDesc') }}
+            </p>
+
+            <div class="mb-4">
+              <label class="oauth-field-label">
+                <Icon name="key" size="sm" class="oauth-field-icon" />
+                {{ t(isAgentIdentityInput ? 'admin.accounts.oauth.openai.agentIdentityInputLabel' : 'admin.accounts.oauth.openai.codexSessionInputLabel') }}
                 <span
                   v-if="parsedCodexSessionCount > 1"
                   class="oauth-count-badge"
@@ -203,11 +293,11 @@
                 v-model="codexSessionInput"
                 rows="8"
                 class="input w-full resize-y font-mono text-sm"
-                :placeholder="t('admin.accounts.oauth.openai.codexSessionPlaceholder')"
+                :placeholder="t(isAgentIdentityInput ? 'admin.accounts.oauth.openai.agentIdentityPlaceholder' : 'admin.accounts.oauth.openai.codexSessionPlaceholder')"
                 spellcheck="false"
               ></textarea>
               <p class="oauth-hint oauth-hint--accent">
-                {{ t('admin.accounts.oauth.openai.codexSessionHint') }}
+                {{ t(isAgentIdentityInput ? 'admin.accounts.oauth.openai.agentIdentityHint' : 'admin.accounts.oauth.openai.codexSessionHint') }}
               </p>
             </div>
 
@@ -693,7 +783,11 @@ interface Props {
   showSessionTokenOption?: boolean
   showAccessTokenOption?: boolean
   showCodexSessionImportOption?: boolean
+  showAgentIdentityOption?: boolean
   showCodexPatOption?: boolean
+  showSsoOption?: boolean
+  showManualOption?: boolean
+  initialInputMethod?: AuthInputMethod
   platform?: AccountPlatform // Platform type for different UI/text
   showProjectId?: boolean // New prop to control project ID visibility
 }
@@ -713,7 +807,11 @@ const props = withDefaults(defineProps<Props>(), {
   showSessionTokenOption: false,
   showAccessTokenOption: false,
   showCodexSessionImportOption: false,
+  showAgentIdentityOption: false,
   showCodexPatOption: false,
+  showSsoOption: false,
+  showManualOption: true,
+  initialInputMethod: 'manual',
   platform: 'anthropic',
   showProjectId: true
 })
@@ -728,6 +826,7 @@ const emit = defineEmits<{
   'import-access-token': [accessToken: string]
   'import-codex-session': [content: string]
   'import-codex-pat': [accessToken: string]
+  'import-sso': [content: string]
   'update:inputMethod': [method: AuthInputMethod]
 }>()
 
@@ -764,19 +863,33 @@ const oauthImportantNotice = computed(() => {
 })
 
 // Local state
-const inputMethod = ref<AuthInputMethod>(props.showCookieOption ? 'manual' : 'manual')
+const inputMethod = ref<AuthInputMethod>(props.initialInputMethod)
+const isAgentIdentityInput = computed(() => inputMethod.value === 'agent_identity')
 const authCodeInput = ref('')
 const sessionKeyInput = ref('')
 const refreshTokenInput = ref('')
 const sessionTokenInput = ref('')
 const codexSessionInput = ref('')
 const codexPATInput = ref('')
+const ssoCookieInput = ref('')
 const showHelpDialog = ref(false)
 const oauthState = ref('')
 const projectId = ref('')
 
-// Computed: show method selection when either cookie or refresh token option is enabled
-const showMethodSelection = computed(() => props.showCookieOption || props.showRefreshTokenOption || props.showMobileRefreshTokenOption || props.showSessionTokenOption || props.showAccessTokenOption || props.showCodexSessionImportOption || props.showCodexPatOption)
+// Computed: show method selection only when there is something to choose.
+const methodOptionCount = computed(() => [
+  props.showManualOption,
+  props.showCookieOption,
+  props.showRefreshTokenOption,
+  props.showMobileRefreshTokenOption,
+  props.showSessionTokenOption,
+  props.showAccessTokenOption,
+  props.showCodexSessionImportOption,
+  props.showAgentIdentityOption,
+  props.showCodexPatOption,
+  props.showSsoOption
+].filter(Boolean).length)
+const showMethodSelection = computed(() => methodOptionCount.value > 1)
 
 // Clipboard
 const { copied, copyToClipboard } = useClipboard()
@@ -807,7 +920,18 @@ const parsedCodexSessionCount = computed(() => {
     .filter((item) => item).length
 })
 
+const parsedSSOCount = computed(() => {
+  return ssoCookieInput.value
+    .split('\n')
+    .map((item) => item.trim())
+    .filter((item) => item).length
+})
+
 // Watchers
+watch(() => props.initialInputMethod, (newVal) => {
+  inputMethod.value = newVal
+})
+
 watch(inputMethod, (newVal) => {
   emit('update:inputMethod', newVal)
 })
@@ -890,6 +1014,12 @@ const handleImportCodexPAT = () => {
   }
 }
 
+const handleImportSSO = () => {
+  if (ssoCookieInput.value.trim()) {
+    emit('import-sso', ssoCookieInput.value.trim())
+  }
+}
+
 // Expose methods and state
 defineExpose({
   authCode: authCodeInput,
@@ -900,6 +1030,7 @@ defineExpose({
   sessionToken: sessionTokenInput,
   codexSession: codexSessionInput,
   codexPAT: codexPATInput,
+  ssoCookie: ssoCookieInput,
   inputMethod,
   reset: () => {
     authCodeInput.value = ''
@@ -910,7 +1041,8 @@ defineExpose({
     sessionTokenInput.value = ''
     codexSessionInput.value = ''
     codexPATInput.value = ''
-    inputMethod.value = 'manual'
+    ssoCookieInput.value = ''
+    inputMethod.value = props.initialInputMethod
     showHelpDialog.value = false
   }
 })

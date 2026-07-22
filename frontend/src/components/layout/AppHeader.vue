@@ -9,7 +9,7 @@
         <button
           @click="toggleMobileSidebar"
           class="btn-ghost btn-icon lg:hidden"
-          aria-label="Toggle Menu"
+          :aria-label="t('common.toggleMenu')"
         >
           <Icon name="menu" size="md" />
         </button>
@@ -178,7 +178,7 @@
             @click="toggleDropdown"
             class="user-menu-trigger flex min-h-11 items-center gap-2 p-1.5 transition-colors"
             style="border-radius: var(--nm-radius)"
-            aria-label="User Menu"
+            :aria-label="t('common.userMenu')"
           >
             <div class="flex h-8 w-8 items-center justify-center overflow-hidden text-sm font-semibold" style="background: var(--nm-ink); color: var(--nm-bg); border-radius: var(--nm-radius)">
               <img

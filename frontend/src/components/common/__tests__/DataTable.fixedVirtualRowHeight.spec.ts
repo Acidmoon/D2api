@@ -37,6 +37,9 @@ const mountTable = (fixedVirtualRowHeight: boolean) =>
       data: [{ id: 1, name: 'Alpha' }, { id: 2, name: 'Beta' }],
       estimateRowHeight: 136,
       fixedVirtualRowHeight,
+      // 合并上游 virtualizeThreshold(默认 100)后,小列表默认全量渲染、不走虚拟器;
+      // 这里强制开启虚拟化,才能检验 fixedVirtualRowHeight 对测量行为的影响。
+      virtualizeThreshold: 1,
     },
     global: {
       stubs: {

@@ -107,13 +107,6 @@ export default {
         emails: '收件邮箱',
         emailsHint: '只会向已启用的收件人发送邮件；是否告警由各分组的开关控制。',
         title: '分组不可用警告收件人'
-      },
-      openaiFastPolicy: {
-        addUserId: '添加用户 ID',
-        removeUserId: '移除用户 ID',
-        userIdPlaceholder: '请输入用户 ID',
-        userIds: '用户 ID',
-        userIdsHint: '仅对这些用户应用 Fast/Flex 策略；留空表示全局应用。'
       }
     },
     subscriptions: {

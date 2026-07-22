@@ -7,7 +7,7 @@
           <input v-model="planForm.name" type="text" class="input" required />
         </div>
         <div>
-          <label class="input-label">{{ t('payment.admin.validityDays') }} <span class="text-red-500">*</span></label>
+          <label class="input-label">{{ t('payment.admin.validity') }} <span class="text-red-500">*</span></label>
           <input v-model.number="planForm.validity_days" type="number" min="1" class="input" required />
         </div>
       </div>
@@ -31,9 +31,14 @@
         <div><label class="input-label">{{ t('payment.admin.weeklyLimit') }}</label><input v-model.number="planForm.weekly_limit_usd" type="number" step="0.01" min="0" class="input" /></div>
         <div><label class="input-label">{{ t('payment.admin.monthlyLimit') }}</label><input v-model.number="planForm.monthly_limit_usd" type="number" step="0.01" min="0" class="input" /></div>
       </div>
-      <div class="grid grid-cols-2 gap-4">
+      <div class="grid grid-cols-3 gap-4">
         <div><label class="input-label">{{ t('payment.admin.validityUnit') }} <span class="text-red-500">*</span></label><Select v-model="planForm.validity_unit" :options="validityUnitOptions" /></div>
         <div><label class="input-label">{{ t('payment.admin.sortOrder') }}</label><input v-model.number="planForm.sort_order" type="number" min="0" class="input" /></div>
+        <div>
+          <label class="input-label">{{ t('payment.admin.currency') }}</label>
+          <input v-model="planForm.currency" type="text" maxlength="3" class="input uppercase" :placeholder="t('payment.admin.currencyPlaceholder')" />
+          <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ t('payment.admin.currencyHint') }}</p>
+        </div>
       </div>
       <div>
         <label class="input-label">{{ t('payment.admin.features') }}</label>
@@ -98,6 +103,7 @@ const planForm = reactive({
   description: '',
   price: 0,
   original_price: 0,
+  currency: '',
   daily_limit_usd: null as number | null,
   weekly_limit_usd: null as number | null,
   monthly_limit_usd: null as number | null,
@@ -143,10 +149,10 @@ const subscriptionCnyPreview = computed(() => {
 watch(() => props.show, (visible) => {
   if (!visible) return
   if (props.plan) {
-    Object.assign(planForm, { name: props.plan.name, description: props.plan.description, price: props.plan.price, original_price: props.plan.original_price || 0, daily_limit_usd: props.plan.daily_limit_usd ?? null, weekly_limit_usd: props.plan.weekly_limit_usd ?? null, monthly_limit_usd: props.plan.monthly_limit_usd ?? null, validity_days: props.plan.validity_days, validity_unit: props.plan.validity_unit || 'days', sort_order: props.plan.sort_order || 0, for_sale: props.plan.for_sale })
+    Object.assign(planForm, { name: props.plan.name, description: props.plan.description, price: props.plan.price, original_price: props.plan.original_price || 0, currency: props.plan.currency || '', daily_limit_usd: props.plan.daily_limit_usd ?? null, weekly_limit_usd: props.plan.weekly_limit_usd ?? null, monthly_limit_usd: props.plan.monthly_limit_usd ?? null, validity_days: props.plan.validity_days, validity_unit: props.plan.validity_unit || 'days', sort_order: props.plan.sort_order || 0, for_sale: props.plan.for_sale })
     planFeaturesText.value = (props.plan.features || []).join('\n')
   } else {
-    Object.assign(planForm, { name: '', description: '', price: 0, original_price: 0, daily_limit_usd: null, weekly_limit_usd: null, monthly_limit_usd: null, validity_days: 30, validity_unit: 'days', sort_order: 0, for_sale: true })
+    Object.assign(planForm, { name: '', description: '', price: 0, original_price: 0, currency: '', daily_limit_usd: null, weekly_limit_usd: null, monthly_limit_usd: null, validity_days: 30, validity_unit: 'days', sort_order: 0, for_sale: true })
     planFeaturesText.value = ''
   }
 })
@@ -160,6 +166,7 @@ function buildPlanPayload() {
     description: planForm.description,
     price: planForm.price,
     original_price: planForm.original_price || 0,
+    currency: planForm.currency.trim().toUpperCase(),
     daily_limit_usd: normalizePlanLimit(planForm.daily_limit_usd),
     weekly_limit_usd: normalizePlanLimit(planForm.weekly_limit_usd),
     monthly_limit_usd: normalizePlanLimit(planForm.monthly_limit_usd),
@@ -182,7 +189,7 @@ async function handleSavePlan() {
     return
   }
   if (!planForm.validity_days || planForm.validity_days < 1) {
-    appStore.showError(t('payment.admin.validityDaysRequired'))
+    appStore.showError(t('payment.admin.validityRequired'))
     return
   }
   saving.value = true

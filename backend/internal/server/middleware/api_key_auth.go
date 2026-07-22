@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"strings"
 
 	"github.com/Wei-Shaw/sub2api/internal/config"
@@ -13,6 +14,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 )
+
+const maxAPIKeyAuthorizationHeaderBytes = service.MaxAPIKeyCredentialBytes + 128
 
 // NewAPIKeyAuthMiddleware 创建 API Key 认证中间件
 func NewAPIKeyAuthMiddleware(apiKeyService *service.APIKeyService, subscriptionService *service.SubscriptionService, cfg *config.Config) APIKeyAuthMiddleware {
@@ -25,14 +28,29 @@ func NewAPIKeyAuthMiddleware(apiKeyService *service.APIKeyService, subscriptionS
 //   - 鉴权（Authentication）：验证 Key 有效性、用户状态、IP 限制 —— 始终执行
 //   - 计费执行（Billing Enforcement）：过期/配额/订阅/余额检查 —— skipBilling 时整块跳过
 //
-// /v1/usage 端点只需鉴权，不需要计费执行（允许过期/配额耗尽的 Key 查询自身用量）。
+// /v1/usage、/v1/sub2api/billing 端点与异步生图任务查询只需鉴权，不需要计费执行。
+// usage 允许过期/配额耗尽的 Key 查询自身用量，billing 用于读取当前 Key 的倍率配置，
+// 异步生图查询允许已耗尽额度的 Key 拉取自身任务结果。
 func apiKeyAuthWithSubscription(apiKeyService *service.APIKeyService, subscriptionService *service.SubscriptionService, cfg *config.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// ── 1. 提取 API Key ──────────────────────────────────────────
+		if rejectInvalidAuthAbuse(c, apiKeyService) {
+			AbortWithError(c, http.StatusTooManyRequests, "INVALID_AUTH_RATE_LIMITED", "Too many invalid authentication attempts; retry later")
+			return
+		}
+
+		if apiKeyHeadersTooLarge(c) {
+			recordInvalidAuthFailure(c, apiKeyService)
+			MarkIngressRejected(c, IngressRejectInvalidAPIKey)
+			AbortWithError(c, http.StatusUnauthorized, "INVALID_API_KEY", "Invalid API key")
+			return
+		}
 
 		queryKey := strings.TrimSpace(c.Query("key"))
 		queryApiKey := strings.TrimSpace(c.Query("api_key"))
 		if queryKey != "" || queryApiKey != "" {
+			recordInvalidAuthFailure(c, apiKeyService)
+			MarkIngressRejected(c, IngressRejectQueryAPIKeyDeprecated)
 			AbortWithError(c, 400, "api_key_in_query_deprecated", "API key in query parameter is deprecated. Please use Authorization header instead.")
 			return
 		}
@@ -53,6 +71,12 @@ func apiKeyAuthWithSubscription(apiKeyService *service.APIKeyService, subscripti
 		if apiKeyString == "" {
 			apiKeyString = c.GetHeader("x-api-key")
 		}
+		if len(apiKeyString) > service.MaxAPIKeyCredentialBytes {
+			recordInvalidAuthFailure(c, apiKeyService)
+			MarkIngressRejected(c, IngressRejectInvalidAPIKey)
+			AbortWithError(c, http.StatusUnauthorized, "INVALID_API_KEY", "Invalid API key")
+			return
+		}
 
 		// 如果x-api-key header中没有，尝试从x-goog-api-key header中提取（Gemini CLI兼容）
 		if apiKeyString == "" {
@@ -61,6 +85,12 @@ func apiKeyAuthWithSubscription(apiKeyService *service.APIKeyService, subscripti
 
 		// 如果所有header都没有API key
 		if apiKeyString == "" {
+			recordInvalidAuthFailure(c, apiKeyService)
+			if hasAPIKeyCredentialInput(c) {
+				MarkIngressRejected(c, IngressRejectInvalidAPIKey)
+			} else {
+				MarkIngressRejected(c, IngressRejectAPIKeyRequired)
+			}
 			AbortWithError(c, 401, "API_KEY_REQUIRED", "API key is required in Authorization header (Bearer scheme), x-api-key header, or x-goog-api-key header")
 			return
 		}
@@ -70,7 +100,14 @@ func apiKeyAuthWithSubscription(apiKeyService *service.APIKeyService, subscripti
 		apiKey, err := apiKeyService.GetByKey(c.Request.Context(), apiKeyString)
 		if err != nil {
 			if errors.Is(err, service.ErrAPIKeyNotFound) {
+				recordInvalidAuthFailure(c, apiKeyService)
+				MarkIngressRejected(c, IngressRejectInvalidAPIKey)
 				AbortWithError(c, 401, "INVALID_API_KEY", "Invalid API key")
+				return
+			}
+			if errors.Is(err, service.ErrAPIKeyAuthOverloaded) {
+				MarkIngressRejected(c, IngressRejectAPIKeyAuthOverloaded)
+				AbortWithError(c, http.StatusServiceUnavailable, "API_KEY_AUTH_OVERLOADED", "API key authentication is temporarily unavailable")
 				return
 			}
 			AbortWithError(c, 500, "INTERNAL_ERROR", "Failed to validate API key")
@@ -87,6 +124,7 @@ func apiKeyAuthWithSubscription(apiKeyService *service.APIKeyService, subscripti
 		if !apiKey.IsActive() &&
 			apiKey.Status != service.StatusAPIKeyExpired &&
 			apiKey.Status != service.StatusAPIKeyQuotaExhausted {
+			MarkIngressRejected(c, IngressRejectAPIKeyDisabled)
 			AbortWithError(c, 401, "API_KEY_DISABLED", "API key is disabled")
 			return
 		}
@@ -94,16 +132,14 @@ func apiKeyAuthWithSubscription(apiKeyService *service.APIKeyService, subscripti
 		// 检查 IP 限制（白名单/黑名单）
 		// 注意：错误信息故意模糊，避免暴露具体的 IP 限制机制
 		if len(apiKey.IPWhitelist) > 0 || len(apiKey.IPBlacklist) > 0 {
-			clientIP := ip.GetTrustedClientIP(c)
-			if cfg.TrustForwardedIPForAPIKeyACL() {
-				clientIP = ip.GetClientIP(c)
-			}
+			clientIP := ip.GetSecurityClientIP(c, cfg.TrustForwardedIPForAPIKeyACL())
 			allowed, _ := ip.CheckIPRestrictionWithCompiledRules(clientIP, apiKey.CompiledIPWhitelist, apiKey.CompiledIPBlacklist)
 			if !allowed {
 				if clientIP == "" {
 					clientIP = "unknown"
 				}
 				service.MarkOpsClientBusinessLimited(c, service.OpsClientBusinessLimitedReasonIPRestriction)
+				MarkIngressRejected(c, IngressRejectIPRestricted)
 				AbortWithError(c, 403, "ACCESS_DENIED", fmt.Sprintf("Access denied. Your IP is %s", clientIP))
 				return
 			}
@@ -117,9 +153,21 @@ func apiKeyAuthWithSubscription(apiKeyService *service.APIKeyService, subscripti
 
 		// 检查用户状态
 		if !apiKey.User.IsActive() {
+			MarkIngressRejected(c, IngressRejectUserInactive)
 			AbortWithError(c, 401, "USER_INACTIVE", "User account is not active")
 			return
 		}
+
+		// 分组可用性/归属检查在 selectAPIKeyGroupForRequest 选定分组后统一执行
+		//（本 fork 支持 Primary/Secondary 双分组回退，不能在选定前检查）。
+
+		// 倍率自省端点只需鉴权，不触发计费与最后使用时间更新。
+		billingInfoRequest := c.Request.URL.Path == "/v1/sub2api/billing"
+		// Async image task polling only reads data that already belongs to the
+		// authenticated key and must remain available after the completed
+		// generation consumes the key's remaining balance.
+		skipBilling := c.Request.URL.Path == "/v1/usage" || billingInfoRequest || isAsyncImageTaskRead(c.Request.Method, c.Request.URL.Path)
+
 		// ── 4. SimpleMode → early return ─────────────────────────────
 
 		if cfg.RunMode == config.RunModeSimple {
@@ -138,16 +186,17 @@ func apiKeyAuthWithSubscription(apiKeyService *service.APIKeyService, subscripti
 			})
 			c.Set(string(ContextKeyUserRole), apiKey.User.Role)
 			setGroupContext(c, apiKey.Group)
-			_ = apiKeyService.TouchLastUsed(c.Request.Context(), apiKey.ID)
+			if !billingInfoRequest {
+				_ = apiKeyService.TouchLastUsed(c.Request.Context(), apiKey.ID)
+			}
 			c.Next()
 			return
 		}
 
-		// ── 5. 加载订阅（订阅模式时始终加载） ───────────────────────
+		// ── 5. 按端点需要加载订阅 ───────────────────────────────────
 
-		// skipBilling: /v1/usage 只需鉴权，跳过所有计费执行
-		skipBilling := c.Request.URL.Path == "/v1/usage"
-
+		// 订阅为用户级钱包订阅，由 selectAPIKeyGroupForRequest 统一加载
+		//（skipBilling 时也会加载，供 /v1/usage 等端点展示）。
 		var subscription *service.UserSubscription
 
 		// ── 6. 计费执行（skipBilling 时整块跳过） ────────────────────
@@ -163,7 +212,7 @@ func apiKeyAuthWithSubscription(apiKeyService *service.APIKeyService, subscripti
 			// Key 状态检查
 			switch apiKey.Status {
 			case service.StatusAPIKeyQuotaExhausted:
-				AbortWithError(c, 429, "API_KEY_QUOTA_EXHAUSTED", "API key 额度已用完")
+				abortWithAPIKeyQuotaError(c)
 				return
 			case service.StatusAPIKeyExpired:
 				AbortWithError(c, 403, "API_KEY_EXPIRED", "API key 已过期")
@@ -176,7 +225,7 @@ func apiKeyAuthWithSubscription(apiKeyService *service.APIKeyService, subscripti
 				return
 			}
 			if apiKey.IsQuotaExhausted() {
-				AbortWithError(c, 429, "API_KEY_QUOTA_EXHAUSTED", "API key 额度已用完")
+				abortWithAPIKeyQuotaError(c)
 				return
 			}
 
@@ -206,7 +255,9 @@ func apiKeyAuthWithSubscription(apiKeyService *service.APIKeyService, subscripti
 		})
 		c.Set(string(ContextKeyUserRole), apiKey.User.Role)
 		setGroupContext(c, apiKey.Group)
-		_ = apiKeyService.TouchLastUsed(c.Request.Context(), apiKey.ID)
+		if !billingInfoRequest {
+			_ = apiKeyService.TouchLastUsed(c.Request.Context(), apiKey.ID)
+		}
 
 		c.Next()
 	}
@@ -217,6 +268,59 @@ func apiKeyAuthWithSubscription(apiKeyService *service.APIKeyService, subscripti
 func setAPIKeyUserRequestContext(c *gin.Context, userID int64) {
 	ctx := context.WithValue(c.Request.Context(), ctxkey.UserID, userID)
 	c.Request = c.Request.WithContext(ctx)
+}
+
+func apiKeyHeadersTooLarge(c *gin.Context) bool {
+	if c == nil {
+		return false
+	}
+	return len(c.GetHeader("Authorization")) > maxAPIKeyAuthorizationHeaderBytes ||
+		len(c.GetHeader("x-api-key")) > service.MaxAPIKeyCredentialBytes ||
+		len(c.GetHeader("x-goog-api-key")) > service.MaxAPIKeyCredentialBytes
+}
+
+func hasAPIKeyCredentialInput(c *gin.Context) bool {
+	if c == nil {
+		return false
+	}
+	return c.GetHeader("Authorization") != "" ||
+		c.GetHeader("x-api-key") != "" ||
+		c.GetHeader("x-goog-api-key") != ""
+}
+
+func abortWithAPIKeyQuotaError(c *gin.Context) {
+	const message = "API key 额度已用完"
+	if isOpenAICompatibleAPIKeyRequest(c) {
+		abortWithOpenAIQuotaError(c, http.StatusTooManyRequests, message)
+		return
+	}
+	AbortWithError(c, http.StatusTooManyRequests, "API_KEY_QUOTA_EXHAUSTED", message)
+}
+
+func isOpenAICompatibleAPIKeyRequest(c *gin.Context) bool {
+	if c == nil || c.Request == nil || c.Request.URL == nil {
+		return false
+	}
+
+	path := strings.TrimRight(c.Request.URL.Path, "/")
+	for _, root := range []string{
+		"/v1/responses",
+		"/openai/v1/responses",
+		"/responses",
+		"/backend-api/codex/responses",
+	} {
+		if path == root || strings.HasPrefix(path, root+"/") {
+			return true
+		}
+	}
+	return false
+}
+
+func isAsyncImageTaskRead(method, path string) bool {
+	if method != http.MethodGet {
+		return false
+	}
+	return strings.HasPrefix(path, "/v1/images/tasks/") || strings.HasPrefix(path, "/images/tasks/")
 }
 
 // GetAPIKeyFromContext 从上下文中获取API key
@@ -276,6 +380,11 @@ func abortIfAPIKeyGroupUnavailable(c *gin.Context, apiKey *service.APIKey) bool 
 		return false
 	}
 	service.MarkOpsClientBusinessLimited(c, service.OpsClientBusinessLimitedReasonAPIKeyGroupUnavailable)
+	if code == "GROUP_DELETED" {
+		MarkIngressRejected(c, IngressRejectGroupDeleted)
+	} else {
+		MarkIngressRejected(c, IngressRejectGroupDisabled)
+	}
 	AbortWithError(c, 403, code, message)
 	return true
 }
@@ -285,6 +394,7 @@ func abortIfAPIKeyGroupNotAllowed(c *gin.Context, apiKey *service.APIKey) bool {
 		return false
 	}
 	service.MarkOpsClientBusinessLimited(c, service.OpsClientBusinessLimitedReasonAPIKeyGroupUnavailable)
+	MarkIngressRejected(c, IngressRejectGroupNotAllowed)
 	AbortWithError(c, 403, "GROUP_NOT_ALLOWED", "API Key 所属专属分组不再允许当前用户使用")
 	return true
 }
@@ -335,7 +445,22 @@ func abortAPIKeyGroupSelectionError(c *gin.Context, err error) {
 	if selectionErr.markOps {
 		service.MarkOpsClientBusinessLimited(c, service.OpsClientBusinessLimitedReasonAPIKeyGroupUnavailable)
 	}
+	markIngressRejectedForGroupSelectionError(c, selectionErr.code)
 	AbortWithError(c, selectionErr.status, selectionErr.code, selectionErr.message)
+}
+
+// markIngressRejectedForGroupSelectionError 把分组选定阶段的错误码映射为
+// ingress 埋点，与 abortIfAPIKeyGroupUnavailable/abortIfAPIKeyGroupNotAllowed
+// 的埋点语义保持一致。
+func markIngressRejectedForGroupSelectionError(c *gin.Context, code string) {
+	switch code {
+	case "GROUP_DELETED":
+		MarkIngressRejected(c, IngressRejectGroupDeleted)
+	case "GROUP_DISABLED":
+		MarkIngressRejected(c, IngressRejectGroupDisabled)
+	case "GROUP_NOT_ALLOWED":
+		MarkIngressRejected(c, IngressRejectGroupNotAllowed)
+	}
 }
 
 func selectAPIKeyGroupForRequest(ctx context.Context, apiKey *service.APIKey, subscriptionService *service.SubscriptionService, skipBilling bool) error {
