@@ -35,3 +35,10 @@ exceptions:
     mitigation: "Proxy configuration not user-controlled; upgrade when axios releases fix"
     expires_on: "2026-07-10"
     owner: "security@your-domain"
+  - package: axios
+    advisory: "GHSA-gcfj-64vw-6mp9"
+    severity: high
+    reason: "Node HTTP adapter inherited-proxy issue; axios is used only in the browser bundle where the Node adapter and proxy env vars do not apply"
+    mitigation: "Browser XHR adapter unaffected; no proxy config in frontend; upgrade axios when upstream sub2api bumps it"
+    expires_on: "2026-10-22"
+    owner: "security@your-domain"
