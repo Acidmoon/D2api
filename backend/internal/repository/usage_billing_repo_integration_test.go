@@ -178,27 +178,27 @@ func TestUsageBillingRepositoryApply_SubscriptionRemainderFallsBackToBalance(t *
 	require.InDelta(t, 8.75, balance, 0.000001)
 }
 
-func TestUsageBillingRepositoryApply_SubscriptionRemainderRequiresSufficientBalance(t *testing.T) {
+func TestUsageBillingRepositoryApply_SubscriptionRemainderOverdraftsBalance(t *testing.T) {
 	ctx := context.Background()
 	client := testEntClient(t)
 	repo := NewUsageBillingRepository(client, integrationDB)
 
 	user := mustCreateUser(t, client, &service.User{
-		Email:        fmt.Sprintf("usage-billing-insufficient-user-%d@example.com", time.Now().UnixNano()),
+		Email:        fmt.Sprintf("usage-billing-overdraft-user-%d@example.com", time.Now().UnixNano()),
 		PasswordHash: "hash",
 		Balance:      1,
 	})
 	limit := 5.0
 	group := mustCreateGroup(t, client, &service.Group{
-		Name:             "usage-billing-insufficient-group-" + uuid.NewString(),
+		Name:             "usage-billing-overdraft-group-" + uuid.NewString(),
 		Platform:         service.PlatformAnthropic,
 		SubscriptionType: service.SubscriptionTypeStandard,
 		DailyLimitUSD:    &limit,
 	})
 	apiKey := mustCreateApiKey(t, client, &service.APIKey{
 		UserID: user.ID,
-		Key:    "sk-usage-billing-insufficient-" + uuid.NewString(),
-		Name:   "billing-insufficient",
+		Key:    "sk-usage-billing-overdraft-" + uuid.NewString(),
+		Name:   "billing-overdraft",
 	})
 	subscription := mustCreateSubscription(t, client, &service.UserSubscription{
 		UserID:        user.ID,
@@ -206,6 +206,10 @@ func TestUsageBillingRepositoryApply_SubscriptionRemainderRequiresSufficientBala
 		DailyUsageUSD: 4.25,
 	})
 
+	// D2api 语义：订阅钱包溢出到普通余额时允许透支（余额可为负），
+	// 计费事务照常提交并通过 BalanceOverdrafted 上报，而不是整体失败回滚。
+	// 本用例：订阅日配额余量 0.75（5.0-4.25），溢出 1.25 扣普通余额，
+	// 用户余额 1 < 1.25，透支后余额为 -0.25。
 	result, err := repo.Apply(ctx, &service.UsageBillingCommand{
 		RequestID:        uuid.NewString(),
 		APIKeyID:         apiKey.ID,
@@ -214,16 +218,20 @@ func TestUsageBillingRepositoryApply_SubscriptionRemainderRequiresSufficientBala
 		SubscriptionID:   &subscription.ID,
 		SubscriptionCost: 2,
 	})
-	require.ErrorIs(t, err, service.ErrInsufficientBalance)
-	require.Nil(t, result)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	require.True(t, result.Applied)
+	require.True(t, result.BalanceOverdrafted)
+	require.InDelta(t, 0.75, result.SubscriptionCost, 0.000001)
+	require.InDelta(t, 1.25, result.BalanceCost, 0.000001)
 
 	var dailyUsage float64
 	require.NoError(t, integrationDB.QueryRowContext(ctx, "SELECT daily_usage_usd FROM user_subscriptions WHERE id = $1", subscription.ID).Scan(&dailyUsage))
-	require.InDelta(t, 4.25, dailyUsage, 0.000001)
+	require.InDelta(t, 5.0, dailyUsage, 0.000001)
 
 	var balance float64
 	require.NoError(t, integrationDB.QueryRowContext(ctx, "SELECT balance FROM users WHERE id = $1", user.ID).Scan(&balance))
-	require.InDelta(t, 1, balance, 0.000001)
+	require.InDelta(t, -0.25, balance, 0.000001)
 }
 
 func TestUsageBillingRepositoryApply_SubscriptionExpiredWindowUsesFreshQuota(t *testing.T) {
