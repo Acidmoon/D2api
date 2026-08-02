@@ -177,7 +177,8 @@ func TestServerTimingConnectorRecordsDriverCallsWithoutRowLifetime(t *testing.T)
 	}
 
 	// Application work between row reads must remain app time.
-	time.Sleep(30 * time.Millisecond)
+	// 使用较长的 sleep，避免 CI 高负载下 goroutine 调度抖动被误计入 db 时间导致断言不稳定。
+	time.Sleep(150 * time.Millisecond)
 	if err := rows.Next(values); err != io.EOF {
 		t.Fatalf("rows.Next() = %v, want EOF", err)
 	}
