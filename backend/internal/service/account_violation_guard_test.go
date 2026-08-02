@@ -11,14 +11,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type fakeAccountViolationGuard struct {
-	decision *AccountGuardDecision
+type fakeUserViolationGuard struct {
+	decision *UserGuardDecision
 	err      error
 	calls    int
-	input    AccountGuardCheckInput
+	input    UserGuardCheckInput
 }
 
-func (f *fakeAccountViolationGuard) Check(_ context.Context, input AccountGuardCheckInput) (*AccountGuardDecision, error) {
+func (f *fakeUserViolationGuard) Check(_ context.Context, input UserGuardCheckInput) (*UserGuardDecision, error) {
 	f.calls++
 	f.input = input
 	return f.decision, f.err
@@ -32,30 +32,30 @@ func newGuardTestGinContext() (*gin.Context, *httptest.ResponseRecorder) {
 	return c, recorder
 }
 
-func TestRunAccountViolationGuard_NilGuardAllows(t *testing.T) {
+func TestRunUserViolationGuard_NilGuardAllows(t *testing.T) {
 	c, _ := newGuardTestGinContext()
-	decision := runAccountViolationGuard(nil, context.Background(), c, &Account{ID: 1}, "anthropic_messages", "m", []byte(`{}`))
+	decision := runUserViolationGuard(nil, context.Background(), c, &Account{ID: 1}, "anthropic_messages", "m", []byte(`{}`))
 	require.Nil(t, decision)
 }
 
-func TestRunAccountViolationGuard_CheckErrorFailsOpen(t *testing.T) {
-	guard := &fakeAccountViolationGuard{err: errors.New("config store unavailable")}
+func TestRunUserViolationGuard_CheckErrorFailsOpen(t *testing.T) {
+	guard := &fakeUserViolationGuard{err: errors.New("config store unavailable")}
 	c, _ := newGuardTestGinContext()
-	decision := runAccountViolationGuard(guard, context.Background(), c, &Account{ID: 1}, "anthropic_messages", "m", []byte(`{}`))
+	decision := runUserViolationGuard(guard, context.Background(), c, &Account{ID: 1}, "anthropic_messages", "m", []byte(`{}`))
 	require.Nil(t, decision)
 	require.Equal(t, 1, guard.calls)
 }
 
-func TestGatewayServiceCheckAccountViolationGuard_BlocksWith403NoFailover(t *testing.T) {
-	guard := &fakeAccountViolationGuard{decision: &AccountGuardDecision{Blocked: true, Reason: "violent"}}
-	svc := &GatewayService{accountGuard: guard}
+func TestGatewayServiceCheckUserViolationGuard_BlocksWith403NoFailover(t *testing.T) {
+	guard := &fakeUserViolationGuard{decision: &UserGuardDecision{Blocked: true, Reason: "violent"}}
+	svc := &GatewayService{userGuard: guard}
 	c, recorder := newGuardTestGinContext()
 	account := &Account{ID: 7, Name: "acc", Platform: PlatformAnthropic}
 
-	err := svc.checkAccountViolationGuard(context.Background(), c, account, "anthropic_messages", "claude-test", []byte(`{"messages":[]}`))
+	err := svc.checkUserViolationGuard(context.Background(), c, account, "anthropic_messages", "claude-test", []byte(`{"messages":[]}`))
 	require.Error(t, err)
 
-	var blockedErr *AccountGuardBlockedError
+	var blockedErr *UserGuardBlockedError
 	require.True(t, errors.As(err, &blockedErr))
 	require.Equal(t, int64(7), blockedErr.AccountID)
 
@@ -68,16 +68,16 @@ func TestGatewayServiceCheckAccountViolationGuard_BlocksWith403NoFailover(t *tes
 	require.Contains(t, recorder.Body.String(), `"type":"error"`) // Anthropic 错误信封
 }
 
-func TestOpenAIGatewayServiceCheckAccountViolationGuard_BlocksWith403NoFailover(t *testing.T) {
-	guard := &fakeAccountViolationGuard{decision: &AccountGuardDecision{Blocked: true, Reason: "jailbreak"}}
-	svc := &OpenAIGatewayService{accountGuard: guard}
+func TestOpenAIGatewayServiceCheckUserViolationGuard_BlocksWith403NoFailover(t *testing.T) {
+	guard := &fakeUserViolationGuard{decision: &UserGuardDecision{Blocked: true, Reason: "jailbreak"}}
+	svc := &OpenAIGatewayService{userGuard: guard}
 	c, recorder := newGuardTestGinContext()
 	account := &Account{ID: 9, Name: "oai-acc", Platform: PlatformOpenAI}
 
-	err := svc.checkAccountViolationGuard(context.Background(), c, account, "", "gpt-test", []byte(`{"model":"gpt-test"}`))
+	err := svc.checkUserViolationGuard(context.Background(), c, account, "", "gpt-test", []byte(`{"model":"gpt-test"}`))
 	require.Error(t, err)
 
-	var blockedErr *AccountGuardBlockedError
+	var blockedErr *UserGuardBlockedError
 	require.True(t, errors.As(err, &blockedErr))
 
 	var failoverErr *UpstreamFailoverError
@@ -88,12 +88,12 @@ func TestOpenAIGatewayServiceCheckAccountViolationGuard_BlocksWith403NoFailover(
 	require.NotContains(t, recorder.Body.String(), `"type":"error"`) // OpenAI 错误信封（无外层 type:error）
 }
 
-func TestGatewayServiceCheckAccountViolationGuard_AllowPassesThrough(t *testing.T) {
-	guard := &fakeAccountViolationGuard{decision: &AccountGuardDecision{Blocked: false}}
-	svc := &GatewayService{accountGuard: guard}
+func TestGatewayServiceCheckUserViolationGuard_AllowPassesThrough(t *testing.T) {
+	guard := &fakeUserViolationGuard{decision: &UserGuardDecision{Blocked: false}}
+	svc := &GatewayService{userGuard: guard}
 	c, recorder := newGuardTestGinContext()
 
-	err := svc.checkAccountViolationGuard(context.Background(), c, &Account{ID: 7}, "anthropic_messages", "m", []byte(`{}`))
+	err := svc.checkUserViolationGuard(context.Background(), c, &Account{ID: 7}, "anthropic_messages", "m", []byte(`{}`))
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, recorder.Code)
 }

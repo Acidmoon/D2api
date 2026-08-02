@@ -69,38 +69,38 @@
       </div>
     </div>
 
-    <div class="mt-4 rounded-xl border border-gray-200 p-4 dark:border-dark-700/60 dark:bg-dark-900/20 sm:p-5" data-test="account-guard-panel">
+    <div class="mt-4 rounded-xl border border-gray-200 p-4 dark:border-dark-700/60 dark:bg-dark-900/20 sm:p-5" data-test="user-guard-panel">
       <div class="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h3 class="text-sm font-medium text-gray-900 dark:text-white">{{ t('admin.promptAudit.accountGuard.title') }}</h3>
-          <p class="mt-1 max-w-2xl text-sm text-gray-500 dark:text-dark-300">{{ t('admin.promptAudit.accountGuard.description') }}</p>
+          <h3 class="text-sm font-medium text-gray-900 dark:text-white">{{ t('admin.promptAudit.userGuard.title') }}</h3>
+          <p class="mt-1 max-w-2xl text-sm text-gray-500 dark:text-dark-300">{{ t('admin.promptAudit.userGuard.description') }}</p>
         </div>
         <label class="flex cursor-pointer items-center gap-2 text-sm text-gray-700 dark:text-dark-200">
           <input
             type="checkbox"
-            :checked="draft.account_guard.enabled"
-            :aria-label="t('admin.promptAudit.accountGuard.enabled')"
-            data-test="account-guard-enabled"
-            @change="patchAccountGuard({ enabled: ($event.target as HTMLInputElement).checked })"
+            :checked="draft.user_guard.enabled"
+            :aria-label="t('admin.promptAudit.userGuard.enabled')"
+            data-test="user-guard-enabled"
+            @change="patchUserGuard({ enabled: ($event.target as HTMLInputElement).checked })"
           />
-          {{ t('admin.promptAudit.accountGuard.enabled') }}
+          {{ t('admin.promptAudit.userGuard.enabled') }}
         </label>
       </div>
-      <div v-if="draft.account_guard.enabled" class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div v-if="draft.user_guard.enabled" class="mt-4 grid gap-4 sm:grid-cols-3">
         <label class="block text-sm text-gray-700 dark:text-dark-200">
-          <span>{{ t('admin.promptAudit.accountGuard.threshold') }}</span>
-          <input :value="draft.account_guard.threshold" type="number" min="1" max="100" class="input mt-1.5 w-full" :aria-label="t('admin.promptAudit.accountGuard.threshold')" data-test="account-guard-threshold" @input="patchAccountGuard({ threshold: Number(($event.target as HTMLInputElement).value) })" />
+          <span>{{ t('admin.promptAudit.userGuard.threshold') }}</span>
+          <input :value="draft.user_guard.threshold" type="number" min="1" max="100" class="input mt-1.5 w-full" :aria-label="t('admin.promptAudit.userGuard.threshold')" data-test="user-guard-threshold" @input="patchUserGuard({ threshold: Number(($event.target as HTMLInputElement).value) })" />
         </label>
         <label class="block text-sm text-gray-700 dark:text-dark-200">
-          <span>{{ t('admin.promptAudit.accountGuard.windowMinutes') }}</span>
-          <input :value="draft.account_guard.window_minutes" type="number" min="1" max="1440" class="input mt-1.5 w-full" :aria-label="t('admin.promptAudit.accountGuard.windowMinutes')" data-test="account-guard-window" @input="patchAccountGuard({ window_minutes: Number(($event.target as HTMLInputElement).value) })" />
+          <span>{{ t('admin.promptAudit.userGuard.windowMinutes') }}</span>
+          <input :value="draft.user_guard.window_minutes" type="number" min="1" max="1440" class="input mt-1.5 w-full" :aria-label="t('admin.promptAudit.userGuard.windowMinutes')" data-test="user-guard-window" @input="patchUserGuard({ window_minutes: Number(($event.target as HTMLInputElement).value) })" />
         </label>
         <label class="block text-sm text-gray-700 dark:text-dark-200">
-          <span>{{ t('admin.promptAudit.accountGuard.banDurationMinutes') }}</span>
-          <input :value="draft.account_guard.ban_duration_minutes" type="number" min="1" max="10080" class="input mt-1.5 w-full" :aria-label="t('admin.promptAudit.accountGuard.banDurationMinutes')" data-test="account-guard-ban-duration" @input="patchAccountGuard({ ban_duration_minutes: Number(($event.target as HTMLInputElement).value) })" />
+          <span>{{ t('admin.promptAudit.userGuard.banDurationMinutes') }}</span>
+          <input :value="draft.user_guard.ban_duration_minutes" type="number" min="1" max="10080" class="input mt-1.5 w-full" :aria-label="t('admin.promptAudit.userGuard.banDurationMinutes')" data-test="user-guard-ban-duration" @input="patchUserGuard({ ban_duration_minutes: Number(($event.target as HTMLInputElement).value) })" />
         </label>
       </div>
-      <p v-if="draft.account_guard.enabled" class="mt-3 text-xs text-gray-500 dark:text-dark-400">{{ t('admin.promptAudit.accountGuard.notifyHint') }}</p>
+      <p v-if="draft.user_guard.enabled" class="mt-3 text-xs text-gray-500 dark:text-dark-400">{{ t('admin.promptAudit.userGuard.notifyHint') }}</p>
     </div>
   </section>
 </template>
@@ -108,7 +108,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import type { PromptAuditAccountGuard, PromptAuditDraft, PromptAuditGroup } from '../types'
+import type { PromptAuditUserGuard, PromptAuditDraft, PromptAuditGroup } from '../types'
 import { cloneData, SCANNER_CATALOG } from '../viewModel'
 
 const props = defineProps<{ draft: PromptAuditDraft; groups: PromptAuditGroup[] }>()
@@ -127,8 +127,8 @@ const missingGroupIds = computed(() => props.draft.group_ids.filter((id) => !kno
 function patch(value: Partial<PromptAuditDraft>) {
   emit('update:draft', { ...cloneData(props.draft), ...value })
 }
-function patchAccountGuard(value: Partial<PromptAuditAccountGuard>) {
-  patch({ account_guard: { ...props.draft.account_guard, ...value } })
+function patchUserGuard(value: Partial<PromptAuditUserGuard>) {
+  patch({ user_guard: { ...props.draft.user_guard, ...value } })
 }
 function toggleGroup(id: number) {
   const selected = new Set(props.draft.group_ids)

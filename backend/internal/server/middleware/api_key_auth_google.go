@@ -113,6 +113,12 @@ func APIKeyAuthWithSubscriptionGoogle(apiKeyService *service.APIKeyService, subs
 			abortWithGoogleError(c, 401, "User account is not active")
 			return
 		}
+		// 用户内容违规临时封禁（Redis 封禁键，鉴权缓存之外逐请求检查，到期自动恢复）
+		if until, banned := apiKeyService.UserViolationBanUntil(c.Request.Context(), apiKey.User.ID); banned {
+			MarkIngressRejected(c, IngressRejectUserInactive)
+			abortWithGoogleError(c, 403, fmt.Sprintf("User is temporarily banned until %s due to content policy violations", until.Format("2006-01-02 15:04:05 MST")))
+			return
+		}
 		// 分组可用性/归属检查在 selectAPIKeyGroupForRequest 选定分组后由
 		// validateGoogleAPIKeyGroup 统一执行（支持 Primary/Secondary 双分组回退）。
 

@@ -41,7 +41,7 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 
 	// 账号级内容违规守护：账号已选定、首个上游请求发出之前同步判定。
 	// 命中违规时写入 403 并返回非 failover 错误，绝不切换到其他账号重试。
-	if err := s.checkAccountViolationGuard(ctx, c, account, "", gjson.GetBytes(body, "model").String(), body); err != nil {
+	if err := s.checkUserViolationGuard(ctx, c, account, "", gjson.GetBytes(body, "model").String(), body); err != nil {
 		return nil, err
 	}
 

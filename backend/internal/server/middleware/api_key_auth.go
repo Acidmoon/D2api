@@ -158,6 +158,15 @@ func apiKeyAuthWithSubscription(apiKeyService *service.APIKeyService, subscripti
 			return
 		}
 
+		// 用户内容违规临时封禁（Redis 封禁键，在鉴权 L1/L2 缓存之外逐请求检查，
+		// 封禁即时生效、到期自动恢复）
+		if until, banned := apiKeyService.UserViolationBanUntil(c.Request.Context(), apiKey.User.ID); banned {
+			MarkIngressRejected(c, IngressRejectUserInactive)
+			AbortWithError(c, http.StatusForbidden, "USER_VIOLATION_BANNED",
+				fmt.Sprintf("User is temporarily banned until %s due to content policy violations", until.Format("2006-01-02 15:04:05 MST")))
+			return
+		}
+
 		// 分组可用性/归属检查在 selectAPIKeyGroupForRequest 选定分组后统一执行
 		//（本 fork 支持 Primary/Secondary 双分组回退，不能在选定前检查）。
 

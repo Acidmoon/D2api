@@ -1,11 +1,12 @@
-// Package accountguard 实现账号级内容违规守护：在网关选定上游账号之后、
+// Package accountguard 实现用户级内容违规守护：在网关选定上游账号之后、
 // 首个上游请求发出之前，复用 prompt-audit 的 Qwen3Guard 端点池同步判定请求内容；
-// 命中违规时计数，窗口内达到阈值则临时封禁账号并邮件告警管理员。
+// 命中违规时按用户计数，窗口内达到阈值则临时封禁该用户（其所有 API key 在
+// 鉴权阶段被拒绝，到期自动恢复）并邮件告警管理员。
 //
 // 该包独立于 internal/service 存在是因为 securityaudit 已反向依赖 service
 // （coordinator_legacy.go / prompt_config_store.go），service 直接 import
 // securityaudit 会构成 import 环；service 层只依赖这里实现的
-// service.AccountViolationGuard 接口。
+// service.UserViolationGuard 接口。
 package accountguard
 
 import (
@@ -20,16 +21,11 @@ import (
 	"github.com/Wei-Shaw/sub2api/internal/service"
 )
 
-// violationNotifyCooldown 同一账号封禁告警邮件的最小间隔。
+// violationNotifyCooldown 同一用户封禁告警邮件的最小间隔。
 const violationNotifyCooldown = 30 * time.Minute
 
 // notifyTimeout 异步告警的整体超时（与分组不可用告警保持一致）。
 const notifyTimeout = 20 * time.Second
-
-// AccountBanRepository 是封禁原语的最小依赖（由 service.AccountRepository 满足）。
-type AccountBanRepository interface {
-	SetTempUnschedulable(ctx context.Context, id int64, until time.Time, reason string) error
-}
 
 // SettingValueReader 是设置读取的最小依赖（由 service.SettingRepository 满足）。
 type SettingValueReader interface {
@@ -53,24 +49,22 @@ type promptGuardEvaluator interface {
 	Evaluate(ctx context.Context, cfg securityaudit.ActiveConfig, snapshot securityaudit.PromptSnapshot) (*securityaudit.PromptDecision, error)
 }
 
-// GuardService 账号级内容违规守护服务，实现 service.AccountViolationGuard。
+// GuardService 用户级内容违规守护服务，实现 service.UserViolationGuard。
 type GuardService struct {
 	config       activeConfigStore
 	evaluator    promptGuardEvaluator
-	accountRepo  AccountBanRepository
 	settings     SettingValueReader
 	emailService EmailSender
 	counter      service.ViolationCounterCache
 	now          func() time.Time
 }
 
-// NewGuardService 创建账号违规守护服务。evaluator 复用 prompt-audit 的
+// NewGuardService 创建用户违规守护服务。evaluator 复用 prompt-audit 的
 // 同步评估器（调用方应注入不带事件落库 repo 的 GuardEvaluator，
 // 避免与异步审计重复记录事件）。
 func NewGuardService(
 	config activeConfigStore,
 	evaluator promptGuardEvaluator,
-	accountRepo AccountBanRepository,
 	settings SettingValueReader,
 	emailService EmailSender,
 	counter service.ViolationCounterCache,
@@ -78,7 +72,6 @@ func NewGuardService(
 	return &GuardService{
 		config:       config,
 		evaluator:    evaluator,
-		accountRepo:  accountRepo,
 		settings:     settings,
 		emailService: emailService,
 		counter:      counter,
@@ -86,16 +79,16 @@ func NewGuardService(
 	}
 }
 
-// Check 实现 service.AccountViolationGuard。
+// Check 实现 service.UserViolationGuard。
 // 策略：审核不可用/超时/响应非法一律 fail-open（放行且不计数），
 // 与 prompt-audit blocking 的 fail-closed 刻意不同——该调用点在账号选定之后，
 // 阻断会影响已完成调度的真实流量，可用性优先。
-func (s *GuardService) Check(ctx context.Context, input service.AccountGuardCheckInput) (*service.AccountGuardDecision, error) {
+func (s *GuardService) Check(ctx context.Context, input service.UserGuardCheckInput) (*service.UserGuardDecision, error) {
 	if s == nil || s.config == nil || s.evaluator == nil || input.Account == nil {
 		return nil, nil
 	}
 	cfg, ok := s.config.Active()
-	if !ok || !cfg.AccountGuard.Enabled {
+	if !ok || !cfg.UserGuard.Enabled {
 		return nil, nil
 	}
 	if len(cfg.EnabledEndpoints()) == 0 {
@@ -104,13 +97,15 @@ func (s *GuardService) Check(ctx context.Context, input service.AccountGuardChec
 	snapshot, err := securityaudit.ExtractBlockingPromptSnapshot(securityaudit.Request{
 		RequestID: input.RequestID,
 		UserID:    input.UserID,
+		Username:  input.Username,
+		UserEmail: input.UserEmail,
 		APIKeyID:  input.APIKeyID,
 		GroupID:   cloneInt64Ptr(input.GroupID),
 		Provider:  input.Account.Platform,
 		Protocol:  input.Protocol,
 		Model:     input.Model,
 		Body:      input.Body,
-		Stage:     "account_guard",
+		Stage:     "user_guard",
 	}, cfg.BlockingLatestTurnOnly)
 	if err != nil {
 		// 无可扫描文本或请求体无法解析：放行，不计数。
@@ -119,7 +114,8 @@ func (s *GuardService) Check(ctx context.Context, input service.AccountGuardChec
 	decision, err := s.evaluator.Evaluate(ctx, cfg, snapshot)
 	if err != nil || decision == nil {
 		// 审核端点不可用/超时/响应非法：fail-open 放行，不计数。
-		slog.Warn("account_violation_guard.evaluate_failed",
+		slog.Warn("user_violation_guard.evaluate_failed",
+			"user_id", input.UserID,
 			"account_id", input.Account.ID,
 			"err", err,
 		)
@@ -129,58 +125,64 @@ func (s *GuardService) Check(ctx context.Context, input service.AccountGuardChec
 		// Allow / Flag（含 Controversial、未命中已启用分类的 Unsafe）不计数。
 		return nil, nil
 	}
+	if input.UserID <= 0 {
+		// 无用户上下文：无法按用户计数/封禁，放行不计数。
+		return nil, nil
+	}
 	reason := violationReason(decision.Result)
-	slog.Warn("account_violation_guard.violation",
+	slog.Warn("user_violation_guard.violation",
+		"user_id", input.UserID,
+		"username", input.Username,
 		"account_id", input.Account.ID,
-		"account_name", input.Account.Name,
-		"platform", input.Account.Platform,
 		"reason", reason,
 	)
-	s.recordViolation(ctx, input.Account, cfg.AccountGuard, reason)
-	return &service.AccountGuardDecision{Blocked: true, Reason: reason}, nil
+	s.recordViolation(ctx, input, cfg.UserGuard, reason)
+	return &service.UserGuardDecision{Blocked: true, Reason: reason}, nil
 }
 
-// recordViolation 计数并在达到阈值时封禁账号 + 异步告警。
+// recordViolation 按用户计数并在达到阈值时临时封禁该用户 + 异步告警。
 // 计数器/封禁/邮件的任何失败都只记日志，不影响已经做出的阻断决定。
-func (s *GuardService) recordViolation(ctx context.Context, account *service.Account, guardCfg securityaudit.AccountGuardConfig, reason string) {
+func (s *GuardService) recordViolation(ctx context.Context, input service.UserGuardCheckInput, guardCfg securityaudit.UserGuardConfig, reason string) {
 	if s.counter == nil {
 		return
 	}
+	userID := input.UserID
 	window := time.Duration(guardCfg.WindowMinutes) * time.Minute
-	count, err := s.counter.IncrementViolationCount(ctx, account.ID, window)
+	count, err := s.counter.IncrementViolationCount(ctx, userID, window)
 	if err != nil {
-		slog.Warn("account_violation_guard.count_failed", "account_id", account.ID, "err", err)
+		slog.Warn("user_violation_guard.count_failed", "user_id", userID, "err", err)
 		return
 	}
 	if count < int64(guardCfg.Threshold) {
 		return
 	}
+	if input.UserIsAdmin {
+		// 与 content moderation 自动封禁一致：管理员账户不自动封禁，避免锁定管理入口。
+		slog.Warn("user_violation_guard.ban_skipped_admin", "user_id", userID, "count", count, "threshold", guardCfg.Threshold)
+		return
+	}
 	banDuration := time.Duration(guardCfg.BanDurationMinutes) * time.Minute
 	until := s.now().Add(banDuration)
-	banReason := fmt.Sprintf("account_violation_guard: %d 次内容违规 / %d 分钟窗口（%s）", count, guardCfg.WindowMinutes, reason)
-	if s.accountRepo != nil {
-		if err := s.accountRepo.SetTempUnschedulable(ctx, account.ID, until, banReason); err != nil {
-			slog.Warn("account_violation_guard.ban_failed", "account_id", account.ID, "err", err)
-			return
-		}
+	if err := s.counter.SetUserViolationBan(ctx, userID, until, banDuration); err != nil {
+		slog.Warn("user_violation_guard.ban_failed", "user_id", userID, "err", err)
+		return
 	}
-	// 封禁后清零计数，窗口在封禁结束恢复调度后重新起算。
-	if err := s.counter.ResetViolationCount(ctx, account.ID); err != nil {
-		slog.Warn("account_violation_guard.reset_failed", "account_id", account.ID, "err", err)
+	// 封禁后清零计数，窗口在封禁结束后重新起算。
+	if err := s.counter.ResetViolationCount(ctx, userID); err != nil {
+		slog.Warn("user_violation_guard.reset_failed", "user_id", userID, "err", err)
 	}
-	slog.Warn("account_violation_guard.account_banned",
-		"account_id", account.ID,
-		"account_name", account.Name,
-		"platform", account.Platform,
+	slog.Warn("user_violation_guard.user_banned",
+		"user_id", userID,
+		"username", input.Username,
 		"count", count,
 		"window_minutes", guardCfg.WindowMinutes,
 		"ban_duration_minutes", guardCfg.BanDurationMinutes,
 		"until", until,
 	)
 	s.NotifyAsync(ViolationNotifyInput{
-		AccountID:          account.ID,
-		AccountName:        account.Name,
-		Platform:           account.Platform,
+		UserID:             userID,
+		Username:           input.Username,
+		UserEmail:          input.UserEmail,
 		ViolationCount:     count,
 		Threshold:          guardCfg.Threshold,
 		WindowMinutes:      guardCfg.WindowMinutes,
@@ -193,9 +195,9 @@ func (s *GuardService) recordViolation(ctx context.Context, account *service.Acc
 
 // ViolationNotifyInput 封禁告警邮件的内容参数。
 type ViolationNotifyInput struct {
-	AccountID          int64
-	AccountName        string
-	Platform           string
+	UserID             int64
+	Username           string
+	UserEmail          string
 	ViolationCount     int64
 	Threshold          int
 	WindowMinutes      int
@@ -205,7 +207,7 @@ type ViolationNotifyInput struct {
 	OccurredAt         time.Time
 }
 
-// NotifyAsync 异步发送封禁告警邮件（goroutine + 20s 超时），按账号 30 分钟冷却。
+// NotifyAsync 异步发送封禁告警邮件（goroutine + 20s 超时），按用户 30 分钟冷却。
 func (s *GuardService) NotifyAsync(input ViolationNotifyInput) {
 	if s == nil {
 		return
@@ -214,8 +216,8 @@ func (s *GuardService) NotifyAsync(input ViolationNotifyInput) {
 		ctx, cancel := context.WithTimeout(context.Background(), notifyTimeout)
 		defer cancel()
 		if err := s.Notify(ctx, input); err != nil {
-			slog.Warn("account_violation_guard.notify_failed",
-				"account_id", input.AccountID,
+			slog.Warn("user_violation_guard.notify_failed",
+				"user_id", input.UserID,
 				"err", err,
 			)
 		}
@@ -227,7 +229,7 @@ func (s *GuardService) Notify(ctx context.Context, input ViolationNotifyInput) e
 	if s == nil || s.emailService == nil || s.settings == nil {
 		return nil
 	}
-	if input.AccountID <= 0 {
+	if input.UserID <= 0 {
 		return nil
 	}
 	if input.OccurredAt.IsZero() {
@@ -238,17 +240,18 @@ func (s *GuardService) Notify(ctx context.Context, input ViolationNotifyInput) e
 		return nil
 	}
 	if s.counter != nil {
-		claimed, err := s.counter.ClaimViolationNotifyCooldown(ctx, input.AccountID, violationNotifyCooldown)
+		claimed, err := s.counter.ClaimViolationNotifyCooldown(ctx, input.UserID, violationNotifyCooldown)
 		if err != nil {
 			// 冷却判断失败时宁可不发，避免故障期间邮件轰炸。
-			slog.Warn("account_violation_guard.cooldown_failed", "account_id", input.AccountID, "err", err)
+			slog.Warn("user_violation_guard.cooldown_failed", "user_id", input.UserID, "err", err)
 			return nil
 		}
 		if !claimed {
 			return nil
 		}
 	}
-	subject := fmt.Sprintf("[D2api] 账号内容违规自动封禁：%s", firstNonEmpty(strings.TrimSpace(input.AccountName), fmt.Sprintf("Account #%d", input.AccountID)))
+	displayName := firstNonEmpty(strings.TrimSpace(input.Username), strings.TrimSpace(input.UserEmail), fmt.Sprintf("User #%d", input.UserID))
+	subject := fmt.Sprintf("[D2api] 用户内容违规自动封禁：%s", displayName)
 	body := buildViolationNotifyBody(input)
 	for _, recipient := range recipients {
 		if err := s.emailService.SendEmail(ctx, recipient, subject, body); err != nil {
@@ -287,8 +290,8 @@ func (s *GuardService) recipients(ctx context.Context) []string {
 
 func buildViolationNotifyBody(input ViolationNotifyInput) string {
 	rows := []string{
-		notifyTableRow("账号", fmt.Sprintf("%s (#%d)", firstNonEmpty(input.AccountName, "未命名账号"), input.AccountID)),
-		notifyTableRow("平台", input.Platform),
+		notifyTableRow("用户", fmt.Sprintf("%s (#%d)", firstNonEmpty(input.Username, "未命名用户"), input.UserID)),
+		notifyTableRow("邮箱", input.UserEmail),
 		notifyTableRow("窗口内违规次数", fmt.Sprintf("%d（阈值 %d）", input.ViolationCount, input.Threshold)),
 		notifyTableRow("统计窗口", fmt.Sprintf("%d 分钟", input.WindowMinutes)),
 		notifyTableRow("封禁时长", fmt.Sprintf("%d 分钟（至 %s）", input.BanDurationMinutes, input.BannedUntil.Format(time.RFC3339))),
@@ -296,8 +299,8 @@ func buildViolationNotifyBody(input ViolationNotifyInput) string {
 		notifyTableRow("触发时间", input.OccurredAt.Format(time.RFC3339)),
 	}
 	return `<!doctype html><html><body style="font-family:Arial,sans-serif;line-height:1.5;color:#111827;">` +
-		`<h2>D2api 账号内容违规自动封禁</h2>` +
-		`<p>该账号在统计窗口内命中的内容违规次数达到阈值，已被临时移出调度，到期自动恢复。邮件使用系统 SMTP 配置发送。</p>` +
+		`<h2>D2api 用户内容违规自动封禁</h2>` +
+		`<p>该用户在统计窗口内命中的内容违规次数达到阈值，其全部 API Key 已被临时封禁，到期自动恢复。邮件使用系统 SMTP 配置发送。</p>` +
 		`<table cellpadding="6" cellspacing="0" border="1" style="border-collapse:collapse;border-color:#d1d5db;">` +
 		strings.Join(rows, "") +
 		`</table></body></html>`

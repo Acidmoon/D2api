@@ -57,6 +57,18 @@
         <p class="input-hint">{{ t('admin.users.form.rpmLimitHint') }}</p>
       </div>
       <UserAttributeForm v-model="form.customAttributes" :user-id="user?.id" />
+      <div v-if="violationBan.loading || violationBan.banned" class="rounded-lg border px-4 py-3 text-sm" :class="violationBan.banned ? 'border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/30' : 'border-gray-200 dark:border-dark-700'">
+        <template v-if="violationBan.loading">
+          <span class="text-gray-500 dark:text-dark-400">{{ t('admin.users.violationBan.loading') }}</span>
+        </template>
+        <template v-else-if="violationBan.banned">
+          <p class="font-medium text-red-700 dark:text-red-300">{{ t('admin.users.violationBan.bannedTitle') }}</p>
+          <p class="mt-1 text-red-600 dark:text-red-200">{{ t('admin.users.violationBan.bannedHint', { until: formatBanUntil(violationBan.until) }) }}</p>
+          <button type="button" class="btn btn-secondary btn-sm mt-2" :disabled="violationBan.clearing" data-test="clear-violation-ban" @click="handleClearViolationBan">
+            {{ violationBan.clearing ? t('admin.users.violationBan.clearing') : t('admin.users.violationBan.clear') }}
+          </button>
+        </template>
+      </div>
     </form>
     <template #footer>
       <div class="flex justify-end gap-3">
@@ -92,10 +104,43 @@ const { t } = useI18n(); const appStore = useAppStore(); const { copyToClipboard
 const submitting = ref(false); const passwordCopied = ref(false)
 const form = reactive({ email: '', password: '', username: '', notes: '', role: 'user', concurrency: 1, rpm_limit: 0, customAttributes: {} as UserAttributeValuesMap })
 
+// 用户内容违规临时封禁状态（独立于表单，只读展示 + 解除操作）
+const violationBan = reactive<{ loading: boolean; banned: boolean; until: string | null; clearing: boolean }>({ loading: false, banned: false, until: null, clearing: false })
+const loadViolationBan = async (userId: number) => {
+  violationBan.loading = true
+  violationBan.banned = false
+  violationBan.until = null
+  try {
+    const status = await adminAPI.users.getViolationBan(userId)
+    violationBan.banned = status.banned
+    violationBan.until = status.until ?? null
+  } catch {
+    // 查询失败不影响编辑表单主流程
+  } finally { violationBan.loading = false }
+}
+const formatBanUntil = (until: string | null): string => {
+  if (!until) return '-'
+  const date = new Date(until)
+  return Number.isNaN(date.getTime()) ? until : date.toLocaleString()
+}
+const handleClearViolationBan = async () => {
+  if (!props.user || violationBan.clearing) return
+  violationBan.clearing = true
+  try {
+    await adminAPI.users.clearViolationBan(props.user.id)
+    violationBan.banned = false
+    violationBan.until = null
+    appStore.showSuccess(t('admin.users.violationBan.cleared'))
+  } catch (e: any) {
+    appStore.showError(e?.message || t('admin.users.violationBan.clearFailed'))
+  } finally { violationBan.clearing = false }
+}
+
 watch(() => props.user, (u) => {
   if (u) {
     Object.assign(form, { email: u.email, password: '', username: u.username || '', notes: u.notes || '', role: u.role || 'user', concurrency: u.concurrency, rpm_limit: u.rpm_limit ?? 0, customAttributes: {} })
     passwordCopied.value = false
+    void loadViolationBan(u.id)
   }
 }, { immediate: true })
 

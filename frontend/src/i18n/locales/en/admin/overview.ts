@@ -450,6 +450,15 @@ export default {
         success: 'Updated limits for {count} users',
         failed: 'Failed to update user limits'
       },
+      violationBan: {
+        loading: 'Loading ban status…',
+        bannedTitle: 'This user is temporarily banned by the content violation guard',
+        bannedHint: 'Banned until {until}. All API keys of this user are rejected during the ban and recover automatically on expiry.',
+        clear: 'Lift ban',
+        clearing: 'Lifting…',
+        cleared: 'Violation ban lifted',
+        clearFailed: 'Failed to lift the ban',
+      },
       editUser: 'Edit User',
       deleteUser: 'Delete User',
       deleteConfirmMessage: "Are you sure you want to delete user '{email}'? This action cannot be undone.",

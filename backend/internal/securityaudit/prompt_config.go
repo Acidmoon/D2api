@@ -63,9 +63,9 @@ type StorageEndpoint struct {
 	Enabled         bool   `json:"enabled"`
 }
 
-// AccountGuardConfig 账号级内容违规守护配置：复用审计节点池在账号选定后、
+// UserGuardConfig 用户级内容违规守护配置：复用审计节点池在账号选定后、
 // 发往上游前同步判定请求内容，窗口内违规次数达到阈值时临时封禁该账号。
-type AccountGuardConfig struct {
+type UserGuardConfig struct {
 	Enabled            bool `json:"enabled"`
 	Threshold          int  `json:"threshold"`
 	WindowMinutes      int  `json:"window_minutes"`
@@ -73,34 +73,34 @@ type AccountGuardConfig struct {
 }
 
 const (
-	AccountGuardMinThreshold       = 1
-	AccountGuardMaxThreshold       = 100
-	AccountGuardMinWindowMinutes   = 1
-	AccountGuardMaxWindowMinutes   = 1440
-	AccountGuardMinBanMinutes      = 1
-	AccountGuardMaxBanMinutes      = 10080
-	AccountGuardDefaultThreshold   = 3
-	AccountGuardDefaultWindowMin   = 10
-	AccountGuardDefaultBanDuration = 60
+	UserGuardMinThreshold       = 1
+	UserGuardMaxThreshold       = 100
+	UserGuardMinWindowMinutes   = 1
+	UserGuardMaxWindowMinutes   = 1440
+	UserGuardMinBanMinutes      = 1
+	UserGuardMaxBanMinutes      = 10080
+	UserGuardDefaultThreshold   = 3
+	UserGuardDefaultWindowMin   = 10
+	UserGuardDefaultBanDuration = 60
 )
 
 type storageConfig struct {
-	Enabled                bool               `json:"enabled"`
-	BlockingEnabled        bool               `json:"blocking_enabled"`
-	BlockingLatestTurnOnly bool               `json:"blocking_latest_turn_only"`
-	StorePassEvents        bool               `json:"store_pass_events"`
-	Strategy               string             `json:"strategy"`
-	WorkerCount            int                `json:"worker_count"`
-	QueueCapacity          int                `json:"queue_capacity"`
-	Scanners               []string           `json:"scanners"`
-	AllGroups              bool               `json:"all_groups"`
-	GroupIDs               []int64            `json:"group_ids"`
-	Endpoints              []StorageEndpoint  `json:"endpoints"`
-	AccountGuard           AccountGuardConfig `json:"account_guard"`
-	ConfigVersion          int64              `json:"config_version"`
-	UpdatedAt              time.Time          `json:"updated_at"`
-	UpdatedBy              int64              `json:"updated_by"`
-	ChangeSummary          string             `json:"change_summary"`
+	Enabled                bool              `json:"enabled"`
+	BlockingEnabled        bool              `json:"blocking_enabled"`
+	BlockingLatestTurnOnly bool              `json:"blocking_latest_turn_only"`
+	StorePassEvents        bool              `json:"store_pass_events"`
+	Strategy               string            `json:"strategy"`
+	WorkerCount            int               `json:"worker_count"`
+	QueueCapacity          int               `json:"queue_capacity"`
+	Scanners               []string          `json:"scanners"`
+	AllGroups              bool              `json:"all_groups"`
+	GroupIDs               []int64           `json:"group_ids"`
+	Endpoints              []StorageEndpoint `json:"endpoints"`
+	UserGuard              UserGuardConfig   `json:"user_guard"`
+	ConfigVersion          int64             `json:"config_version"`
+	UpdatedAt              time.Time         `json:"updated_at"`
+	UpdatedBy              int64             `json:"updated_by"`
+	ChangeSummary          string            `json:"change_summary"`
 }
 
 type ActiveEndpoint struct {
@@ -133,7 +133,7 @@ type ActiveConfig struct {
 	AllGroups              bool
 	GroupIDs               []int64
 	Endpoints              []ActiveEndpoint
-	AccountGuard           AccountGuardConfig
+	UserGuard              UserGuardConfig
 	ConfigVersion          int64
 	UpdatedAt              time.Time
 	UpdatedBy              int64
@@ -154,23 +154,23 @@ type PublicEndpoint struct {
 }
 
 type PublicConfig struct {
-	Enabled                bool               `json:"enabled"`
-	BlockingEnabled        bool               `json:"blocking_enabled"`
-	BlockingLatestTurnOnly bool               `json:"blocking_latest_turn_only"`
-	StorePassEvents        bool               `json:"store_pass_events"`
-	EffectiveMode          Mode               `json:"effective_mode"`
-	Strategy               string             `json:"strategy"`
-	WorkerCount            int                `json:"worker_count"`
-	QueueCapacity          int                `json:"queue_capacity"`
-	Scanners               []string           `json:"scanners"`
-	AllGroups              bool               `json:"all_groups"`
-	GroupIDs               []int64            `json:"group_ids"`
-	Endpoints              []PublicEndpoint   `json:"endpoints"`
-	AccountGuard           AccountGuardConfig `json:"account_guard"`
-	ConfigVersion          int64              `json:"config_version"`
-	UpdatedAt              time.Time          `json:"updated_at"`
-	UpdatedBy              int64              `json:"updated_by"`
-	ChangeSummary          string             `json:"change_summary"`
+	Enabled                bool             `json:"enabled"`
+	BlockingEnabled        bool             `json:"blocking_enabled"`
+	BlockingLatestTurnOnly bool             `json:"blocking_latest_turn_only"`
+	StorePassEvents        bool             `json:"store_pass_events"`
+	EffectiveMode          Mode             `json:"effective_mode"`
+	Strategy               string           `json:"strategy"`
+	WorkerCount            int              `json:"worker_count"`
+	QueueCapacity          int              `json:"queue_capacity"`
+	Scanners               []string         `json:"scanners"`
+	AllGroups              bool             `json:"all_groups"`
+	GroupIDs               []int64          `json:"group_ids"`
+	Endpoints              []PublicEndpoint `json:"endpoints"`
+	UserGuard              UserGuardConfig  `json:"user_guard"`
+	ConfigVersion          int64            `json:"config_version"`
+	UpdatedAt              time.Time        `json:"updated_at"`
+	UpdatedBy              int64            `json:"updated_by"`
+	ChangeSummary          string           `json:"change_summary"`
 }
 
 type UpdateEndpoint struct {
@@ -187,19 +187,19 @@ type UpdateEndpoint struct {
 }
 
 type UpdateConfigRequest struct {
-	ExpectedConfigVersion  int64              `json:"expected_config_version" binding:"required"`
-	Enabled                bool               `json:"enabled"`
-	BlockingEnabled        bool               `json:"blocking_enabled"`
-	BlockingLatestTurnOnly bool               `json:"blocking_latest_turn_only"`
-	StorePassEvents        bool               `json:"store_pass_events"`
-	Strategy               string             `json:"strategy"`
-	WorkerCount            int                `json:"worker_count"`
-	QueueCapacity          int                `json:"queue_capacity"`
-	Scanners               []string           `json:"scanners"`
-	AllGroups              bool               `json:"all_groups"`
-	GroupIDs               []int64            `json:"group_ids"`
-	Endpoints              []UpdateEndpoint   `json:"endpoints"`
-	AccountGuard           AccountGuardConfig `json:"account_guard"`
+	ExpectedConfigVersion  int64            `json:"expected_config_version" binding:"required"`
+	Enabled                bool             `json:"enabled"`
+	BlockingEnabled        bool             `json:"blocking_enabled"`
+	BlockingLatestTurnOnly bool             `json:"blocking_latest_turn_only"`
+	StorePassEvents        bool             `json:"store_pass_events"`
+	Strategy               string           `json:"strategy"`
+	WorkerCount            int              `json:"worker_count"`
+	QueueCapacity          int              `json:"queue_capacity"`
+	Scanners               []string         `json:"scanners"`
+	AllGroups              bool             `json:"all_groups"`
+	GroupIDs               []int64          `json:"group_ids"`
+	Endpoints              []UpdateEndpoint `json:"endpoints"`
+	UserGuard              UserGuardConfig  `json:"user_guard"`
 }
 
 func DefaultStorageConfig() storageConfig {
@@ -327,27 +327,27 @@ func validateStorageConfig(cfg storageConfig) error {
 	if cfg.Enabled && enabled == 0 {
 		return infraerrors.BadRequest("prompt_audit_endpoint_required", "启用提示词审计前至少需要启用一个审计节点")
 	}
-	if err := validateAccountGuardConfig(cfg.AccountGuard); err != nil {
+	if err := validateUserGuardConfig(cfg.UserGuard); err != nil {
 		return err
 	}
-	if cfg.AccountGuard.Enabled && enabled == 0 {
-		return infraerrors.BadRequest("prompt_audit_endpoint_required", "启用账号违规守护前至少需要启用一个审计节点")
+	if cfg.UserGuard.Enabled && enabled == 0 {
+		return infraerrors.BadRequest("prompt_audit_endpoint_required", "启用用户违规守护前至少需要启用一个审计节点")
 	}
 	return nil
 }
 
-func validateAccountGuardConfig(guard AccountGuardConfig) error {
+func validateUserGuardConfig(guard UserGuardConfig) error {
 	if !guard.Enabled {
 		return nil
 	}
-	if guard.Threshold < AccountGuardMinThreshold || guard.Threshold > AccountGuardMaxThreshold {
-		return infraerrors.BadRequest("account_guard_invalid_threshold", "账号违规守护阈值超出允许范围（1-100）")
+	if guard.Threshold < UserGuardMinThreshold || guard.Threshold > UserGuardMaxThreshold {
+		return infraerrors.BadRequest("user_guard_invalid_threshold", "用户违规守护阈值超出允许范围（1-100）")
 	}
-	if guard.WindowMinutes < AccountGuardMinWindowMinutes || guard.WindowMinutes > AccountGuardMaxWindowMinutes {
-		return infraerrors.BadRequest("account_guard_invalid_window", "账号违规守护统计窗口超出允许范围（1-1440 分钟）")
+	if guard.WindowMinutes < UserGuardMinWindowMinutes || guard.WindowMinutes > UserGuardMaxWindowMinutes {
+		return infraerrors.BadRequest("user_guard_invalid_window", "用户违规守护统计窗口超出允许范围（1-1440 分钟）")
 	}
-	if guard.BanDurationMinutes < AccountGuardMinBanMinutes || guard.BanDurationMinutes > AccountGuardMaxBanMinutes {
-		return infraerrors.BadRequest("account_guard_invalid_ban_duration", "账号违规守护封禁时长超出允许范围（1-10080 分钟）")
+	if guard.BanDurationMinutes < UserGuardMinBanMinutes || guard.BanDurationMinutes > UserGuardMaxBanMinutes {
+		return infraerrors.BadRequest("user_guard_invalid_ban_duration", "用户违规守护封禁时长超出允许范围（1-10080 分钟）")
 	}
 	return nil
 }
@@ -388,7 +388,7 @@ func validateUpdateConfigRequest(req UpdateConfigRequest) error {
 			return infraerrors.BadRequest("prompt_audit_invalid_input_limit", "审计节点输入上限超出允许范围")
 		}
 	}
-	if err := validateAccountGuardConfig(req.AccountGuard); err != nil {
+	if err := validateUserGuardConfig(req.UserGuard); err != nil {
 		return err
 	}
 	return nil
@@ -465,7 +465,7 @@ func PublicFromStorage(cfg storageConfig, riskControlEnabled bool, invalidTokenE
 		Enabled: cfg.Enabled, BlockingEnabled: cfg.BlockingEnabled, BlockingLatestTurnOnly: cfg.BlockingLatestTurnOnly, StorePassEvents: cfg.StorePassEvents,
 		EffectiveMode: active.EffectiveMode(), Strategy: cfg.Strategy, WorkerCount: cfg.WorkerCount,
 		QueueCapacity: cfg.QueueCapacity, Scanners: scanners, AllGroups: cfg.AllGroups,
-		GroupIDs: groupIDs, Endpoints: endpoints, AccountGuard: cfg.AccountGuard, ConfigVersion: cfg.ConfigVersion,
+		GroupIDs: groupIDs, Endpoints: endpoints, UserGuard: cfg.UserGuard, ConfigVersion: cfg.ConfigVersion,
 		UpdatedAt: cfg.UpdatedAt, UpdatedBy: cfg.UpdatedBy, ChangeSummary: cfg.ChangeSummary,
 	}
 }
@@ -476,7 +476,7 @@ func ActiveFromStorage(cfg storageConfig, riskControlEnabled bool, encryptor Sec
 		BlockingLatestTurnOnly: cfg.BlockingLatestTurnOnly,
 		StorePassEvents:        cfg.StorePassEvents, Strategy: cfg.Strategy, WorkerCount: cfg.WorkerCount,
 		QueueCapacity: cfg.QueueCapacity, Scanners: append([]string(nil), cfg.Scanners...), AllGroups: cfg.AllGroups,
-		GroupIDs: append([]int64(nil), cfg.GroupIDs...), AccountGuard: cfg.AccountGuard, ConfigVersion: cfg.ConfigVersion,
+		GroupIDs: append([]int64(nil), cfg.GroupIDs...), UserGuard: cfg.UserGuard, ConfigVersion: cfg.ConfigVersion,
 		UpdatedAt: cfg.UpdatedAt, UpdatedBy: cfg.UpdatedBy, ChangeSummary: cfg.ChangeSummary,
 		Endpoints: make([]ActiveEndpoint, 0, len(cfg.Endpoints)),
 	}

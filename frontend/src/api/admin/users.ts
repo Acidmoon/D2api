@@ -399,6 +399,31 @@ export async function resetPlatformQuotaWindow(
   return data
 }
 
+/** 用户内容违规临时封禁状态 */
+export interface UserViolationBanStatus {
+  user_id: number
+  banned: boolean
+  until?: string
+}
+
+/**
+ * Get user's content-violation temporary ban status
+ * @param id - User ID
+ */
+export async function getViolationBan(id: number): Promise<UserViolationBanStatus> {
+  const { data } = await apiClient.get<UserViolationBanStatus>(`/admin/users/${id}/violation-ban`)
+  return data
+}
+
+/**
+ * Clear user's content-violation temporary ban
+ * @param id - User ID
+ */
+export async function clearViolationBan(id: number): Promise<UserViolationBanStatus> {
+  const { data } = await apiClient.delete<UserViolationBanStatus>(`/admin/users/${id}/violation-ban`)
+  return data
+}
+
 export const usersAPI = {
   list,
   getById,
@@ -417,6 +442,9 @@ export const usersAPI = {
   getPlatformQuotas,
   updatePlatformQuotas,
   resetPlatformQuotaWindow,
+  getViolationBan,
+  clearViolationBan,
 }
 
 export default usersAPI
+

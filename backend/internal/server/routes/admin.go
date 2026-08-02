@@ -301,6 +301,8 @@ func registerUserManagementRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 		users.GET("/:id/balance-history", h.Admin.User.GetBalanceHistory)
 		users.POST("/:id/replace-group", h.Admin.User.ReplaceGroup)
 		users.GET("/:id/rpm-status", h.Admin.User.GetUserRPMStatus)
+		users.GET("/:id/violation-ban", h.Admin.User.GetViolationBan)
+		users.DELETE("/:id/violation-ban", h.Admin.User.DeleteViolationBan)
 		users.POST("/batch-concurrency", h.Admin.User.BatchUpdateConcurrency)
 		users.POST("/batch-limits", h.Admin.User.BatchUpdateLimits)
 		users.GET("/:id/platform-quotas", h.Admin.User.GetUserPlatformQuotas)

@@ -414,7 +414,7 @@ type OpenAIGatewayService struct {
 	groupUnavailableAlert *GroupUnavailableAlertService
 	userPlatformQuotaRepo UserPlatformQuotaRepository
 	tlsFPProfileService   *TLSFingerprintProfileService
-	accountGuard          AccountViolationGuard
+	userGuard             UserViolationGuard
 	liveAttestation       liveattestation.Provider
 	liveAttestationCipher SecretEncryptor
 
@@ -476,7 +476,7 @@ func NewOpenAIGatewayService(
 	groupUnavailableAlert *GroupUnavailableAlertService,
 	userPlatformQuotaRepo UserPlatformQuotaRepository,
 	tlsFPProfileService *TLSFingerprintProfileService,
-	accountGuard AccountViolationGuard,
+	userGuard UserViolationGuard,
 ) *OpenAIGatewayService {
 	svc := &OpenAIGatewayService{
 		accountRepo:         accountRepo,
@@ -512,7 +512,7 @@ func NewOpenAIGatewayService(
 		groupUnavailableAlert: groupUnavailableAlert,
 		userPlatformQuotaRepo: userPlatformQuotaRepo,
 		tlsFPProfileService:   tlsFPProfileService,
-		accountGuard:          accountGuard,
+		userGuard:             userGuard,
 		liveAttestation:       liveattestation.NewProvider(),
 		liveAttestationCipher: newLiveAttestationCipher(cfg),
 		responseHeaderFilter:  compileResponseHeaderFilter(cfg),

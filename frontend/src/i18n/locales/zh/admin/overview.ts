@@ -450,6 +450,15 @@ export default {
         success: '已更新 {count} 个用户的限制',
         failed: '批量更新用户限制失败'
       },
+      violationBan: {
+        loading: '正在查询封禁状态…',
+        bannedTitle: '该用户已被内容违规守护临时封禁',
+        bannedHint: '封禁至 {until}，期间该用户所有 API Key 不可用，到期自动恢复。',
+        clear: '解除封禁',
+        clearing: '解除中…',
+        cleared: '已解除该用户的违规封禁',
+        clearFailed: '解除封禁失败',
+      },
       editUser: '编辑用户',
       deleteUser: '删除用户',
       deleteConfirmMessage: "确定要删除用户 '{email}' 吗？此操作无法撤销。",

@@ -269,6 +269,7 @@ type APIKeyService struct {
 	cache                     APIKeyCache
 	rateLimitCacheInvalid     RateLimitCacheInvalidator // optional: invalidate Redis rate limit cache
 	concurrencyService        *ConcurrencyService
+	violationBanCache         ViolationCounterCache // optional: 用户内容违规临时封禁键（Redis）
 	cfg                       *config.Config
 	authCacheL1               *ristretto.Cache
 	authNegativeCacheL1       *ristretto.Cache
@@ -345,6 +346,25 @@ func (s *APIKeyService) SetRateLimitCacheInvalidator(inv RateLimitCacheInvalidat
 
 func (s *APIKeyService) SetConcurrencyService(concurrencyService *ConcurrencyService) {
 	s.concurrencyService = concurrencyService
+}
+
+// SetViolationBanCache 注入用户违规临时封禁缓存（wire 装配时调用，可选）。
+func (s *APIKeyService) SetViolationBanCache(cache ViolationCounterCache) {
+	s.violationBanCache = cache
+}
+
+// UserViolationBanUntil 返回用户的违规临时封禁解封时间与封禁状态。
+// 该检查直接读 Redis 封禁键，不走 API key 鉴权 L1/L2 缓存，
+// 因此封禁写入即时生效、TTL 到期自动恢复。缓存未注入或读取失败时 fail-open。
+func (s *APIKeyService) UserViolationBanUntil(ctx context.Context, userID int64) (time.Time, bool) {
+	if s == nil || s.violationBanCache == nil || userID <= 0 {
+		return time.Time{}, false
+	}
+	until, banned, err := s.violationBanCache.GetUserViolationBan(ctx, userID)
+	if err != nil {
+		return time.Time{}, false
+	}
+	return until, banned
 }
 
 func (s *APIKeyService) compileAPIKeyIPRules(apiKey *APIKey) {

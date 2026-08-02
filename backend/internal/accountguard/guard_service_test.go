@@ -32,6 +32,12 @@ func (f *fakeEvaluator) Evaluate(_ context.Context, _ securityaudit.ActiveConfig
 	return f.decision, f.err
 }
 
+type banRecord struct {
+	userID int64
+	until  time.Time
+	ttl    time.Duration
+}
+
 type fakeCounter struct {
 	mu          sync.Mutex
 	count       int64
@@ -39,6 +45,7 @@ type fakeCounter struct {
 	reset       int
 	claimOK     bool
 	incrErr     error
+	bans        []banRecord
 }
 
 func (f *fakeCounter) IncrementViolationCount(_ context.Context, _ int64, _ time.Duration) (int64, error) {
@@ -64,21 +71,20 @@ func (f *fakeCounter) ClaimViolationNotifyCooldown(_ context.Context, _ int64, _
 	return f.claimOK, nil
 }
 
-type fakeBanRepo struct {
-	mu      sync.Mutex
-	bans    []time.Time
-	reasons []string
-}
-
-func (f *fakeBanRepo) SetTempUnschedulable(_ context.Context, _ int64, until time.Time, reason string) error {
+func (f *fakeCounter) SetUserViolationBan(_ context.Context, userID int64, until time.Time, ttl time.Duration) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	f.bans = append(f.bans, until)
-	f.reasons = append(f.reasons, reason)
+	f.bans = append(f.bans, banRecord{userID: userID, until: until, ttl: ttl})
 	return nil
 }
 
-func (f *fakeBanRepo) banCount() int {
+func (f *fakeCounter) GetUserViolationBan(context.Context, int64) (time.Time, bool, error) {
+	return time.Time{}, false, nil
+}
+
+func (f *fakeCounter) ClearUserViolationBan(context.Context, int64) error { return nil }
+
+func (f *fakeCounter) banCount() int {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return len(f.bans)
@@ -120,22 +126,21 @@ func guardTestConfig(enabled bool, threshold, windowMin, banMin int) securityaud
 			TimeoutMS: 1000, InputLimit: 1000, Enabled: true,
 		}},
 		Scanners: []string{"violent"},
-		AccountGuard: securityaudit.AccountGuardConfig{
+		UserGuard: securityaudit.UserGuardConfig{
 			Enabled: enabled, Threshold: threshold, WindowMinutes: windowMin, BanDurationMinutes: banMin,
 		},
 	}
 }
 
-func guardTestAccount() *service.Account {
-	return &service.Account{ID: 42, Name: "pool-account", Platform: "anthropic"}
-}
-
-func guardTestInput() service.AccountGuardCheckInput {
-	return service.AccountGuardCheckInput{
-		Account:  guardTestAccount(),
-		Protocol: "anthropic_messages",
-		Model:    "claude-test",
-		Body:     []byte(`{"model":"claude-test","messages":[{"role":"user","content":"hello"}]}`),
+func guardTestInput() service.UserGuardCheckInput {
+	return service.UserGuardCheckInput{
+		Account:   &service.Account{ID: 42, Name: "pool-account", Platform: "anthropic"},
+		Protocol:  "anthropic_messages",
+		Model:     "claude-test",
+		Body:      []byte(`{"model":"claude-test","messages":[{"role":"user","content":"hello"}]}`),
+		UserID:    1001,
+		Username:  "alice",
+		UserEmail: "alice@example.test",
 	}
 }
 
@@ -155,7 +160,7 @@ func blockDecision() *securityaudit.PromptDecision {
 func TestCheck_DisabledAllowsWithoutEvaluation(t *testing.T) {
 	evaluator := &fakeEvaluator{decision: blockDecision()}
 	counter := &fakeCounter{}
-	svc := NewGuardService(&fakeConfigStore{cfg: guardTestConfig(false, 3, 10, 60), active: true}, evaluator, &fakeBanRepo{}, &fakeSettings{}, newFakeEmailSender(), counter)
+	svc := NewGuardService(&fakeConfigStore{cfg: guardTestConfig(false, 3, 10, 60), active: true}, evaluator, &fakeSettings{}, newFakeEmailSender(), counter)
 
 	decision, err := svc.Check(context.Background(), guardTestInput())
 	require.NoError(t, err)
@@ -166,7 +171,7 @@ func TestCheck_DisabledAllowsWithoutEvaluation(t *testing.T) {
 
 func TestCheck_InactiveConfigAllows(t *testing.T) {
 	evaluator := &fakeEvaluator{decision: blockDecision()}
-	svc := NewGuardService(&fakeConfigStore{active: false}, evaluator, &fakeBanRepo{}, &fakeSettings{}, newFakeEmailSender(), &fakeCounter{})
+	svc := NewGuardService(&fakeConfigStore{active: false}, evaluator, &fakeSettings{}, newFakeEmailSender(), &fakeCounter{})
 
 	decision, err := svc.Check(context.Background(), guardTestInput())
 	require.NoError(t, err)
@@ -174,11 +179,10 @@ func TestCheck_InactiveConfigAllows(t *testing.T) {
 	require.Zero(t, evaluator.calls)
 }
 
-func TestCheck_UnsafeBlocksAndCounts(t *testing.T) {
+func TestCheck_UnsafeBlocksAndCountsByUser(t *testing.T) {
 	evaluator := &fakeEvaluator{decision: blockDecision()}
 	counter := &fakeCounter{}
-	banRepo := &fakeBanRepo{}
-	svc := NewGuardService(&fakeConfigStore{cfg: guardTestConfig(true, 3, 10, 60), active: true}, evaluator, banRepo, &fakeSettings{}, newFakeEmailSender(), counter)
+	svc := NewGuardService(&fakeConfigStore{cfg: guardTestConfig(true, 3, 10, 60), active: true}, evaluator, &fakeSettings{}, newFakeEmailSender(), counter)
 
 	decision, err := svc.Check(context.Background(), guardTestInput())
 	require.NoError(t, err)
@@ -188,33 +192,50 @@ func TestCheck_UnsafeBlocksAndCounts(t *testing.T) {
 	require.Equal(t, 1, evaluator.calls)
 	require.Equal(t, 1, counter.incremented)
 	// 未达阈值：不封禁
-	require.Zero(t, banRepo.banCount())
+	require.Zero(t, counter.banCount())
 }
 
-func TestCheck_ThresholdTriggersBanResetAndNotify(t *testing.T) {
+func TestCheck_NoUserContextAllowsWithoutCounting(t *testing.T) {
+	evaluator := &fakeEvaluator{decision: blockDecision()}
+	counter := &fakeCounter{}
+	svc := NewGuardService(&fakeConfigStore{cfg: guardTestConfig(true, 1, 10, 60), active: true}, evaluator, &fakeSettings{}, newFakeEmailSender(), counter)
+
+	input := guardTestInput()
+	input.UserID = 0
+	decision, err := svc.Check(context.Background(), input)
+	require.NoError(t, err)
+	require.Nil(t, decision)
+	require.Equal(t, 1, evaluator.calls)
+	require.Zero(t, counter.incremented)
+}
+
+func TestCheck_ThresholdTriggersUserBanResetAndNotify(t *testing.T) {
 	evaluator := &fakeEvaluator{decision: blockDecision()}
 	counter := &fakeCounter{claimOK: true}
-	banRepo := &fakeBanRepo{}
 	email := newFakeEmailSender()
 	settings := &fakeSettings{raw: `[{"email":"admin@example.test","verified":true},{"email":"off@example.test","disabled":true,"verified":true}]`}
-	svc := NewGuardService(&fakeConfigStore{cfg: guardTestConfig(true, 2, 10, 60), active: true}, evaluator, banRepo, settings, email, counter)
+	svc := NewGuardService(&fakeConfigStore{cfg: guardTestConfig(true, 2, 10, 60), active: true}, evaluator, settings, email, counter)
 
 	// 第一次违规：计数 1，未达阈值
 	decision, err := svc.Check(context.Background(), guardTestInput())
 	require.NoError(t, err)
 	require.True(t, decision.Blocked)
-	require.Zero(t, banRepo.banCount())
+	require.Zero(t, counter.banCount())
 
-	// 第二次违规：计数 2 达到阈值 → 封禁 + 清零 + 邮件
+	// 第二次违规：计数 2 达到阈值 → 封禁用户 + 清零 + 邮件
 	_, err = svc.Check(context.Background(), guardTestInput())
 	require.NoError(t, err)
-	require.Equal(t, 1, banRepo.banCount())
+	require.Equal(t, 1, counter.banCount())
+	ban := counter.bans[0]
+	require.Equal(t, int64(1001), ban.userID)
+	require.Equal(t, 60*time.Minute, ban.ttl)
 	require.Equal(t, 1, counter.reset)
 
 	select {
 	case mail := <-email.ch:
 		require.Equal(t, "admin@example.test", mail.to)
-		require.Contains(t, mail.subject, "pool-account")
+		require.Contains(t, mail.subject, "alice")
+		require.Contains(t, mail.body, "alice@example.test")
 		require.Contains(t, mail.body, "violent")
 		require.Contains(t, mail.body, "60 分钟")
 	case <-time.After(3 * time.Second):
@@ -228,10 +249,27 @@ func TestCheck_ThresholdTriggersBanResetAndNotify(t *testing.T) {
 	}
 }
 
+func TestCheck_AdminUserNotBanned(t *testing.T) {
+	evaluator := &fakeEvaluator{decision: blockDecision()}
+	counter := &fakeCounter{claimOK: true}
+	email := newFakeEmailSender()
+	settings := &fakeSettings{raw: `[{"email":"admin@example.test","verified":true}]`}
+	svc := NewGuardService(&fakeConfigStore{cfg: guardTestConfig(true, 1, 10, 60), active: true}, evaluator, settings, email, counter)
+
+	input := guardTestInput()
+	input.UserIsAdmin = true
+	decision, err := svc.Check(context.Background(), input)
+	require.NoError(t, err)
+	// 违规请求本身仍被 403 阻断并计数，但不封禁管理员
+	require.True(t, decision.Blocked)
+	require.Equal(t, 1, counter.incremented)
+	require.Zero(t, counter.banCount())
+}
+
 func TestCheck_EvaluatorErrorFailsOpen(t *testing.T) {
 	evaluator := &fakeEvaluator{err: errors.New("guard endpoint timeout")}
 	counter := &fakeCounter{}
-	svc := NewGuardService(&fakeConfigStore{cfg: guardTestConfig(true, 1, 10, 60), active: true}, evaluator, &fakeBanRepo{}, &fakeSettings{}, newFakeEmailSender(), counter)
+	svc := NewGuardService(&fakeConfigStore{cfg: guardTestConfig(true, 1, 10, 60), active: true}, evaluator, &fakeSettings{}, newFakeEmailSender(), counter)
 
 	decision, err := svc.Check(context.Background(), guardTestInput())
 	require.NoError(t, err)
@@ -244,7 +282,7 @@ func TestCheck_FlagDecisionAllowsWithoutCounting(t *testing.T) {
 	// Controversial / 未命中已启用分类的 Unsafe → DecisionFlag，不计数
 	evaluator := &fakeEvaluator{decision: &securityaudit.PromptDecision{Kind: securityaudit.DecisionFlag, AllowNextStage: true}}
 	counter := &fakeCounter{}
-	svc := NewGuardService(&fakeConfigStore{cfg: guardTestConfig(true, 1, 10, 60), active: true}, evaluator, &fakeBanRepo{}, &fakeSettings{}, newFakeEmailSender(), counter)
+	svc := NewGuardService(&fakeConfigStore{cfg: guardTestConfig(true, 1, 10, 60), active: true}, evaluator, &fakeSettings{}, newFakeEmailSender(), counter)
 
 	decision, err := svc.Check(context.Background(), guardTestInput())
 	require.NoError(t, err)
@@ -256,9 +294,9 @@ func TestNotify_CooldownSuppressesEmail(t *testing.T) {
 	counter := &fakeCounter{claimOK: false}
 	email := newFakeEmailSender()
 	settings := &fakeSettings{raw: `[{"email":"admin@example.test","verified":true}]`}
-	svc := NewGuardService(&fakeConfigStore{active: false}, nil, &fakeBanRepo{}, settings, email, counter)
+	svc := NewGuardService(&fakeConfigStore{active: false}, nil, settings, email, counter)
 
-	err := svc.Notify(context.Background(), ViolationNotifyInput{AccountID: 42, AccountName: "pool-account", Reason: "violent"})
+	err := svc.Notify(context.Background(), ViolationNotifyInput{UserID: 1001, Username: "alice", Reason: "violent"})
 	require.NoError(t, err)
 	select {
 	case mail := <-email.ch:
@@ -270,9 +308,9 @@ func TestNotify_CooldownSuppressesEmail(t *testing.T) {
 func TestNotify_NoRecipientsSkips(t *testing.T) {
 	counter := &fakeCounter{claimOK: true}
 	email := newFakeEmailSender()
-	svc := NewGuardService(&fakeConfigStore{active: false}, nil, &fakeBanRepo{}, &fakeSettings{raw: "[]"}, email, counter)
+	svc := NewGuardService(&fakeConfigStore{active: false}, nil, &fakeSettings{raw: "[]"}, email, counter)
 
-	err := svc.Notify(context.Background(), ViolationNotifyInput{AccountID: 42, Reason: "violent"})
+	err := svc.Notify(context.Background(), ViolationNotifyInput{UserID: 1001, Reason: "violent"})
 	require.NoError(t, err)
 	select {
 	case mail := <-email.ch:
