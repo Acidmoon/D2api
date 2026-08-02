@@ -49,6 +49,8 @@ export default {
       name: 'Node name', id: 'Stable node ID', baseUrl: 'Base URL', apiKey: 'API Key', keepSecret: 'Leave blank to keep the saved API Key',
       secretHint: 'Plaintext exists only in this editor and is cleared immediately after a successful save.', clearSecret: 'Explicitly clear the saved API Key', timeout: 'Total timeout (ms)', inputLimit: 'Unicode characters per chunk',
       toggleNode: 'Toggle node {name}', deleteConfirm: 'Remove “{name}” from the draft? It takes effect after saving.',
+      systemPrompt: 'System prompt (optional)', fillDefaultSystemPrompt: 'Fill default template',
+      systemPromptHint: 'For general-purpose model APIs other than Qwen3Guard (GPT/DeepSeek/Kimi, etc.): instructs the model to act as a content safety auditor and emit the standard format. Leave empty to send content as-is (for official Qwen3Guard endpoints). Max 8000 characters.',
     },
     policy: {
       title: 'Audit policy', description: 'Configure group scope, nine input-risk categories, workers, and queue bounds.', scope: 'Scope', allGroups: 'All groups', selectedGroups: 'Selected groups',
@@ -104,6 +106,7 @@ export default {
       prompt_audit_config_conflict: 'Another administrator updated this configuration. Reload the server version before deciding how to merge your draft.',
       prompt_guard_requires_audit_enabled: 'Enable Prompt Audit before synchronous blocking.', prompt_audit_invalid_endpoint: 'The audit node configuration is invalid.', prompt_audit_endpoint_required: 'Enable at least one audit node before enabling Prompt Audit.', prompt_audit_groups_required: 'Select at least one group in selected-group mode.', prompt_audit_scanners_required: 'Enable at least one risk category.',
       user_guard_invalid_threshold: 'The account guard threshold must be between 1 and 100.', user_guard_invalid_window: 'The account guard counting window must be between 1 and 1440 minutes.', user_guard_invalid_ban_duration: 'The account guard ban duration must be between 1 and 10080 minutes.',
+      prompt_audit_invalid_system_prompt: 'The endpoint system prompt exceeds the length limit (8000 characters).',
     },
   },
 }

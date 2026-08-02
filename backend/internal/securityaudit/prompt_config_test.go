@@ -538,3 +538,53 @@ func TestUserGuardDefaultsOffForLegacyConfig(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, active.UserGuard.Enabled)
 }
+
+func TestEndpointSystemPromptRoundTripAndValidation(t *testing.T) {
+	// update → storage → active/public 全载体携带 system_prompt
+	manager := &ConfigManager{encryptor: prefixEncryptor{}, encryptionKeyConfigured: true}
+	request := promptAuditUpdateRequest(1, 1, "")
+	request.Endpoints[0].SystemPrompt = "  " + DefaultGuardSystemPrompt + "  "
+	next, err := manager.buildNextStorage(DefaultStorageConfig(), request, 9)
+	require.NoError(t, err)
+	// 存储时 trim
+	require.Equal(t, DefaultGuardSystemPrompt, next.Endpoints[0].SystemPrompt)
+
+	active, err := ActiveFromStorage(next, true, prefixEncryptor{})
+	require.NoError(t, err)
+	require.Equal(t, DefaultGuardSystemPrompt, active.Endpoints[0].SystemPrompt)
+
+	public := PublicFromStorage(next, true, nil)
+	require.Equal(t, DefaultGuardSystemPrompt, public.Endpoints[0].SystemPrompt)
+
+	raw, err := json.Marshal(next)
+	require.NoError(t, err)
+	require.Contains(t, string(raw), `"system_prompt"`)
+	parsed, err := ParseStorageConfig(string(raw))
+	require.NoError(t, err)
+	require.Equal(t, DefaultGuardSystemPrompt, parsed.Endpoints[0].SystemPrompt)
+
+	// 留空时 JSON 省略该字段（omitempty），保持旧端点 payload 形状不变
+	request2 := promptAuditUpdateRequest(1, 1, "")
+	next2, err := manager.buildNextStorage(DefaultStorageConfig(), request2, 9)
+	require.NoError(t, err)
+	raw2, err := json.Marshal(next2)
+	require.NoError(t, err)
+	require.NotContains(t, string(raw2), `"system_prompt"`)
+
+	// 超长拒绝（storage 校验与 update 校验两条路径）
+	tooLong := strings.Repeat("安", MaxSystemPromptChars+1)
+	storage := DefaultStorageConfig()
+	storage.Endpoints = []StorageEndpoint{{
+		ID: "guard-1", Name: "Guard", Protocol: "openai_compatible", BaseURL: "http://127.0.0.1:8080",
+		Model: DefaultGuardModel, TimeoutMS: 1000, InputLimit: 1000, Enabled: true, SystemPrompt: tooLong,
+	}}
+	err = validateStorageConfig(storage)
+	require.Error(t, err)
+	require.Equal(t, "prompt_audit_invalid_system_prompt", infraerrors.Reason(err))
+
+	req3 := promptAuditUpdateRequest(1, 1, "")
+	req3.Endpoints[0].SystemPrompt = tooLong
+	err = validateUpdateConfigRequest(req3)
+	require.Error(t, err)
+	require.Equal(t, "prompt_audit_invalid_system_prompt", infraerrors.Reason(err))
+}

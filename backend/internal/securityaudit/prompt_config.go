@@ -24,6 +24,8 @@ const (
 	DefaultInputLimit    = 4000
 	MinInputLimit        = 128
 	MaxInputLimit        = 100000
+	// MaxSystemPromptChars 端点级系统提示词长度上限（Unicode 字符）。
+	MaxSystemPromptChars = 8000
 	DefaultPayloadTTL    = 30 * time.Minute
 )
 
@@ -60,11 +62,16 @@ type StorageEndpoint struct {
 	TokenCiphertext string `json:"token_ciphertext,omitempty"`
 	TimeoutMS       int    `json:"timeout_ms"`
 	InputLimit      int    `json:"input_limit"`
-	Enabled         bool   `json:"enabled"`
+	// SystemPrompt 可选的端点级系统提示词：配置后审核请求以
+	// [{role:"system"},{role:"user"}] 发送，使任意通用 chat completions
+	// 模型（GPT/DeepSeek/Kimi 等）都能充当内容审核员；留空则保持裸内容
+	// 单条 user 消息（适用于真正的 Qwen3Guard 官方端点）。非敏感，不加密。
+	SystemPrompt string `json:"system_prompt,omitempty"`
+	Enabled      bool   `json:"enabled"`
 }
 
 // UserGuardConfig 用户级内容违规守护配置：复用审计节点池在账号选定后、
-// 发往上游前同步判定请求内容，窗口内违规次数达到阈值时临时封禁该账号。
+// 发往上游前同步判定请求内容，窗口内违规次数达到阈值时临时封禁该用户。
 type UserGuardConfig struct {
 	Enabled            bool `json:"enabled"`
 	Threshold          int  `json:"threshold"`
@@ -104,15 +111,16 @@ type storageConfig struct {
 }
 
 type ActiveEndpoint struct {
-	ID         string
-	Name       string
-	Protocol   string
-	BaseURL    string
-	Model      string
-	Token      string
-	TimeoutMS  int
-	InputLimit int
-	Enabled    bool
+	ID           string
+	Name         string
+	Protocol     string
+	BaseURL      string
+	Model        string
+	Token        string
+	TimeoutMS    int
+	InputLimit   int
+	SystemPrompt string
+	Enabled      bool
 	// TokenInvalid marks an endpoint whose persisted token ciphertext cannot be
 	// decrypted with the current encryption key (key changed or auto-generated
 	// on restart). The endpoint is kept visible for admins but excluded from
@@ -141,16 +149,17 @@ type ActiveConfig struct {
 }
 
 type PublicEndpoint struct {
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	Protocol    string `json:"protocol"`
-	BaseURL     string `json:"base_url"`
-	Model       string `json:"model"`
-	TimeoutMS   int    `json:"timeout_ms"`
-	InputLimit  int    `json:"input_limit"`
-	Enabled     bool   `json:"enabled"`
-	HasToken    bool   `json:"has_token"`
-	TokenStatus string `json:"token_status"`
+	ID           string `json:"id"`
+	Name         string `json:"name"`
+	Protocol     string `json:"protocol"`
+	BaseURL      string `json:"base_url"`
+	Model        string `json:"model"`
+	TimeoutMS    int    `json:"timeout_ms"`
+	InputLimit   int    `json:"input_limit"`
+	SystemPrompt string `json:"system_prompt,omitempty"`
+	Enabled      bool   `json:"enabled"`
+	HasToken     bool   `json:"has_token"`
+	TokenStatus  string `json:"token_status"`
 }
 
 type PublicConfig struct {
@@ -174,16 +183,17 @@ type PublicConfig struct {
 }
 
 type UpdateEndpoint struct {
-	ID         string `json:"id" binding:"required"`
-	Name       string `json:"name" binding:"required"`
-	Protocol   string `json:"protocol"`
-	BaseURL    string `json:"base_url" binding:"required"`
-	Model      string `json:"model"`
-	Token      string `json:"token,omitempty"`
-	ClearToken bool   `json:"clear_token"`
-	TimeoutMS  int    `json:"timeout_ms"`
-	InputLimit int    `json:"input_limit"`
-	Enabled    bool   `json:"enabled"`
+	ID           string `json:"id" binding:"required"`
+	Name         string `json:"name" binding:"required"`
+	Protocol     string `json:"protocol"`
+	BaseURL      string `json:"base_url" binding:"required"`
+	Model        string `json:"model"`
+	Token        string `json:"token,omitempty"`
+	ClearToken   bool   `json:"clear_token"`
+	TimeoutMS    int    `json:"timeout_ms"`
+	InputLimit   int    `json:"input_limit"`
+	SystemPrompt string `json:"system_prompt,omitempty"`
+	Enabled      bool   `json:"enabled"`
 }
 
 type UpdateConfigRequest struct {
@@ -320,6 +330,9 @@ func validateStorageConfig(cfg storageConfig) error {
 		if ep.InputLimit < MinInputLimit || ep.InputLimit > MaxInputLimit {
 			return infraerrors.BadRequest("prompt_audit_invalid_input_limit", "审计节点输入上限超出允许范围")
 		}
+		if len([]rune(ep.SystemPrompt)) > MaxSystemPromptChars {
+			return infraerrors.BadRequest("prompt_audit_invalid_system_prompt", "审计节点系统提示词超出长度上限（8000 字符）")
+		}
 		if ep.Enabled {
 			enabled++
 		}
@@ -386,6 +399,9 @@ func validateUpdateConfigRequest(req UpdateConfigRequest) error {
 		}
 		if endpoint.InputLimit < MinInputLimit || endpoint.InputLimit > MaxInputLimit {
 			return infraerrors.BadRequest("prompt_audit_invalid_input_limit", "审计节点输入上限超出允许范围")
+		}
+		if len([]rune(endpoint.SystemPrompt)) > MaxSystemPromptChars {
+			return infraerrors.BadRequest("prompt_audit_invalid_system_prompt", "审计节点系统提示词超出长度上限（8000 字符）")
 		}
 	}
 	if err := validateUserGuardConfig(req.UserGuard); err != nil {
@@ -457,7 +473,8 @@ func PublicFromStorage(cfg storageConfig, riskControlEnabled bool, invalidTokenE
 		endpoints = append(endpoints, PublicEndpoint{
 			ID: ep.ID, Name: ep.Name, Protocol: ep.Protocol, BaseURL: ep.BaseURL,
 			Model: ep.Model, TimeoutMS: ep.TimeoutMS, InputLimit: ep.InputLimit,
-			Enabled: ep.Enabled, HasToken: hasToken, TokenStatus: status,
+			SystemPrompt: ep.SystemPrompt,
+			Enabled:      ep.Enabled, HasToken: hasToken, TokenStatus: status,
 		})
 	}
 	active := ActiveConfig{RiskControlEnabled: riskControlEnabled, Enabled: cfg.Enabled, BlockingEnabled: cfg.BlockingEnabled}
@@ -502,7 +519,8 @@ func ActiveFromStorage(cfg storageConfig, riskControlEnabled bool, encryptor Sec
 		active.Endpoints = append(active.Endpoints, ActiveEndpoint{
 			ID: ep.ID, Name: ep.Name, Protocol: ep.Protocol, BaseURL: ep.BaseURL, Model: ep.Model,
 			Token: token, TimeoutMS: ep.TimeoutMS, InputLimit: ep.InputLimit,
-			Enabled: ep.Enabled && !tokenInvalid, TokenInvalid: tokenInvalid,
+			SystemPrompt: ep.SystemPrompt,
+			Enabled:      ep.Enabled && !tokenInvalid, TokenInvalid: tokenInvalid,
 		})
 	}
 	return active, nil

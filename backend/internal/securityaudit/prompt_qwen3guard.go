@@ -85,11 +85,32 @@ func NormalizeCategory(value string) string {
 	return strings.ReplaceAll(normalized, " ", "_")
 }
 
+// normalizeGuardOutputLine 归一化通用模型输出的行：去掉首尾空白以及行首的
+// Markdown/列表标记（-、*、#、>、• 等），使 "- Safety: Safe"、"**Safety:** Safe"
+// 这类常见变体也能匹配前缀。Safety/Categories 两行允许出现在任意行位置，
+// 其他非空行（解释、Refusal 等）一律忽略。
+func normalizeGuardOutputLine(line string) string {
+	line = strings.TrimSpace(line)
+	line = strings.TrimLeft(line, "-*#>•·`~ ")
+	return strings.TrimSpace(line)
+}
+
+// sanitizeGuardValue 清理 Safety/Categories 行的值：去掉 Markdown 包裹符与
+// 句末标点（通用模型常见输出 "Safety: Safe."、"Categories: None。"），
+// 但不做值本身的合法性判断（Safety 值非法仍在解析阶段判 invalid）。
+func sanitizeGuardValue(value string) string {
+	value = strings.TrimSpace(value)
+	value = strings.Trim(value, "*`")
+	value = strings.TrimSpace(value)
+	value = strings.TrimRight(value, "。.;,，；")
+	return strings.TrimSpace(value)
+}
+
 func ParseQwen3Guard(content string, enabledScanners []string) (*NormalizedResult, error) {
 	var safety string
 	var categoryLine string
 	for _, line := range strings.Split(strings.ReplaceAll(content, "\r\n", "\n"), "\n") {
-		line = strings.TrimSpace(line)
+		line = normalizeGuardOutputLine(line)
 		if line == "" {
 			continue
 		}
@@ -99,12 +120,12 @@ func ParseQwen3Guard(content string, enabledScanners []string) (*NormalizedResul
 			if safety != "" {
 				return nil, &GuardError{Code: ErrorCodeInvalidResponse}
 			}
-			safety = strings.TrimSpace(line[len("safety:"):])
+			safety = sanitizeGuardValue(line[len("safety:"):])
 		case strings.HasPrefix(lower, "categories:"):
 			if categoryLine != "" {
 				return nil, &GuardError{Code: ErrorCodeInvalidResponse}
 			}
-			categoryLine = strings.TrimSpace(line[len("categories:"):])
+			categoryLine = sanitizeGuardValue(line[len("categories:"):])
 		default:
 			// Auxiliary Guard fields, such as Refusal, do not affect audit decisions.
 		}
@@ -202,9 +223,19 @@ func (s *OpenAICompatibleScanner) Scan(ctx context.Context, endpoint ActiveEndpo
 	if err != nil {
 		return nil, &GuardError{Code: ErrorCodeUnavailable, Cause: err}
 	}
+	// 端点配置了 system_prompt 时按 [{system},{user}] 发送，使任意通用
+	// chat completions 模型都能扮演内容审核员；留空则保持单条 user 裸内容，
+	// 兼容真正的 Qwen3Guard 官方端点（其输出格式由模型自身保证）。
+	messages := []map[string]string{{"role": "user", "content": chunk}}
+	if systemPrompt := strings.TrimSpace(endpoint.SystemPrompt); systemPrompt != "" {
+		messages = []map[string]string{
+			{"role": "system", "content": systemPrompt},
+			{"role": "user", "content": chunk},
+		}
+	}
 	payload := map[string]any{
 		"model":       endpoint.Model,
-		"messages":    []map[string]string{{"role": "user", "content": chunk}},
+		"messages":    messages,
 		"temperature": 0,
 		"max_tokens":  64,
 		"seed":        42,

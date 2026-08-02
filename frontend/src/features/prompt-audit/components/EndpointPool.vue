@@ -115,6 +115,23 @@
           <input v-model="editing.clear_token" type="checkbox" :aria-label="t('admin.promptAudit.pool.clearSecret')" />
           {{ t('admin.promptAudit.pool.clearSecret') }}
         </label>
+        <div class="space-y-1 text-sm text-gray-700 dark:text-dark-200 sm:col-span-2">
+          <div class="flex items-center justify-between gap-2">
+            <span>{{ t('admin.promptAudit.pool.systemPrompt') }}</span>
+            <button type="button" class="btn btn-ghost btn-sm" data-test="fill-default-system-prompt" @click="fillDefaultSystemPrompt">
+              {{ t('admin.promptAudit.pool.fillDefaultSystemPrompt') }}
+            </button>
+          </div>
+          <textarea
+            v-model="editing.system_prompt"
+            rows="6"
+            class="input w-full font-mono text-xs"
+            :maxlength="8000"
+            :aria-label="t('admin.promptAudit.pool.systemPrompt')"
+            data-test="system-prompt-input"
+          ></textarea>
+          <span class="block text-xs text-gray-500 dark:text-dark-400">{{ t('admin.promptAudit.pool.systemPromptHint') }}</span>
+        </div>
         <label class="space-y-1 text-sm text-gray-700 dark:text-dark-200 sm:col-span-2">
           <span>{{ t('admin.promptAudit.pool.model') }}</span>
           <input v-model="editing.model" class="input w-full" :aria-label="t('admin.promptAudit.pool.model')" />
@@ -143,7 +160,7 @@ import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import type { PromptAuditEndpointDraft, PromptProbeResult } from '../types'
-import { cloneData, createDefaultEndpoint } from '../viewModel'
+import { cloneData, createDefaultEndpoint, DEFAULT_GUARD_SYSTEM_PROMPT } from '../viewModel'
 
 const props = defineProps<{
   endpoints: PromptAuditEndpointDraft[]
@@ -189,5 +206,8 @@ function removeEndpoint(endpoint: PromptAuditEndpointDraft) {
 }
 function hasCredential(endpoint: PromptAuditEndpointDraft): boolean {
   return Boolean(endpoint.token.trim() || (endpoint.has_token && !endpoint.clear_token))
+}
+function fillDefaultSystemPrompt() {
+  if (editing.value) editing.value.system_prompt = DEFAULT_GUARD_SYSTEM_PROMPT
 }
 </script>

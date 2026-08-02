@@ -49,6 +49,8 @@ export default {
       name: '节点名称', id: '稳定节点 ID', baseUrl: 'Base URL', apiKey: 'API Key', keepSecret: '留空以保留已保存的 API Key',
       secretHint: '明文只在本次编辑内存中存在；保存成功后会立即清除。', clearSecret: '显式清除已保存的 API Key', timeout: '总超时（毫秒）', inputLimit: '单片 Unicode 字符上限',
       toggleNode: '切换节点 {name}', deleteConfirm: '从草稿中删除节点“{name}”？保存配置后生效。',
+      systemPrompt: '系统提示词（可选）', fillDefaultSystemPrompt: '填入默认模板',
+      systemPromptHint: '适用于非 Qwen3Guard 的通用模型 API（GPT/DeepSeek/Kimi 等），让模型扮演内容安全审核员并输出标准格式；留空则原样发送（适用于 Qwen3Guard 官方端点）。最长 8000 字符。',
     },
     policy: {
       title: '审计策略', description: '配置适用分组、九类输入风险、Worker 与队列边界。', scope: '适用范围', allGroups: '全部分组', selectedGroups: '指定分组',
@@ -104,6 +106,7 @@ export default {
       prompt_audit_config_conflict: '配置已被其他管理员更新。请重新加载服务端配置，再决定如何合并本地草稿。',
       prompt_guard_requires_audit_enabled: '开启同步阻止前必须先启用提示词审计。', prompt_audit_invalid_endpoint: '审计节点配置无效。', prompt_audit_endpoint_required: '启用审计前至少需要一个启用节点。', prompt_audit_groups_required: '指定分组模式至少需要选择一个分组。', prompt_audit_scanners_required: '至少需要启用一个风险分类。',
       user_guard_invalid_threshold: '账号违规守护阈值需在 1-100 之间。', user_guard_invalid_window: '账号违规守护统计窗口需在 1-1440 分钟之间。', user_guard_invalid_ban_duration: '账号违规守护封禁时长需在 1-10080 分钟之间。',
+      prompt_audit_invalid_system_prompt: '审计节点系统提示词超出长度上限（8000 字符）。',
     },
   },
 }

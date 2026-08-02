@@ -10,6 +10,7 @@ export interface PromptAuditEndpoint {
   model: string
   timeout_ms: number
   input_limit: number
+  system_prompt?: string
   enabled: boolean
   has_token: boolean
   token_status: 'configured' | 'missing' | string
@@ -71,6 +72,7 @@ export interface PromptAuditUpdateRequest {
     clear_token: boolean
     timeout_ms: number
     input_limit: number
+    system_prompt?: string
     enabled: boolean
   }>
   user_guard: PromptAuditUserGuard

@@ -1,7 +1,11 @@
 package securityaudit
 
 import (
+	"context"
 	"encoding/json"
+	"io"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
@@ -143,4 +147,103 @@ func TestIssueSummariesAreDeterministicRedactedDerivedDTOs(t *testing.T) {
 		require.NotEmpty(t, summary.Code)
 		require.NotEmpty(t, summary.EvidenceHash)
 	}
+}
+
+func TestParseQwen3GuardToleratesGeneralModelVerbosity(t *testing.T) {
+	tests := []struct {
+		name, output string
+		decision     EventDecision
+		action       Action
+	}{
+		{"leading blank lines", "\n\nSafety: Safe\n\nCategories: None\n", EventPass, ActionAllow},
+		{"interleaved explanation", "好的，以下是审核结果：\nSafety: Unsafe\n这段文字包含越狱意图。\nCategories: Jailbreak\n希望对你有帮助。", EventCritical, ActionBlock},
+		{"markdown bold key", "**Safety:** Unsafe\n**Categories:** PII", EventCritical, ActionBlock},
+		{"markdown bold value", "Safety: **Unsafe**\nCategories: **Jailbreak**", EventCritical, ActionBlock},
+		{"list markers", "- Safety: Safe\n- Categories: None", EventPass, ActionAllow},
+		{"quote marker", "> Safety: Safe\n> Categories: None", EventPass, ActionAllow},
+		{"trailing punctuation", "Safety: Safe。\nCategories: None。", EventPass, ActionAllow},
+		{"trailing period on category", "Safety: Unsafe.\nCategories: Violent.", EventCritical, ActionBlock},
+		{"uppercase key and value", "SAFETY: UNSAFE\nCATEGORIES: Violent", EventCritical, ActionBlock},
+		{"refusal auxiliary line", "Safety: Safe\nCategories: None\nRefusal: No", EventPass, ActionAllow},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := ParseQwen3Guard(tt.output, AllScannerIDs)
+			require.NoError(t, err)
+			require.Equal(t, tt.decision, result.Decision)
+			require.Equal(t, tt.action, result.Action)
+		})
+	}
+
+	// Safety 值非法仍然判 invalid
+	_, err := ParseQwen3Guard("Safety: Maybe.\nCategories: None", AllScannerIDs)
+	require.Error(t, err)
+	// 重复行仍判 invalid
+	_, err = ParseQwen3Guard("- Safety: Safe\n* Safety: Unsafe\nCategories: None", AllScannerIDs)
+	require.Error(t, err)
+}
+
+func TestScanBuildsMessagesWithOptionalSystemPrompt(t *testing.T) {
+	type capturedRequest struct {
+		Messages []struct {
+			Role    string `json:"role"`
+			Content string `json:"content"`
+		} `json:"messages"`
+	}
+	newGuardServer := func(t *testing.T, captured *capturedRequest) *httptest.Server {
+		t.Helper()
+		return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			require.NoError(t, json.Unmarshal(body, captured))
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"choices":[{"message":{"content":"Safety: Safe\nCategories: None"}}]}`))
+		}))
+	}
+
+	t.Run("without system prompt keeps single user message", func(t *testing.T) {
+		var captured capturedRequest
+		server := newGuardServer(t, &captured)
+		defer server.Close()
+		scanner := NewOpenAICompatibleScanner()
+		result, err := scanner.Scan(context.Background(), ActiveEndpoint{
+			ID: "ep-raw", BaseURL: server.URL, Model: "qwen3guard", TimeoutMS: 2000, Enabled: true,
+		}, "hello", AllScannerIDs)
+		require.NoError(t, err)
+		require.NotNil(t, result)
+		require.Len(t, captured.Messages, 1)
+		require.Equal(t, "user", captured.Messages[0].Role)
+		require.Equal(t, "hello", captured.Messages[0].Content)
+	})
+
+	t.Run("with system prompt prepends system message", func(t *testing.T) {
+		var captured capturedRequest
+		server := newGuardServer(t, &captured)
+		defer server.Close()
+		scanner := NewOpenAICompatibleScanner()
+		result, err := scanner.Scan(context.Background(), ActiveEndpoint{
+			ID: "ep-wrapped", BaseURL: server.URL, Model: "gpt-test", TimeoutMS: 2000,
+			SystemPrompt: DefaultGuardSystemPrompt, Enabled: true,
+		}, "hello", AllScannerIDs)
+		require.NoError(t, err)
+		require.NotNil(t, result)
+		require.Len(t, captured.Messages, 2)
+		require.Equal(t, "system", captured.Messages[0].Role)
+		require.Equal(t, DefaultGuardSystemPrompt, captured.Messages[0].Content)
+		require.Equal(t, "user", captured.Messages[1].Role)
+		require.Equal(t, "hello", captured.Messages[1].Content)
+	})
+
+	t.Run("whitespace-only system prompt treated as empty", func(t *testing.T) {
+		var captured capturedRequest
+		server := newGuardServer(t, &captured)
+		defer server.Close()
+		scanner := NewOpenAICompatibleScanner()
+		_, err := scanner.Scan(context.Background(), ActiveEndpoint{
+			ID: "ep-blank", BaseURL: server.URL, Model: "qwen3guard", TimeoutMS: 2000,
+			SystemPrompt: "   \n  ", Enabled: true,
+		}, "hello", AllScannerIDs)
+		require.NoError(t, err)
+		require.Len(t, captured.Messages, 1)
+	})
 }

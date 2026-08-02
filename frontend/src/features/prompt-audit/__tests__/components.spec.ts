@@ -20,7 +20,7 @@ const PaginationStub = defineComponent({ props: ['total', 'page', 'pageSize'], e
 const endpoint = (): PromptAuditEndpointDraft => ({
   id: 'guard-1', name: 'Guard One', protocol: 'openai_compatible', base_url: 'http://127.0.0.1:8000',
   model: 'guard-model', timeout_ms: 3000, input_limit: 4000, enabled: true,
-  has_token: true, token_status: 'configured', token: '', clear_token: false,
+  has_token: true, token_status: 'configured', token: '', clear_token: false, system_prompt: '',
 })
 
 describe('Prompt Audit components', () => {
@@ -68,6 +68,27 @@ describe('Prompt Audit components', () => {
     await wrapper.get('[aria-label="admin.promptAudit.policy.workerCount"]').setValue('6')
     const emitted = wrapper.emitted('update:draft')?.at(-1)?.[0] as PromptAuditDraft
     expect(emitted.worker_count).toBe(6)
+  })
+
+  it('round-trips endpoint system prompt and fills the default template', async () => {
+    const draft: PromptAuditDraft = {
+      enabled: true, blocking_enabled: false, store_pass_events: false, effective_mode: 'async_audit', strategy: 'priority',
+      worker_count: 4, queue_capacity: 100, scanners: SCANNER_CATALOG.map((item) => item.id), all_groups: true, group_ids: [],
+      endpoints: [endpoint()], user_guard: { enabled: false, threshold: 3, window_minutes: 10, ban_duration_minutes: 60 },
+      config_version: 1, updated_at: '', updated_by: 0, change_summary: '',
+    }
+    const wrapper = mount(EndpointPool, {
+      props: { endpoints: draft.endpoints, probeResults: {}, probingIds: [] },
+      global: { stubs: { BaseDialog: DialogStub } },
+    })
+    // 打开编辑弹窗 → 一键填入默认模板 → 保存后随端点携带
+    await wrapper.findAll('button').find((b) => b.text() === 'common.edit')!.trigger('click')
+    await wrapper.get('[data-test="fill-default-system-prompt"]').trigger('click')
+    const textarea = wrapper.get<HTMLTextAreaElement>('[data-test="system-prompt-input"]')
+    expect(textarea.element.value).toContain('内容安全审核员')
+    await wrapper.get('[data-test="save-endpoint"]').trigger('click')
+    const updated = wrapper.emitted('update:endpoints')?.at(-1)?.[0] as PromptAuditEndpointDraft[]
+    expect(updated[0].system_prompt).toContain('Safety: Safe 或 Controversial 或 Unsafe')
   })
 
   it('keeps identity fields separate, supports selection, and opens filter deletion from the toolbar', async () => {

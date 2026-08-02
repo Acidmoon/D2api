@@ -57,6 +57,17 @@ describe('Prompt Audit view model', () => {
     expect(buildUpdateRequest(draft).endpoints[0]).toMatchObject({ token: undefined, clear_token: true })
   })
 
+  it('sends trimmed endpoint system prompt and omits it when blank', () => {
+    const draft = configToDraft(config())
+    expect(buildUpdateRequest(draft).endpoints[0].system_prompt).toBeUndefined()
+
+    draft.endpoints[0].system_prompt = '  你是内容安全审核员  '
+    expect(buildUpdateRequest(draft).endpoints[0].system_prompt).toBe('你是内容安全审核员')
+
+    draft.endpoints[0].system_prompt = '   '
+    expect(buildUpdateRequest(draft).endpoints[0].system_prompt).toBeUndefined()
+  })
+
   it('tracks dirty state from the full normalized save payload', () => {
     const original = configToDraft(config())
     const changed = configToDraft(config())
