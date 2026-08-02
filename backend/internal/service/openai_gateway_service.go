@@ -19,6 +19,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/internal/pkg/ip"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/logger"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/openai"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/tlsfingerprint"
 	"github.com/Wei-Shaw/sub2api/internal/platform/liveattestation"
 	"github.com/Wei-Shaw/sub2api/internal/util/responseheaders"
 	"github.com/cespare/xxhash/v2"
@@ -412,6 +413,7 @@ type OpenAIGatewayService struct {
 	settingService        *SettingService
 	groupUnavailableAlert *GroupUnavailableAlertService
 	userPlatformQuotaRepo UserPlatformQuotaRepository
+	tlsFPProfileService   *TLSFingerprintProfileService
 	liveAttestation       liveattestation.Provider
 	liveAttestationCipher SecretEncryptor
 
@@ -472,6 +474,7 @@ func NewOpenAIGatewayService(
 	settingService *SettingService,
 	groupUnavailableAlert *GroupUnavailableAlertService,
 	userPlatformQuotaRepo UserPlatformQuotaRepository,
+	tlsFPProfileService *TLSFingerprintProfileService,
 ) *OpenAIGatewayService {
 	svc := &OpenAIGatewayService{
 		accountRepo:         accountRepo,
@@ -506,6 +509,7 @@ func NewOpenAIGatewayService(
 		settingService:        settingService,
 		groupUnavailableAlert: groupUnavailableAlert,
 		userPlatformQuotaRepo: userPlatformQuotaRepo,
+		tlsFPProfileService:   tlsFPProfileService,
 		liveAttestation:       liveattestation.NewProvider(),
 		liveAttestationCipher: newLiveAttestationCipher(cfg),
 		responseHeaderFilter:  compileResponseHeaderFilter(cfg),
@@ -520,6 +524,15 @@ func NewOpenAIGatewayService(
 	}
 	svc.logOpenAIWSModeBootstrap()
 	return svc
+}
+
+// resolveTLSProfile 解析账号的 TLS 指纹 Profile；服务未注入或账号未启用时返回 nil
+// （DoWithTLS 收到 nil profile 会退化为普通请求，行为与 Do 一致）
+func (s *OpenAIGatewayService) resolveTLSProfile(account *Account) *tlsfingerprint.Profile {
+	if s.tlsFPProfileService == nil {
+		return nil
+	}
+	return s.tlsFPProfileService.ResolveTLSProfile(account)
 }
 
 // ResolveChannelMapping 解析渠道级模型映射（代理到 ChannelService）

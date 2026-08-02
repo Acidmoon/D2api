@@ -1961,12 +1961,17 @@ func (a *Account) IsAnthropicOAuthOrSetupToken() bool {
 	return a.Platform == PlatformAnthropic && (a.Type == AccountTypeOAuth || a.Type == AccountTypeSetupToken)
 }
 
+// isOpenAIOAuth 判断是否为 OpenAI OAuth 类型账号
+func (a *Account) isOpenAIOAuth() bool {
+	return a.Platform == PlatformOpenAI && a.Type == AccountTypeOAuth
+}
+
 // IsTLSFingerprintEnabled 检查是否启用 TLS 指纹伪装
-// 仅适用于 Anthropic OAuth/SetupToken 类型账号
-// 启用后将模拟 Claude Code (Node.js) 客户端的 TLS 握手特征
+// 适用于 Anthropic OAuth/SetupToken 与 OpenAI OAuth 类型账号
+// 启用后将模拟 Node.js 客户端（Claude Code / Codex）的 TLS 握手特征
 func (a *Account) IsTLSFingerprintEnabled() bool {
-	// 仅支持 Anthropic OAuth/SetupToken 账号
-	if !a.IsAnthropicOAuthOrSetupToken() {
+	// 支持 Anthropic OAuth/SetupToken 与 OpenAI OAuth 账号
+	if !a.IsAnthropicOAuthOrSetupToken() && !a.isOpenAIOAuth() {
 		return false
 	}
 	if a.Extra == nil {

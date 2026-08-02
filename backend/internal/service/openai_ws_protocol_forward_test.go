@@ -621,7 +621,8 @@ func TestNewOpenAIGatewayService_InitializesOpenAIWSResolver(t *testing.T) {
 		nil,
 		nil,
 		nil, // groupUnavailableAlert
-		nil, // userPlatformQuotaRepo
+		nil, // userPlatformQuotaRepo,
+		nil,
 	)
 
 	decision := svc.getOpenAIWSProtocolResolver().Resolve(nil)
