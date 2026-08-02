@@ -454,3 +454,87 @@ func TestUpdateConfigStrictBoundsAndKnownValues(t *testing.T) {
 		})
 	}
 }
+
+func TestAccountGuardConfigValidation(t *testing.T) {
+	base := DefaultStorageConfig()
+	base.Endpoints = []StorageEndpoint{{
+		ID: "guard-1", Name: "Guard", Protocol: "openai_compatible", BaseURL: "http://127.0.0.1:8080",
+		Model: DefaultGuardModel, TimeoutMS: 1000, InputLimit: 1000, Enabled: true,
+	}}
+
+	// 未启用时零值合法
+	require.NoError(t, validateStorageConfig(base))
+
+	valid := base
+	valid.AccountGuard = AccountGuardConfig{Enabled: true, Threshold: 3, WindowMinutes: 10, BanDurationMinutes: 60}
+	require.NoError(t, validateStorageConfig(valid))
+
+	tests := []struct {
+		name   string
+		guard  AccountGuardConfig
+		reason string
+	}{
+		{name: "threshold low", guard: AccountGuardConfig{Enabled: true, Threshold: 0, WindowMinutes: 10, BanDurationMinutes: 60}, reason: "account_guard_invalid_threshold"},
+		{name: "threshold high", guard: AccountGuardConfig{Enabled: true, Threshold: 101, WindowMinutes: 10, BanDurationMinutes: 60}, reason: "account_guard_invalid_threshold"},
+		{name: "window low", guard: AccountGuardConfig{Enabled: true, Threshold: 3, WindowMinutes: 0, BanDurationMinutes: 60}, reason: "account_guard_invalid_window"},
+		{name: "window high", guard: AccountGuardConfig{Enabled: true, Threshold: 3, WindowMinutes: 1441, BanDurationMinutes: 60}, reason: "account_guard_invalid_window"},
+		{name: "ban low", guard: AccountGuardConfig{Enabled: true, Threshold: 3, WindowMinutes: 10, BanDurationMinutes: 0}, reason: "account_guard_invalid_ban_duration"},
+		{name: "ban high", guard: AccountGuardConfig{Enabled: true, Threshold: 3, WindowMinutes: 10, BanDurationMinutes: 10081}, reason: "account_guard_invalid_ban_duration"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := base
+			cfg.AccountGuard = tt.guard
+			err := validateStorageConfig(cfg)
+			require.Error(t, err)
+			require.Equal(t, tt.reason, infraerrors.Reason(err))
+
+			req := promptAuditUpdateRequest(1, 1, "")
+			req.AccountGuard = tt.guard
+			reqErr := validateUpdateConfigRequest(req)
+			require.Error(t, reqErr)
+			require.Equal(t, tt.reason, infraerrors.Reason(reqErr))
+		})
+	}
+
+	// 启用守护但审计本身未启用、且无启用节点时拒绝
+	noEndpoint := DefaultStorageConfig()
+	noEndpoint.AccountGuard = AccountGuardConfig{Enabled: true, Threshold: 3, WindowMinutes: 10, BanDurationMinutes: 60}
+	err := validateStorageConfig(noEndpoint)
+	require.Error(t, err)
+	require.Equal(t, "prompt_audit_endpoint_required", infraerrors.Reason(err))
+}
+
+func TestAccountGuardConfigRoundTrip(t *testing.T) {
+	manager := &ConfigManager{encryptor: prefixEncryptor{}, encryptionKeyConfigured: true}
+	request := promptAuditUpdateRequest(1, 1, "")
+	request.AccountGuard = AccountGuardConfig{Enabled: true, Threshold: 5, WindowMinutes: 30, BanDurationMinutes: 120}
+
+	next, err := manager.buildNextStorage(DefaultStorageConfig(), request, 9)
+	require.NoError(t, err)
+	require.Equal(t, AccountGuardConfig{Enabled: true, Threshold: 5, WindowMinutes: 30, BanDurationMinutes: 120}, next.AccountGuard)
+
+	active, err := ActiveFromStorage(next, true, prefixEncryptor{})
+	require.NoError(t, err)
+	require.Equal(t, next.AccountGuard, active.AccountGuard)
+
+	public := PublicFromStorage(next, true, nil)
+	require.Equal(t, next.AccountGuard, public.AccountGuard)
+
+	raw, err := json.Marshal(next)
+	require.NoError(t, err)
+	require.Contains(t, string(raw), `"account_guard"`)
+	parsed, err := ParseStorageConfig(string(raw))
+	require.NoError(t, err)
+	require.Equal(t, next.AccountGuard, parsed.AccountGuard)
+}
+
+func TestAccountGuardDefaultsOffForLegacyConfig(t *testing.T) {
+	// 旧版本存储的配置没有 account_guard 段：解析后保持关闭且校验通过
+	storage, err := ParseStorageConfig(`{"enabled":false,"strategy":"priority","worker_count":4,"queue_capacity":32768,"scanners":["pii"],"all_groups":true,"group_ids":[],"endpoints":[],"config_version":1}`)
+	require.NoError(t, err)
+	require.False(t, storage.AccountGuard.Enabled)
+	active, err := ActiveFromStorage(storage, true, prefixEncryptor{})
+	require.NoError(t, err)
+	require.False(t, active.AccountGuard.Enabled)
+}

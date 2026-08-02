@@ -26,6 +26,7 @@ const config = (): PromptAuditConfig => ({
     model: 'sileader/qwen3guard:0.6b', timeout_ms: 3000, input_limit: 4000, enabled: true,
     has_token: true, token_status: 'configured',
   }],
+  account_guard: { enabled: false, threshold: 3, window_minutes: 10, ban_duration_minutes: 60 },
   config_version: 7,
   updated_at: '2026-07-16T00:00:00Z',
   updated_by: 1,
@@ -62,6 +63,16 @@ describe('Prompt Audit view model', () => {
     expect(draftFingerprint(changed)).toBe(draftFingerprint(original))
     changed.queue_capacity += 1
     expect(draftFingerprint(changed)).not.toBe(draftFingerprint(original))
+  })
+
+  it('fills account guard defaults for legacy configs and round-trips the section', () => {
+    const legacy = { ...config() } as unknown as PromptAuditConfig
+    delete (legacy as { account_guard?: unknown }).account_guard
+    const draft = configToDraft(legacy)
+    expect(draft.account_guard).toEqual({ enabled: false, threshold: 3, window_minutes: 10, ban_duration_minutes: 60 })
+
+    draft.account_guard = { enabled: true, threshold: 5, window_minutes: 30, ban_duration_minutes: 120 }
+    expect(buildUpdateRequest(draft).account_guard).toEqual({ enabled: true, threshold: 5, window_minutes: 30, ban_duration_minutes: 120 })
   })
 
   it('requires a valid explicit range and sends canonical ISO timestamps for filter deletion', () => {

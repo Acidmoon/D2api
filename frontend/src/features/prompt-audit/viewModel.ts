@@ -1,4 +1,5 @@
 import type {
+  PromptAuditAccountGuard,
   PromptAuditConfig,
   PromptAuditDraft,
   PromptAuditEndpointDraft,
@@ -7,6 +8,13 @@ import type {
 } from './types'
 
 export const DEFAULT_GUARD_MODEL = 'sileader/qwen3guard:0.6b'
+
+export const DEFAULT_ACCOUNT_GUARD: PromptAuditAccountGuard = {
+  enabled: false,
+  threshold: 3,
+  window_minutes: 10,
+  ban_duration_minutes: 60,
+}
 
 export const SCANNER_CATALOG = [
   { id: 'violent', label: 'Violent' },
@@ -32,11 +40,25 @@ export function configToDraft(config: PromptAuditConfig): PromptAuditDraft {
     ...cloneData(config),
     group_ids: [...(config.group_ids ?? [])],
     scanners: [...(config.scanners ?? [])],
+    account_guard: normalizeAccountGuard(config.account_guard),
     endpoints: (config.endpoints ?? []).map((endpoint) => ({
       ...endpoint,
       token: '',
       clear_token: false,
     })),
+  }
+}
+
+// 旧版本配置没有 account_guard 段，或服务端返回全零值时，填入可调默认值，
+// 保证管理员打开开关后无需手动修正即可通过校验。
+function normalizeAccountGuard(value: PromptAuditAccountGuard | undefined): PromptAuditAccountGuard {
+  if (!value) return { ...DEFAULT_ACCOUNT_GUARD }
+  return {
+    enabled: Boolean(value.enabled),
+    threshold: value.threshold > 0 ? value.threshold : DEFAULT_ACCOUNT_GUARD.threshold,
+    window_minutes: value.window_minutes > 0 ? value.window_minutes : DEFAULT_ACCOUNT_GUARD.window_minutes,
+    ban_duration_minutes:
+      value.ban_duration_minutes > 0 ? value.ban_duration_minutes : DEFAULT_ACCOUNT_GUARD.ban_duration_minutes,
   }
 }
 
@@ -81,6 +103,12 @@ export function buildUpdateRequest(draft: PromptAuditDraft): PromptAuditUpdateRe
       input_limit: Number(endpoint.input_limit),
       enabled: endpoint.enabled,
     })),
+    account_guard: {
+      enabled: draft.account_guard.enabled,
+      threshold: Number(draft.account_guard.threshold),
+      window_minutes: Number(draft.account_guard.window_minutes),
+      ban_duration_minutes: Number(draft.account_guard.ban_duration_minutes),
+    },
   }
 }
 

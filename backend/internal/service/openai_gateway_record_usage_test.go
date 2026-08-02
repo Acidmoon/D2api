@@ -246,7 +246,7 @@ func newOpenAIRecordUsageServiceForTest(usageRepo UsageLogRepository, userRepo U
 		nil,
 		nil, // groupUnavailableAlert
 		nil, // userPlatformQuotaRepo,
-		nil,
+		nil, nil,
 	)
 	svc.userGroupRateResolver = newUserGroupRateResolver(
 		rateRepo,

@@ -20,6 +20,13 @@ export interface PromptAuditEndpointDraft extends PromptAuditEndpoint {
   clear_token: boolean
 }
 
+export interface PromptAuditAccountGuard {
+  enabled: boolean
+  threshold: number
+  window_minutes: number
+  ban_duration_minutes: number
+}
+
 export interface PromptAuditConfig {
   enabled: boolean
   blocking_enabled: boolean
@@ -32,6 +39,7 @@ export interface PromptAuditConfig {
   all_groups: boolean
   group_ids: number[]
   endpoints: PromptAuditEndpoint[]
+  account_guard: PromptAuditAccountGuard
   config_version: number
   updated_at: string
   updated_by: number
@@ -65,6 +73,7 @@ export interface PromptAuditUpdateRequest {
     input_limit: number
     enabled: boolean
   }>
+  account_guard: PromptAuditAccountGuard
 }
 
 export interface PromptProbeResult {

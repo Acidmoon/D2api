@@ -42,7 +42,7 @@ func newKeyBillingHandler(repo service.UserGroupRateRepository) *GatewayHandler 
 func newKeyBillingGatewayService(repo service.UserGroupRateRepository) *service.GatewayService {
 	return service.NewGatewayService(
 		nil, nil, nil, nil, nil, nil, repo, nil, nil, nil, nil, nil, nil, nil,
-		nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
+		nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
 	)
 }
 
@@ -50,7 +50,7 @@ func newKeyBillingOpenAIGatewayService(repo service.UserGroupRateRepository) *se
 	return service.NewOpenAIGatewayService(
 		nil, nil, nil, nil, nil, repo, nil, nil, nil, nil, nil,
 		nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
-		nil,
+		nil, nil,
 	)
 }
 

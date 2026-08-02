@@ -93,6 +93,14 @@ func (s *GatewayService) Forward(ctx context.Context, c *gin.Context, account *A
 		return nil, fmt.Errorf("parse request: empty request")
 	}
 
+	// 账号级内容违规守护：账号已选定、首个上游请求发出之前同步判定。
+	// 命中违规时写入 403 并返回非 failover 错误，绝不切换到其他账号重试。
+	if account != nil {
+		if err := s.checkAccountViolationGuard(ctx, c, account, "anthropic_messages", parsed.Model, parsed.Body.Bytes()); err != nil {
+			return nil, err
+		}
+	}
+
 	// Web Search 模拟：纯 web_search 请求时，直接调用搜索 API 构造响应
 	if account != nil && s.shouldEmulateWebSearch(ctx, account, parsed.GroupID, parsed.Body.Bytes()) {
 		return s.handleWebSearchEmulation(ctx, c, account, parsed)

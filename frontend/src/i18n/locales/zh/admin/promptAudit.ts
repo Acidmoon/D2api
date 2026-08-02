@@ -55,6 +55,15 @@ export default {
       searchGroups: '搜索分组', noGroups: '没有匹配分组', missingGroups: '配置中包含已删除的分组 ID', selectedCount: '已选择 {count} 个分组',
       scanners: 'Qwen3Guard 输入风险分类', workerCount: 'Worker 数量', queueCapacity: '持久队列容量', strategy: '节点策略', strategyHint: '按配置顺序优先尝试，必要时故障切换。',
     },
+    accountGuard: {
+      title: '账号违规自动封禁',
+      description: '在选定上游账号之后、发往上游之前，由审计节点池同步判定请求内容；违规请求以 403 拒绝且不会切换账号重试。窗口内违规次数达到阈值的账号将被临时封禁并邮件通知管理员。',
+      enabled: '启用账号违规守护',
+      threshold: '违规阈值（次）',
+      windowMinutes: '统计窗口（分钟）',
+      banDurationMinutes: '封禁时长（分钟）',
+      notifyHint: '封禁告警邮件复用“分组不可用警告”的收件人列表（在告警设置中配置），同一账号 30 分钟内只发一次。',
+    },
     saveBar: { enabled: '启用提示词审计', blocking: '同步阻止', storePass: '保存安全事件', dirty: '有未保存的更改', synced: '配置已同步' },
     blockingConfirm: {
       title: '开启同步阻止？',
@@ -94,6 +103,7 @@ export default {
       loadConfig: '无法加载提示词审计配置。', loadRuntime: '无法加载提示词审计运行态。', loadGroups: '无法加载分组列表。', loadEvents: '无法加载审计事件。', loadDetail: '无法加载事件详情。', saveConfig: '配置保存失败。', probe: '节点探测失败。', delete: '事件删除失败。', previewDelete: '无法生成删除预览，请检查时间范围。', deleteConfirmation: '删除确认无效或已过期，请重新预览。',
       prompt_audit_config_conflict: '配置已被其他管理员更新。请重新加载服务端配置，再决定如何合并本地草稿。',
       prompt_guard_requires_audit_enabled: '开启同步阻止前必须先启用提示词审计。', prompt_audit_invalid_endpoint: '审计节点配置无效。', prompt_audit_endpoint_required: '启用审计前至少需要一个启用节点。', prompt_audit_groups_required: '指定分组模式至少需要选择一个分组。', prompt_audit_scanners_required: '至少需要启用一个风险分类。',
+      account_guard_invalid_threshold: '账号违规守护阈值需在 1-100 之间。', account_guard_invalid_window: '账号违规守护统计窗口需在 1-1440 分钟之间。', account_guard_invalid_ban_duration: '账号违规守护封禁时长需在 1-10080 分钟之间。',
     },
   },
 }

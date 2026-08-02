@@ -55,6 +55,15 @@ export default {
       searchGroups: 'Search groups', noGroups: 'No matching groups', missingGroups: 'Configured IDs for groups that no longer exist', selectedCount: '{count} groups selected',
       scanners: 'Qwen3Guard input-risk categories', workerCount: 'Worker count', queueCapacity: 'Persistent queue capacity', strategy: 'Node strategy', strategyHint: 'Try nodes in configuration order and fail over when allowed.',
     },
+    accountGuard: {
+      title: 'Account violation auto-ban',
+      description: 'After an upstream account is selected and before the request is sent, the audit pool judges the content. Violating requests are rejected with 403 without failover; an account that reaches the threshold within the window is temporarily banned and admins are notified by email.',
+      enabled: 'Enable account violation guard',
+      threshold: 'Violation threshold (count)',
+      windowMinutes: 'Counting window (minutes)',
+      banDurationMinutes: 'Ban duration (minutes)',
+      notifyHint: 'Ban notification emails reuse the recipient list of group-unavailable alerts (configured in alert settings), with a 30-minute cooldown per account.',
+    },
     saveBar: { enabled: 'Enable prompt audit', blocking: 'Synchronous blocking', storePass: 'Store safe events', dirty: 'Unsaved changes', synced: 'Configuration synced' },
     blockingConfirm: {
       title: 'Enable synchronous blocking?',
@@ -94,6 +103,7 @@ export default {
       loadConfig: 'Unable to load Prompt Audit configuration.', loadRuntime: 'Unable to load Prompt Audit runtime.', loadGroups: 'Unable to load groups.', loadEvents: 'Unable to load audit events.', loadDetail: 'Unable to load event details.', saveConfig: 'Unable to save the configuration.', probe: 'Node probe failed.', delete: 'Unable to delete events.', previewDelete: 'Unable to create a deletion preview. Check the time range.', deleteConfirmation: 'The deletion confirmation is invalid or expired. Preview again.',
       prompt_audit_config_conflict: 'Another administrator updated this configuration. Reload the server version before deciding how to merge your draft.',
       prompt_guard_requires_audit_enabled: 'Enable Prompt Audit before synchronous blocking.', prompt_audit_invalid_endpoint: 'The audit node configuration is invalid.', prompt_audit_endpoint_required: 'Enable at least one audit node before enabling Prompt Audit.', prompt_audit_groups_required: 'Select at least one group in selected-group mode.', prompt_audit_scanners_required: 'Enable at least one risk category.',
+      account_guard_invalid_threshold: 'The account guard threshold must be between 1 and 100.', account_guard_invalid_window: 'The account guard counting window must be between 1 and 1440 minutes.', account_guard_invalid_ban_duration: 'The account guard ban duration must be between 1 and 10080 minutes.',
     },
   },
 }

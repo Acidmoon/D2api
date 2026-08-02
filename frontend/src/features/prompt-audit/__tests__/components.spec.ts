@@ -54,7 +54,8 @@ describe('Prompt Audit components', () => {
     const draft: PromptAuditDraft = {
       enabled: true, blocking_enabled: false, store_pass_events: false, effective_mode: 'async_audit', strategy: 'priority',
       worker_count: 4, queue_capacity: 100, scanners: SCANNER_CATALOG.map((item) => item.id), all_groups: false, group_ids: [1, 99],
-      endpoints: [endpoint()], config_version: 1, updated_at: '', updated_by: 0, change_summary: '',
+      endpoints: [endpoint()], account_guard: { enabled: false, threshold: 3, window_minutes: 10, ban_duration_minutes: 60 },
+      config_version: 1, updated_at: '', updated_by: 0, change_summary: '',
     }
     const wrapper = mount(PolicyPanel, {
       props: { draft, groups: [{ id: 1, name: 'Alpha', platform: 'openai', status: 'active' }, { id: 2, name: 'Beta', platform: 'claude', status: 'inactive' }] },
