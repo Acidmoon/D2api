@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
+import { defineComponent } from 'vue'
 import { mount } from '@vue/test-utils'
+
 import PlanEditDialog from '../PlanEditDialog.vue'
 
 vi.mock('vue-i18n', () => ({
@@ -26,7 +28,57 @@ vi.mock('@/api/admin/payment', () => ({
   },
 }))
 
-function mountDialog(paymentConfig: Record<string, unknown> | null) {
+const BaseDialogStub = defineComponent({
+  name: 'BaseDialog',
+  props: {
+    show: Boolean,
+    title: String,
+    width: String,
+  },
+  template: '<div v-if="show"><slot /><slot name="footer" /></div>',
+})
+
+const SelectStub = defineComponent({
+  name: 'SelectStub',
+  props: {
+    modelValue: [String, Number],
+    options: {
+      type: Array,
+      default: () => [],
+    },
+    placeholder: String,
+  },
+  emits: ['update:modelValue'],
+  setup(_props, { emit }) {
+    const onChange = (event: Event) => {
+      const value = (event.target as HTMLSelectElement).value
+      emit('update:modelValue', value === '' ? null : Number(value))
+    }
+    return { onChange }
+  },
+  template: `
+    <select
+      :value="modelValue ?? ''"
+      @change="onChange"
+    >
+      <option value="">{{ placeholder }}</option>
+      <option
+        v-for="option in options"
+        :key="option.value"
+        :value="option.value"
+        :data-platform="option.platform"
+      >
+        {{ option.label }}
+      </option>
+    </select>
+  `,
+})
+
+function mountDialog({
+  paymentConfig = null,
+}: {
+  paymentConfig?: Record<string, unknown> | null
+} = {}) {
   return mount(PlanEditDialog, {
     props: {
       show: true,
@@ -36,11 +88,8 @@ function mountDialog(paymentConfig: Record<string, unknown> | null) {
     },
     global: {
       stubs: {
-        BaseDialog: {
-          props: ['show'],
-          template: '<div v-if="show"><slot /><slot name="footer" /></div>',
-        },
-        Select: true,
+        BaseDialog: BaseDialogStub,
+        Select: SelectStub,
         Icon: true,
         GroupBadge: true,
       },
@@ -48,11 +97,13 @@ function mountDialog(paymentConfig: Record<string, unknown> | null) {
   })
 }
 
-describe('PlanEditDialog subscription CNY payment preview', () => {
+describe('PlanEditDialog', () => {
   it('shows CNY channel charge using the configured subscription rate and fee', async () => {
     const wrapper = mountDialog({
-      subscription_usd_to_cny_rate: 7.15,
-      recharge_fee_rate: 2.5,
+      paymentConfig: {
+        subscription_usd_to_cny_rate: 7.15,
+        recharge_fee_rate: 2.5,
+      },
     })
 
     await wrapper.find('[data-test="plan-price-input"]').setValue('9.99')
@@ -65,8 +116,10 @@ describe('PlanEditDialog subscription CNY payment preview', () => {
 
   it('hides the preview when the subscription rate is not configured', async () => {
     const wrapper = mountDialog({
-      subscription_usd_to_cny_rate: 0,
-      recharge_fee_rate: 2.5,
+      paymentConfig: {
+        subscription_usd_to_cny_rate: 0,
+        recharge_fee_rate: 2.5,
+      },
     })
 
     await wrapper.find('[data-test="plan-price-input"]').setValue('9.99')
@@ -74,4 +127,7 @@ describe('PlanEditDialog subscription CNY payment preview', () => {
     expect(wrapper.text()).not.toContain('preview')
     expect(wrapper.text()).not.toContain('¥71.43')
   })
+
+  // 注意：上游的 "allows composite subscription groups for payment plans" 用例已移除，
+  // 因为我们 fork 在 1ad176ac6 中用余额订阅取代了订阅分组，PlanEditDialog 不再有分组选择器。
 })

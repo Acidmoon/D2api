@@ -102,6 +102,8 @@ const (
 	FieldSortOrder = "sort_order"
 	// FieldAllowMessagesDispatch holds the string denoting the allow_messages_dispatch field in the database.
 	FieldAllowMessagesDispatch = "allow_messages_dispatch"
+	// FieldAllowLive holds the string denoting the allow_live field in the database.
+	FieldAllowLive = "allow_live"
 	// FieldRequireOauthOnly holds the string denoting the require_oauth_only field in the database.
 	FieldRequireOauthOnly = "require_oauth_only"
 	// FieldRequirePrivacySet holds the string denoting the require_privacy_set field in the database.
@@ -116,6 +118,10 @@ const (
 	FieldRpmLimit = "rpm_limit"
 	// FieldUnavailableAlertEnabled holds the string denoting the unavailable_alert_enabled field in the database.
 	FieldUnavailableAlertEnabled = "unavailable_alert_enabled"
+	// FieldMaxReasoningEffort holds the string denoting the max_reasoning_effort field in the database.
+	FieldMaxReasoningEffort = "max_reasoning_effort"
+	// FieldReasoningEffortMappings holds the string denoting the reasoning_effort_mappings field in the database.
+	FieldReasoningEffortMappings = "reasoning_effort_mappings"
 	// EdgeAPIKeys holds the string denoting the api_keys edge name in mutations.
 	EdgeAPIKeys = "api_keys"
 	// EdgePrimaryAPIKeys holds the string denoting the primary_api_keys edge name in mutations.
@@ -243,6 +249,7 @@ var Columns = []string{
 	FieldSupportedModelScopes,
 	FieldSortOrder,
 	FieldAllowMessagesDispatch,
+	FieldAllowLive,
 	FieldRequireOauthOnly,
 	FieldRequirePrivacySet,
 	FieldDefaultMappedModel,
@@ -250,6 +257,8 @@ var Columns = []string{
 	FieldModelsListConfig,
 	FieldRpmLimit,
 	FieldUnavailableAlertEnabled,
+	FieldMaxReasoningEffort,
+	FieldReasoningEffortMappings,
 }
 
 var (
@@ -347,6 +356,8 @@ var (
 	DefaultSortOrder int
 	// DefaultAllowMessagesDispatch holds the default value on creation for the "allow_messages_dispatch" field.
 	DefaultAllowMessagesDispatch bool
+	// DefaultAllowLive holds the default value on creation for the "allow_live" field.
+	DefaultAllowLive bool
 	// DefaultRequireOauthOnly holds the default value on creation for the "require_oauth_only" field.
 	DefaultRequireOauthOnly bool
 	// DefaultRequirePrivacySet holds the default value on creation for the "require_privacy_set" field.
@@ -363,6 +374,12 @@ var (
 	DefaultRpmLimit int
 	// DefaultUnavailableAlertEnabled holds the default value on creation for the "unavailable_alert_enabled" field.
 	DefaultUnavailableAlertEnabled bool
+	// DefaultMaxReasoningEffort holds the default value on creation for the "max_reasoning_effort" field.
+	DefaultMaxReasoningEffort string
+	// MaxReasoningEffortValidator is a validator for the "max_reasoning_effort" field. It is called by the builders before save.
+	MaxReasoningEffortValidator func(string) error
+	// DefaultReasoningEffortMappings holds the default value on creation for the "reasoning_effort_mappings" field.
+	DefaultReasoningEffortMappings []domain.ReasoningEffortMapping
 )
 
 // OrderOption defines the ordering options for the Group queries.
@@ -578,6 +595,11 @@ func ByAllowMessagesDispatch(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldAllowMessagesDispatch, opts...).ToFunc()
 }
 
+// ByAllowLive orders the results by the allow_live field.
+func ByAllowLive(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldAllowLive, opts...).ToFunc()
+}
+
 // ByRequireOauthOnly orders the results by the require_oauth_only field.
 func ByRequireOauthOnly(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldRequireOauthOnly, opts...).ToFunc()
@@ -601,6 +623,11 @@ func ByRpmLimit(opts ...sql.OrderTermOption) OrderOption {
 // ByUnavailableAlertEnabled orders the results by the unavailable_alert_enabled field.
 func ByUnavailableAlertEnabled(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldUnavailableAlertEnabled, opts...).ToFunc()
+}
+
+// ByMaxReasoningEffort orders the results by the max_reasoning_effort field.
+func ByMaxReasoningEffort(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldMaxReasoningEffort, opts...).ToFunc()
 }
 
 // ByAPIKeysCount orders the results by api_keys count.

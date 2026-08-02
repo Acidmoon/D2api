@@ -294,8 +294,37 @@ func (r *userSubscriptionRepository) UpdateNotes(ctx context.Context, subscripti
 }
 
 func (r *userSubscriptionRepository) ActivateWindows(ctx context.Context, id int64, start time.Time) error {
-	if err := r.execSubscriptionBalanceUpdate(ctx, `UPDATE subscription_balances SET daily_window_start = $1, weekly_window_start = $1, monthly_window_start = $1, updated_at = NOW() WHERE id = $2 AND deleted_at IS NULL`, start, id); err != nil {
+	exec := r.subscriptionBalanceExec()
+	if exec == nil {
+		return errors.New("subscription balance repository db is nil")
+	}
+	// 仅在三个窗口均未初始化时设置（首次激活语义，来自上游改进），
+	// 避免后续请求覆盖已被其他请求推进的窗口起点。
+	result, err := exec.ExecContext(ctx, `
+		UPDATE subscription_balances
+		SET daily_window_start = $1, weekly_window_start = $1, monthly_window_start = $1, updated_at = NOW()
+		WHERE id = $2 AND deleted_at IS NULL
+			AND daily_window_start IS NULL
+			AND weekly_window_start IS NULL
+			AND monthly_window_start IS NULL
+	`, start, id)
+	if err != nil {
 		return err
+	}
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if affected == 0 {
+		// 窗口已初始化是预期的 no-op；仅当订阅不存在时返回 not found。
+		var exists bool
+		if err := exec.QueryRowContext(ctx, `SELECT EXISTS (SELECT 1 FROM subscription_balances WHERE id = $1 AND deleted_at IS NULL)`, id).Scan(&exists); err != nil {
+			return err
+		}
+		if !exists {
+			return service.ErrSubscriptionNotFound
+		}
+		return nil
 	}
 	return r.syncLegacySubscriptionSnapshot(ctx, id)
 }

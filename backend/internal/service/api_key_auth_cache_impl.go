@@ -14,9 +14,9 @@ import (
 	"github.com/dgraph-io/ristretto"
 )
 
-// v16: merged v15 from both sides — fork's primary-group snapshots and media
-// pricing fields plus upstream's group web search per-call pricing.
-const apiKeyAuthSnapshotVersion = 16
+// v18: merged fork v16 (primary-group snapshots + media pricing fields) with
+// upstream v17 (group Live gate + reasoning effort policy fields).
+const apiKeyAuthSnapshotVersion = 18
 
 type apiKeyAuthCacheConfig struct {
 	l1Size        int
@@ -484,10 +484,13 @@ func snapshotGroupFromService(group *Group) *APIKeyAuthGroupSnapshot {
 		MCPXMLInject:                    group.MCPXMLInject,
 		SupportedModelScopes:            group.SupportedModelScopes,
 		AllowMessagesDispatch:           group.AllowMessagesDispatch,
+		AllowLive:                       group.AllowLive,
 		DefaultMappedModel:              group.DefaultMappedModel,
 		MessagesDispatchModelConfig:     group.MessagesDispatchModelConfig,
 		ModelsListConfig:                group.ModelsListConfig,
 		RPMLimit:                        group.RPMLimit,
+		MaxReasoningEffort:              group.MaxReasoningEffort,
+		ReasoningEffortMappings:         group.ReasoningEffortMappings,
 		PeakRateEnabled:                 group.PeakRateEnabled,
 		PeakStart:                       group.PeakStart,
 		PeakEnd:                         group.PeakEnd,
@@ -532,10 +535,13 @@ func snapshotGroupToService(group *APIKeyAuthGroupSnapshot) *Group {
 		MCPXMLInject:                    group.MCPXMLInject,
 		SupportedModelScopes:            group.SupportedModelScopes,
 		AllowMessagesDispatch:           group.AllowMessagesDispatch,
+		AllowLive:                       group.AllowLive,
 		DefaultMappedModel:              group.DefaultMappedModel,
 		MessagesDispatchModelConfig:     group.MessagesDispatchModelConfig,
 		ModelsListConfig:                group.ModelsListConfig,
 		RPMLimit:                        group.RPMLimit,
+		MaxReasoningEffort:              group.MaxReasoningEffort,
+		ReasoningEffortMappings:         group.ReasoningEffortMappings,
 		PeakRateEnabled:                 group.PeakRateEnabled,
 		PeakStart:                       group.PeakStart,
 		PeakEnd:                         group.PeakEnd,
