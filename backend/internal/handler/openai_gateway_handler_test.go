@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/tlsfingerprint"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -1805,6 +1806,9 @@ func (u *openAIHTTPPassthroughFailoverUpstream) Do(_ *http.Request, _ string, ac
 		Body:       io.NopCloser(strings.NewReader(`{"error":{"message":"temporary upstream failure"}}`)),
 	}, nil
 }
+func (u *openAIHTTPPassthroughFailoverUpstream) DoWithTLS(req *http.Request, proxyURL string, accountID int64, accountConcurrency int, _ *tlsfingerprint.Profile) (*http.Response, error) {
+	return u.Do(req, proxyURL, accountID, accountConcurrency)
+}
 
 func (u *openAIHTTPPassthroughFailoverUpstream) calls() []int64 {
 	u.mu.Lock()
@@ -1838,6 +1842,9 @@ func (u *openAIHTTPPassthroughSSERateLimitUpstream) Do(_ *http.Request, _ string
 		},
 		Body: io.NopCloser(strings.NewReader(body)),
 	}, nil
+}
+func (u *openAIHTTPPassthroughSSERateLimitUpstream) DoWithTLS(req *http.Request, proxyURL string, accountID int64, accountConcurrency int, _ *tlsfingerprint.Profile) (*http.Response, error) {
+	return u.Do(req, proxyURL, accountID, accountConcurrency)
 }
 
 func (u *openAIHTTPPassthroughSSERateLimitUpstream) calls() []int64 {

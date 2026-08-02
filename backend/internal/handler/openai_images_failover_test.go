@@ -5,6 +5,7 @@ package handler
 import (
 	"bytes"
 	"context"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/tlsfingerprint"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -80,6 +81,9 @@ func (u *openAIImagesFailoverHTTPUpstream) Do(_ *http.Request, _ string, account
 		)),
 	}, nil
 }
+func (u *openAIImagesFailoverHTTPUpstream) DoWithTLS(req *http.Request, proxyURL string, accountID int64, accountConcurrency int, _ *tlsfingerprint.Profile) (*http.Response, error) {
+	return u.Do(req, proxyURL, accountID, accountConcurrency)
+}
 
 func (u *openAIImagesFailoverHTTPUpstream) calls() []int64 {
 	u.mu.Lock()
@@ -132,7 +136,6 @@ func TestOpenAIGatewayHandlerImages_ServerErrorFailsOverAndReturnsClearErrorWhen
 		nil,
 		nil,
 		upstream,
-		nil,
 		nil,
 		nil,
 		nil,

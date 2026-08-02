@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/tlsfingerprint"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -388,6 +389,9 @@ func (u *grokCredentialHandlerUpstream) Do(req *http.Request, _ string, accountI
 			`{"id":"resp_healthy","object":"response","model":"grok-4.5","status":"completed","output":[],"usage":{"input_tokens":1,"output_tokens":1}}`,
 		)),
 	}, nil
+}
+func (u *grokCredentialHandlerUpstream) DoWithTLS(req *http.Request, proxyURL string, accountID int64, accountConcurrency int, _ *tlsfingerprint.Profile) (*http.Response, error) {
+	return u.Do(req, proxyURL, accountID, accountConcurrency)
 }
 
 func (u *grokCredentialHandlerUpstream) accountHits() []int64 {
@@ -928,7 +932,6 @@ func newGrokCredentialFailoverHandler(t *testing.T, mode string) (*OpenAIGateway
 		repo, nil, nil, nil, nil, nil, nil, cfg, nil, nil,
 		service.NewBillingService(cfg, nil), nil, billingCache, upstream,
 		&service.DeferredService{}, nil, provider, nil, nil, nil, nil, nil, nil,
-		nil,
 		nil,
 	)
 	cache := &concurrencyCacheMock{
