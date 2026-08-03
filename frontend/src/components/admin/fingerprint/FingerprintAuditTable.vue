@@ -29,6 +29,14 @@
       >
         {{ verdictLabel(row.verdict) }}
       </span>
+      <!-- 失败行直接给出原因，避免只看到一个 failed 徽章 -->
+      <span
+        v-if="row.status === 'failed' && row.error"
+        class="mt-1 block max-w-56 truncate text-xs text-red-500 dark:text-red-400"
+        :title="row.error"
+      >
+        {{ row.error }}
+      </span>
     </template>
 
     <template #cell-score="{ row }">

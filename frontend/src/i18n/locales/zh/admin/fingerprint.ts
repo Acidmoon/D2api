@@ -165,6 +165,7 @@ export default {
       noData: '—',
       running: '任务进行中，完成后自动刷新…',
       failed: '任务失败',
+      lastError: '最近一次探测失败：{value}',
       loadFailed: '报告加载失败',
       t0Answers: 'T=0 答案：{value}',
       language: {

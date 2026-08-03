@@ -20,6 +20,14 @@
       </button>
     </form>
 
+    <!-- 注册失败原因持久展示（轮询拿到 failed 后不再只是一个提示弹窗） -->
+    <p
+      v-if="registerError"
+      class="mb-5 -mt-2 rounded-md border border-red-100 bg-red-50/50 px-3 py-2 text-xs text-red-600 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-400"
+    >
+      {{ registerError }}
+    </p>
+
     <DataTable :columns="columns" :data="references" :loading="loading">
       <template #cell-model="{ value }">
         <span class="font-medium text-gray-900 dark:text-white">{{ value }}</span>
@@ -101,6 +109,8 @@ const { sourceLabel, isReferenceStale } = useFingerprintFormat()
 const registerAccountId = ref<number | null>(null)
 const registerModel = ref('')
 const registering = ref(false)
+// 注册任务的失败原因（成功后清空，下一次发起时也清空）
+const registerError = ref('')
 
 const columns = computed<Column[]>(() => [
   { key: 'model', label: t('admin.fingerprint.references.columns.model'), sortable: false },
@@ -139,10 +149,14 @@ function pollRegisterTask(taskId: string) {
         return
       }
       if (detail.status === 'failed') {
-        appStore.showError(detail.error || t('admin.fingerprint.references.registerFailed'))
+        registerError.value = detail.error || t('admin.fingerprint.references.registerFailed')
+        appStore.showError(registerError.value)
+      } else {
+        registerError.value = ''
       }
     } catch (err: unknown) {
-      appStore.showError(extractApiErrorMessage(err, t('admin.fingerprint.references.registerFailed')))
+      registerError.value = extractApiErrorMessage(err, t('admin.fingerprint.references.registerFailed'))
+      appStore.showError(registerError.value)
     } finally {
       registering.value = false
     }
@@ -154,13 +168,15 @@ function pollRegisterTask(taskId: string) {
 async function startRegistration(accountId: number, model: string) {
   if (registering.value) return
   registering.value = true
+  registerError.value = ''
   try {
     const task = await adminAPI.fingerprint.registerReference({ account_id: accountId, model })
     appStore.showSuccess(t('admin.fingerprint.references.registered'))
     pollRegisterTask(task.task_id)
   } catch (err: unknown) {
     registering.value = false
-    appStore.showError(extractApiErrorMessage(err, t('admin.fingerprint.references.registerFailed')))
+    registerError.value = extractApiErrorMessage(err, t('admin.fingerprint.references.registerFailed'))
+    appStore.showError(registerError.value)
   }
 }
 

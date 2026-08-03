@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
 	"net/http"
@@ -60,6 +61,9 @@ var (
 	)
 	ErrFingerprintReferenceNotFound = infraerrors.BadRequest(
 		"FINGERPRINT_REFERENCE_NOT_FOUND", "reference fingerprint not found for the model; register one first via POST /admin/fingerprint/references or pass reference_account_id",
+	)
+	ErrFingerprintReferenceEmpty = infraerrors.BadRequest(
+		"FINGERPRINT_REFERENCE_EMPTY", "reference fingerprint is empty (0 valid samples in all cells); its registration likely failed, please re-register it",
 	)
 	ErrFingerprintAuditNotFound = infraerrors.NotFound(
 		"FINGERPRINT_AUDIT_NOT_FOUND", "fingerprint audit not found",
@@ -236,6 +240,11 @@ func (s *FingerprintService) StartAudit(ctx context.Context, params FingerprintA
 		if err != nil {
 			return nil, err
 		}
+		// 空参考（所有 cell valid=0，通常是上次注册失败留下的坏文件）直接拒绝，
+		// 避免跑完电池才给个莫名其妙的「证据不足」。
+		if fingerprintReferenceEmpty(reference) {
+			return nil, ErrFingerprintReferenceEmpty
+		}
 	}
 
 	probesPerBattery := len(fingerprintCells()) * (fingerprintSamplesPerCell + fingerprintGreedySamplesPerCell)
@@ -342,10 +351,17 @@ type fingerprintProbeTarget struct {
 	model          string
 	anthropicOAuth bool // anthropic + access_token：走 Bearer + anthropic-beta
 
+	// Codex OAuth（ChatGPT 订阅）路径：固定走 chatgpt.com 内部 Codex 端点。
+	codexOAuth       bool
+	chatgptAccountID string // chatgpt-account-id 头（可为空）
+	customUserAgent  string // 账号自定义 UA（空则用 codex CLI UA）
+
 	// reasoningRejected 上游拒绝关闭 reasoning（400 且错误提到 reasoning）→ 该模型不适用单 token 指纹。
 	reasoningRejected atomic.Bool
 	// geminiThinkingUnsupported 上游不认 thinkingConfig → 后续请求省略该字段（§6.2：不支持则忽略）。
 	geminiThinkingUnsupported atomic.Bool
+	// codexReasoningUnsupported Codex 拒绝 reasoning 字段 → 后续请求省略（省略，不判不适用）。
+	codexReasoningUnsupported atomic.Bool
 }
 
 // resolveTarget 按 target_type 分发到账号/外部端点解析。
@@ -381,7 +397,18 @@ func (s *FingerprintService) resolveAccountTarget(ctx context.Context, accountID
 		}
 	case PlatformOpenAI:
 		target.provider = MonitorProviderOpenAI
-		target.baseURL = account.GetOpenAIBaseURL()
+		// Codex OAuth 订阅账号（无 api_key、只有 access_token）：必须走
+		// chatgpt.com 内部 Codex 端点 + 专用身份头，普通 api.openai.com 请求会全灭。
+		// 构造细节见 fingerprint_codex.go（参照账号测试连接 account_test_service）。
+		if account.IsOAuth() && account.GetCredential("api_key") == "" && account.GetCredential("access_token") != "" {
+			target.codexOAuth = true
+			target.apiMode = MonitorAPIModeResponses
+			target.model = normalizeCodexModel(model)
+			target.chatgptAccountID = account.GetChatGPTAccountID()
+			target.customUserAgent = strings.TrimSpace(account.GetOpenAIUserAgent())
+		} else {
+			target.baseURL = account.GetOpenAIBaseURL()
+		}
 	case PlatformGemini:
 		target.provider = MonitorProviderGemini
 		target.baseURL = account.GetGeminiBaseURL(geminiDefaultBaseURL)
@@ -392,7 +419,7 @@ func (s *FingerprintService) resolveAccountTarget(ctx context.Context, accountID
 		return nil, FingerprintReportTarget{}, ErrFingerprintUnsupportedPlatform
 	}
 
-	// 凭证：api_key 优先，空则 access_token（OAuth 账号）。
+	// 凭证：api_key 优先，空则 access_token（OAuth 账号；codexOAuth 路径同用此 access_token）。
 	target.apiKey = account.GetCredential("api_key")
 	if target.apiKey == "" {
 		target.apiKey = account.GetCredential("access_token")
@@ -482,15 +509,16 @@ func (s *FingerprintService) executeAudit(task *fingerprintTask, target *fingerp
 	// 参考基准：现场注册（写 references 文件）或复用已加载的参考。
 	reference := loadedRef
 	if refTarget != nil {
-		refResults := s.runBattery(ctx, refTarget, onProgress)
-		reference = buildFingerprintReference(params.ReferenceModel, refAccountID, refResults)
-		if err := s.store.saveReference(reference); err != nil {
-			task.finish(FingerprintStatusFailed, fmt.Errorf("save reference: %w", err))
+		refResults, refLastErr := s.runBattery(ctx, refTarget, onProgress)
+		// 采样质量不达标：不写参考（保留同名旧文件），整个任务失败，不再测目标。
+		if err := s.finishReferenceRegistration(params.ReferenceModel, refAccountID, refResults, refLastErr); err != nil {
+			task.finish(FingerprintStatusFailed, err)
 			return
 		}
+		reference = buildFingerprintReference(params.ReferenceModel, refAccountID, refResults)
 	}
 
-	results := s.runBattery(ctx, target, onProgress)
+	results, lastErr := s.runBattery(ctx, target, onProgress)
 	cells, score, verdict, band, k, avgN, splitHalf, t0Mismatch, flags := scoreFingerprintBattery(results, reference, params.KeepRaw)
 	// reasoning 关不掉 → 整个模型不适用单 token 指纹：标记 not_applicable 且不硬出判定（§8）。
 	if target.reasoningRejected.Load() {
@@ -516,6 +544,7 @@ func (s *FingerprintService) executeAudit(task *fingerprintTask, target *fingerp
 		SplitHalfJSD:    splitHalf,
 		T0MismatchCells: t0Mismatch,
 		Flags:           flags,
+		LastError:       lastErr,
 		CreatedBy:       params.OperatorID,
 		CreatedAt:       task.snapshot().CreatedAt,
 		DurationMs:      time.Since(start).Milliseconds(),
@@ -528,7 +557,9 @@ func (s *FingerprintService) executeAudit(task *fingerprintTask, target *fingerp
 	task.finish(FingerprintStatusDone, nil)
 }
 
-// executeReferenceRegistration 后台执行参考注册：电池 → 写 references/<model>.json。
+// executeReferenceRegistration 后台执行参考注册：电池 → 质量门槛 → 写 references/<model>.json。
+// 采样质量不达标（≥10 有效样本的 cell 数 < 8）时任务失败且不写文件——
+// 已有同名旧参考文件时保留旧的，避免空参考覆盖好参考。
 func (s *FingerprintService) executeReferenceRegistration(task *fingerprintTask, target *fingerprintProbeTarget, accountID int64, model string) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -537,13 +568,57 @@ func (s *FingerprintService) executeReferenceRegistration(task *fingerprintTask,
 	}()
 	ctx, cancel := context.WithTimeout(context.Background(), fingerprintBatteryTimeout)
 	defer cancel()
-	results := s.runBattery(ctx, target, func() { task.incProgress() })
-	reference := buildFingerprintReference(model, &accountID, results)
-	if err := s.store.saveReference(reference); err != nil {
-		task.finish(FingerprintStatusFailed, fmt.Errorf("save reference: %w", err))
+	results, lastErr := s.runBattery(ctx, target, func() { task.incProgress() })
+	if err := s.finishReferenceRegistration(model, &accountID, results, lastErr); err != nil {
+		task.finish(FingerprintStatusFailed, err)
 		return
 	}
 	task.finish(FingerprintStatusDone, nil)
+}
+
+// finishReferenceRegistration 注册电池的收尾判定（纯逻辑，供单测）：
+// 质量不达标返回错误且不写文件；达标才构建并写入参考。
+func (s *FingerprintService) finishReferenceRegistration(model string, accountID *int64, results map[string]*fingerprintCellResult, lastErr string) error {
+	if err := checkFingerprintReferenceQuality(results, lastErr); err != nil {
+		return err
+	}
+	return s.store.saveReference(buildFingerprintReference(model, accountID, results))
+}
+
+// checkFingerprintReferenceQuality 注册质量门槛：≥fingerprintMinValidSamples 有效样本的
+// cell 数达到 fingerprintMinCells 才允许写参考；否则返回含采样比例与最后上游错误的失败原因。
+func checkFingerprintReferenceQuality(results map[string]*fingerprintCellResult, lastErr string) error {
+	okCells, validSum, total := 0, 0, 0
+	for _, res := range results {
+		if res.valid >= fingerprintMinValidSamples {
+			okCells++
+		}
+		validSum += res.valid
+		total += res.valid + res.invalid + res.refusal + res.empty + res.failures
+	}
+	if okCells >= fingerprintMinCells {
+		return nil
+	}
+	msg := fmt.Sprintf("采样质量不达标：%d/%d 个探测项获得 ≥%d 个有效样本（要求 ≥%d 项），有效样本 %d/%d",
+		okCells, len(results), fingerprintMinValidSamples, fingerprintMinCells, validSum, total)
+	if lastErr != "" {
+		msg += "；最后上游错误：" + lastErr
+	}
+	return errors.New(msg)
+}
+
+// fingerprintReferenceEmpty 判断参考指纹是否为空（所有 cell 的 valid 均为 0）——
+// 通常是注册时上游全部失败留下的坏文件。
+func fingerprintReferenceEmpty(ref *FingerprintReference) bool {
+	if ref == nil || len(ref.Cells) == 0 {
+		return true
+	}
+	for _, c := range ref.Cells {
+		if c != nil && c.Valid > 0 {
+			return false
+		}
+	}
+	return true
 }
 
 // ---------- 电池执行 ----------
@@ -569,7 +644,8 @@ func newFingerprintCellResult() *fingerprintCellResult {
 
 // runBattery 对目标跑完整探测电池：16 cell × (15 次 T=1.0 + 2 次 T=0)，
 // cell 顺序随机打乱；有界并发 worker 池，单探测失败指数退避重试，失败样本不计入数据。
-func (s *FingerprintService) runBattery(ctx context.Context, target *fingerprintProbeTarget, onProgress func()) map[string]*fingerprintCellResult {
+// 返回各 cell 结果与最后一次探测失败的摘要（已脱敏；无失败为空串）。
+func (s *FingerprintService) runBattery(ctx context.Context, target *fingerprintProbeTarget, onProgress func()) (map[string]*fingerprintCellResult, string) {
 	rng := newFingerprintRNG()
 	cells := fingerprintShuffledCells(rng)
 	results := make(map[string]*fingerprintCellResult, len(cells))
@@ -585,6 +661,7 @@ func (s *FingerprintService) runBattery(ctx context.Context, target *fingerprint
 	jobs := make(chan probeJob)
 	var resultsMu sync.Mutex
 	var wg sync.WaitGroup
+	lastErr := ""
 
 	worker := func() {
 		defer wg.Done()
@@ -596,6 +673,7 @@ func (s *FingerprintService) runBattery(ctx context.Context, target *fingerprint
 			case err != nil:
 				// 失败样本不计入数据（§5）。
 				res.failures++
+				lastErr = err.Error()
 			case j.temperature == fingerprintGreedyTemperature:
 				if token, validity := normalizeFingerprintAnswer(outcome.text); validity == FingerprintValidityValid {
 					res.t0Answers = append(res.t0Answers, token)
@@ -638,7 +716,7 @@ func (s *FingerprintService) runBattery(ctx context.Context, target *fingerprint
 	}
 	close(jobs)
 	wg.Wait()
-	return results
+	return results, lastErr
 }
 
 // ---------- 单次探测 ----------
@@ -692,7 +770,7 @@ func (t *fingerprintProbeTarget) runProbeOnce(ctx context.Context, prompt string
 	defer cancel()
 
 	start := time.Now()
-	respBytes, status, err := postRawJSON(reqCtx, t.requestURL(), body, t.headers())
+	respBytes, status, err := postFingerprintRawJSON(reqCtx, t.requestURL(), body, t.headers())
 	latencyMs := int(time.Since(start) / time.Millisecond)
 	if err != nil {
 		// 网络/超时错误：可重试。
@@ -705,17 +783,30 @@ func (t *fingerprintProbeTarget) runProbeOnce(ctx context.Context, prompt string
 			perr.retryable = true
 		}
 		lower := strings.ToLower(snippet)
-		// openai/grok：上游拒绝关 reasoning（400 且提到 reasoning）→ 模型不适用，不重试（§8）。
-		if (t.provider == MonitorProviderOpenAI || t.provider == MonitorProviderGrok) &&
-			status == http.StatusBadRequest && strings.Contains(lower, "reasoning") {
+		switch {
+		case t.codexOAuth && status == http.StatusBadRequest &&
+			(strings.Contains(lower, "reasoning") || strings.Contains(lower, "effort")):
+			// Codex：reasoning 字段被拒 → 后续请求省略该字段，本次允许重试（省略，不判不适用）。
+			t.codexReasoningUnsupported.Store(true)
+			perr.retryable = true
+		case (t.provider == MonitorProviderOpenAI || t.provider == MonitorProviderGrok) &&
+			status == http.StatusBadRequest && strings.Contains(lower, "reasoning"):
+			// openai/grok：上游拒绝关 reasoning → 模型不适用，不重试（§8）。
 			t.reasoningRejected.Store(true)
-		}
-		// gemini：thinkingConfig 不支持 → 后续请求省略该字段，本次允许重试（§6.2：不支持则忽略）。
-		if t.provider == MonitorProviderGemini && status == http.StatusBadRequest && strings.Contains(lower, "thinking") {
+		case t.provider == MonitorProviderGemini && status == http.StatusBadRequest && strings.Contains(lower, "thinking"):
+			// gemini：thinkingConfig 不支持 → 后续请求省略该字段，本次允许重试（§6.2：不支持则忽略）。
 			t.geminiThinkingUnsupported.Store(true)
 			perr.retryable = true
 		}
 		return nil, perr
+	}
+	// Codex 是流式响应：从 SSE 里取 response.completed 的完整 response 对象。
+	if t.codexOAuth {
+		text, tokens, serr := extractFingerprintCodexSSE(respBytes)
+		if serr != "" {
+			return nil, &fingerprintProbeError{message: sanitizeErrorMessage(serr), retryable: true}
+		}
+		return &fingerprintProbeOutcome{text: text, completionTokens: tokens, latencyMs: latencyMs}, nil
 	}
 	text, tokens := extractFingerprintProbeResult(t.provider, t.apiMode, respBytes)
 	return &fingerprintProbeOutcome{text: text, completionTokens: tokens, latencyMs: latencyMs}, nil
@@ -723,7 +814,11 @@ func (t *fingerprintProbeTarget) runProbeOnce(ctx context.Context, prompt string
 
 // buildBody 构造探测请求体：temperature 由调用方给（T=1.0 / T=0），max tokens=16，
 // stream=false，系统提示强制一词回答；OpenAI 系关 reasoning，Gemini 关 thinking。
+// Codex OAuth 走独立的流式构造（fingerprint_codex.go）。
 func (t *fingerprintProbeTarget) buildBody(prompt string, temperature float64) ([]byte, error) {
+	if t.codexOAuth {
+		return buildCodexFingerprintBody(t, prompt, temperature)
+	}
 	switch {
 	case t.provider == MonitorProviderOpenAI && t.apiMode == MonitorAPIModeResponses:
 		return json.Marshal(map[string]any{
@@ -775,8 +870,11 @@ func (t *fingerprintProbeTarget) buildBody(prompt string, temperature float64) (
 }
 
 // headers 构造鉴权头。Anthropic OAuth（access_token）走 Bearer + anthropic-beta，
-// 与账号测试连接的现有用法一致；api_key 走 x-api-key。
+// 与账号测试连接的现有用法一致；api_key 走 x-api-key；Codex OAuth 走专用身份头。
 func (t *fingerprintProbeTarget) headers() map[string]string {
+	if t.codexOAuth {
+		return codexFingerprintHeaders(t)
+	}
 	switch t.provider {
 	case MonitorProviderAnthropic:
 		if t.anthropicOAuth {
@@ -799,8 +897,11 @@ func (t *fingerprintProbeTarget) headers() map[string]string {
 }
 
 // requestURL 拼完整请求 URL：base_url 已含版本段（/v1、/v1beta）时不再重复拼接，
-// 兼容中转站常见的带后缀 base_url。
+// 兼容中转站常见的带后缀 base_url。Codex OAuth 固定打 chatgpt.com 内部端点。
 func (t *fingerprintProbeTarget) requestURL() string {
+	if t.codexOAuth {
+		return chatgptCodexAPIURL
+	}
 	base := strings.TrimRight(strings.TrimSpace(t.baseURL), "/")
 	var version, rel string
 	switch {
@@ -915,9 +1016,11 @@ func scoreFingerprintBattery(results map[string]*fingerprintCellResult, referenc
 			reportCell.Excluded = fingerprintExcludedResponseCaching
 			flagSet[FingerprintFlagResponseCaching] = struct{}{}
 		}
-		// §8 异常筛查 2：一词回答的 completion_tokens 持续 >16 → 隐藏 reasoning，不可审计。
+		// §8 异常筛查 2：一词回答的 completion_tokens 持续打满/超过 16 → 隐藏 reasoning，不可审计。
+		// （≥ 判定而非 >：隐藏 reasoning 的模型会把 max_output_tokens=16 打满，
+		// 正常一词回答的输出 token 通常只有 1–5，不会触到上限。）
 		if reportCell.Excluded == "" && len(res.completionTokens) >= fingerprintSplitHalfMinSamples &&
-			fingerprintMedianInt(res.completionTokens) > fingerprintMaxTokens {
+			fingerprintMedianInt(res.completionTokens) >= fingerprintMaxTokens {
 			reportCell.Excluded = fingerprintExcludedHiddenReasoning
 			flagSet[FingerprintFlagHiddenReasoning] = struct{}{}
 		}

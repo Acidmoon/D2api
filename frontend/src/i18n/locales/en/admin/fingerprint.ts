@@ -165,6 +165,7 @@ export default {
       noData: '—',
       running: 'Task is running; this view refreshes automatically when it finishes…',
       failed: 'Task failed',
+      lastError: 'Last probe failure: {value}',
       loadFailed: 'Failed to load the report',
       t0Answers: 'T=0 answers: {value}',
       language: {

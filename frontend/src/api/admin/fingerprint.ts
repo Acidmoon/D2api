@@ -102,6 +102,8 @@ export interface FingerprintReport {
   t0_mismatch_cells: number
   flags: FingerprintFlag[]
   error?: string
+  /** 电池执行中最近一次探测失败的摘要（部分失败时帮助定位原因） */
+  last_error?: string
   created_at: string
   duration_ms: number
   cells: FingerprintReportCell[]

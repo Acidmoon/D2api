@@ -106,10 +106,12 @@ type FingerprintReport struct {
 	T0MismatchCells int                        `json:"t0_mismatch_cells"` // T=0 答案与参考不一致的 cell 数（模型被换的即时提示）
 	Flags           []string                   `json:"flags"`
 	Error           string                     `json:"error,omitempty"`
-	CreatedBy       int64                      `json:"created_by,omitempty"`
-	CreatedAt       time.Time                  `json:"created_at"`
-	DurationMs      int64                      `json:"duration_ms"`
-	Cells           []*FingerprintReportCell   `json:"cells"`
+	// LastError 电池执行中最近一次探测失败的摘要（已脱敏），便于页面展示失败原因。
+	LastError  string                   `json:"last_error,omitempty"`
+	CreatedBy  int64                    `json:"created_by,omitempty"`
+	CreatedAt  time.Time                `json:"created_at"`
+	DurationMs int64                    `json:"duration_ms"`
+	Cells      []*FingerprintReportCell `json:"cells"`
 }
 
 // FingerprintAuditSummary 检测记录列表行（报告摘要，不含 cells 明细）。

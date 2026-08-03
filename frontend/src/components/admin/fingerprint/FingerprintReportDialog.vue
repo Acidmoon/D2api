@@ -84,6 +84,10 @@
             {{ t('admin.fingerprint.detail.t0Mismatch', { count: report.t0_mismatch_cells }) }}
           </li>
           <li>{{ t('admin.fingerprint.detail.duration') }}: {{ formatDuration(report.duration_ms) }}</li>
+          <!-- 部分探测失败时展示最后一次失败原因，帮助定位「证据不足」的根因 -->
+          <li v-if="report.last_error" class="text-amber-600 dark:text-amber-400">
+            {{ t('admin.fingerprint.detail.lastError', { value: report.last_error }) }}
+          </li>
         </ul>
 
         <!-- 异常标记 -->
