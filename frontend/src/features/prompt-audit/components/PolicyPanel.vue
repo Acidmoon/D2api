@@ -100,16 +100,36 @@
           <input :value="draft.user_guard.ban_duration_minutes" type="number" min="1" max="10080" class="input mt-1.5 w-full" :aria-label="t('admin.promptAudit.userGuard.banDurationMinutes')" data-test="user-guard-ban-duration" @input="patchUserGuard({ ban_duration_minutes: Number(($event.target as HTMLInputElement).value) })" />
         </label>
       </div>
+      <div v-if="draft.user_guard.enabled" class="mt-4">
+        <label class="block text-sm text-gray-700 dark:text-dark-200">
+          <span>{{ t('admin.promptAudit.userGuard.whitelist') }}</span>
+          <textarea
+            v-model="whitelistRaw"
+            rows="3"
+            class="input mt-1.5 w-full font-mono text-xs"
+            :aria-label="t('admin.promptAudit.userGuard.whitelist')"
+            data-test="user-guard-whitelist"
+            @input="handleWhitelistInput"
+          ></textarea>
+        </label>
+        <p class="mt-1 text-xs text-gray-500 dark:text-dark-400">{{ t('admin.promptAudit.userGuard.whitelistHint') }}</p>
+        <p class="mt-1 text-xs text-gray-600 dark:text-dark-300" data-test="user-guard-whitelist-count">
+          {{ t('admin.promptAudit.userGuard.whitelistCount', { count: whitelistParsed.ids.length }) }}
+        </p>
+        <p v-if="whitelistParsed.invalid.length" class="mt-1 text-xs text-red-600 dark:text-red-300" data-test="user-guard-whitelist-invalid">
+          {{ t('admin.promptAudit.userGuard.whitelistInvalid', { values: whitelistParsed.invalid.join(', ') }) }}
+        </p>
+      </div>
       <p v-if="draft.user_guard.enabled" class="mt-3 text-xs text-gray-500 dark:text-dark-400">{{ t('admin.promptAudit.userGuard.notifyHint') }}</p>
     </div>
   </section>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { PromptAuditUserGuard, PromptAuditDraft, PromptAuditGroup } from '../types'
-import { cloneData, SCANNER_CATALOG } from '../viewModel'
+import { cloneData, formatUserGuardWhitelist, parseUserGuardWhitelist, SCANNER_CATALOG } from '../viewModel'
 
 const props = defineProps<{ draft: PromptAuditDraft; groups: PromptAuditGroup[] }>()
 const emit = defineEmits<{ (event: 'update:draft', value: PromptAuditDraft): void }>()
@@ -129,6 +149,20 @@ function patch(value: Partial<PromptAuditDraft>) {
 }
 function patchUserGuard(value: Partial<PromptAuditUserGuard>) {
   patch({ user_guard: { ...props.draft.user_guard, ...value } })
+}
+// 白名单文本框：draft 中存解析后的 int64 数组（fingerprint/PUT 的数据源），
+// 本组件另存原始输入文本；外部重置草稿时回显解析后的 ID。
+const whitelistRaw = ref(formatUserGuardWhitelist(props.draft.user_guard.whitelist_user_ids))
+const whitelistParsed = computed(() => parseUserGuardWhitelist(whitelistRaw.value))
+watch(
+  () => props.draft.user_guard.whitelist_user_ids,
+  (ids) => {
+    const next = formatUserGuardWhitelist(ids)
+    if (next !== formatUserGuardWhitelist(whitelistParsed.value.ids)) whitelistRaw.value = next
+  },
+)
+function handleWhitelistInput() {
+  patchUserGuard({ whitelist_user_ids: whitelistParsed.value.ids })
 }
 function toggleGroup(id: number) {
   const selected = new Set(props.draft.group_ids)

@@ -62,6 +62,9 @@ type ViolationCounterCache interface {
 	SetUserViolationBan(ctx context.Context, userID int64, until time.Time, ttl time.Duration) error
 	// GetUserViolationBan 读取用户临时封禁状态，返回 (解封时间, 是否封禁中)。
 	GetUserViolationBan(ctx context.Context, userID int64) (time.Time, bool, error)
+	// GetUserViolationBans 批量读取用户临时封禁状态（管理端用户列表用），
+	// 返回仍在封禁中的 userID → 解封时间；未封禁/过期/非法键不出现。
+	GetUserViolationBans(ctx context.Context, userIDs []int64) (map[int64]time.Time, error)
 	// ClearUserViolationBan 删除用户临时封禁键（管理员解除封禁）。
 	ClearUserViolationBan(ctx context.Context, userID int64) error
 }

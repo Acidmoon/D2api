@@ -109,6 +109,8 @@ export interface AdminUser extends User {
   group_rates?: Record<number, number>
   // 当前并发数（仅管理员列表接口返回）
   current_concurrency?: number
+  // 内容违规临时封禁的解封时间（Unix 秒；缺省/null = 未封禁，仅管理员列表接口返回）
+  violation_ban_until?: number | null
 }
 
 export interface LoginRequest {

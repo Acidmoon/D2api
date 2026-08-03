@@ -180,6 +180,22 @@ func (h *UserHandler) List(c *gin.Context) {
 		}
 	}
 
+	// 内容违规临时封禁状态（Redis MGet 一次往返；未注入/出错时静默省略字段，不影响列表）
+	if len(users) > 0 && h.violationBanCache != nil {
+		userIDs := make([]int64, len(users))
+		for i := range users {
+			userIDs[i] = users[i].ID
+		}
+		if bans, err := h.violationBanCache.GetUserViolationBans(c.Request.Context(), userIDs); err == nil {
+			for i := range out {
+				if until, banned := bans[out[i].ID]; banned {
+					unix := until.Unix()
+					out[i].ViolationBanUntil = &unix
+				}
+			}
+		}
+	}
+
 	response.Paginated(c, out, total, page, pageSize)
 }
 

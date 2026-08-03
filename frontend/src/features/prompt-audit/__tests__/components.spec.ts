@@ -54,7 +54,7 @@ describe('Prompt Audit components', () => {
     const draft: PromptAuditDraft = {
       enabled: true, blocking_enabled: false, store_pass_events: false, effective_mode: 'async_audit', strategy: 'priority',
       worker_count: 4, queue_capacity: 100, scanners: SCANNER_CATALOG.map((item) => item.id), all_groups: false, group_ids: [1, 99],
-      endpoints: [endpoint()], user_guard: { enabled: false, threshold: 3, window_minutes: 10, ban_duration_minutes: 60 },
+      endpoints: [endpoint()], user_guard: { enabled: false, threshold: 3, window_minutes: 10, ban_duration_minutes: 60, whitelist_user_ids: [] },
       config_version: 1, updated_at: '', updated_by: 0, change_summary: '',
     }
     const wrapper = mount(PolicyPanel, {
@@ -74,7 +74,7 @@ describe('Prompt Audit components', () => {
     const draft: PromptAuditDraft = {
       enabled: true, blocking_enabled: false, store_pass_events: false, effective_mode: 'async_audit', strategy: 'priority',
       worker_count: 4, queue_capacity: 100, scanners: SCANNER_CATALOG.map((item) => item.id), all_groups: true, group_ids: [],
-      endpoints: [endpoint()], user_guard: { enabled: false, threshold: 3, window_minutes: 10, ban_duration_minutes: 60 },
+      endpoints: [endpoint()], user_guard: { enabled: false, threshold: 3, window_minutes: 10, ban_duration_minutes: 60, whitelist_user_ids: [] },
       config_version: 1, updated_at: '', updated_by: 0, change_summary: '',
     }
     const wrapper = mount(EndpointPool, {

@@ -77,6 +77,9 @@ type UserGuardConfig struct {
 	Threshold          int  `json:"threshold"`
 	WindowMinutes      int  `json:"window_minutes"`
 	BanDurationMinutes int  `json:"ban_duration_minutes"`
+	// WhitelistUserIDs 白名单用户 ID 列表：白名单内用户的请求完全跳过审核
+	// （不调用审核模型、不计数、不封禁）。归一化后去重且升序。
+	WhitelistUserIDs []int64 `json:"whitelist_user_ids"`
 }
 
 const (
@@ -89,7 +92,19 @@ const (
 	UserGuardDefaultThreshold   = 3
 	UserGuardDefaultWindowMin   = 10
 	UserGuardDefaultBanDuration = 60
+	// UserGuardMaxWhitelistSize 白名单用户 ID 数量上限。
+	UserGuardMaxWhitelistSize = 500
 )
+
+// IsWhitelisted 判断用户是否在违规守护白名单内。
+// WhitelistUserIDs 经 normalize 后保持升序，这里用二分查找。
+func (cfg UserGuardConfig) IsWhitelisted(userID int64) bool {
+	if userID <= 0 || len(cfg.WhitelistUserIDs) == 0 {
+		return false
+	}
+	i := sort.Search(len(cfg.WhitelistUserIDs), func(i int) bool { return cfg.WhitelistUserIDs[i] >= userID })
+	return i < len(cfg.WhitelistUserIDs) && cfg.WhitelistUserIDs[i] == userID
+}
 
 type storageConfig struct {
 	Enabled                bool              `json:"enabled"`
@@ -265,6 +280,9 @@ func normalizeStorageConfig(cfg *storageConfig) {
 	}
 	cfg.Scanners = canonicalScannerIDs(cfg.Scanners)
 	cfg.GroupIDs = canonicalInt64s(cfg.GroupIDs)
+	// 白名单只去重+排序，保留非法值（<=0）交由 validate 拒绝，
+	// 避免静默改变管理员的配置意图。
+	cfg.UserGuard.WhitelistUserIDs = dedupeSortedInt64s(cfg.UserGuard.WhitelistUserIDs)
 	// Preserve an invalid blocking-without-audit combination so validation can
 	// reject it instead of silently changing administrator intent.
 	for i := range cfg.Endpoints {
@@ -350,6 +368,14 @@ func validateStorageConfig(cfg storageConfig) error {
 }
 
 func validateUserGuardConfig(guard UserGuardConfig) error {
+	if len(guard.WhitelistUserIDs) > UserGuardMaxWhitelistSize {
+		return infraerrors.BadRequest("user_guard_invalid_whitelist", "用户违规守护白名单超出数量上限（500 个）")
+	}
+	for _, id := range guard.WhitelistUserIDs {
+		if id <= 0 {
+			return infraerrors.BadRequest("user_guard_invalid_whitelist_user", "用户违规守护白名单包含无效用户 ID（必须为正整数）")
+		}
+	}
 	if !guard.Enabled {
 		return nil
 	}
@@ -543,6 +569,24 @@ func changeSummary(cfg storageConfig) string {
 	summary.GroupHash = hex.EncodeToString(digest[:])
 	raw, _ := json.Marshal(summary)
 	return string(raw)
+}
+
+// dedupeSortedInt64s 去重并升序排序，但不丢弃任何值（含非法值）。
+func dedupeSortedInt64s(values []int64) []int64 {
+	if len(values) == 0 {
+		return []int64{}
+	}
+	seen := make(map[int64]struct{}, len(values))
+	result := make([]int64, 0, len(values))
+	for _, value := range values {
+		if _, ok := seen[value]; ok {
+			continue
+		}
+		seen[value] = struct{}{}
+		result = append(result, value)
+	}
+	sort.Slice(result, func(i, j int) bool { return result[i] < result[j] })
+	return result
 }
 
 func canonicalInt64s(values []int64) []int64 {

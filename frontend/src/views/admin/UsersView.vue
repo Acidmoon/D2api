@@ -569,8 +569,8 @@
             />
           </template>
 
-          <template #cell-status="{ value }">
-            <div class="flex items-center gap-1.5">
+          <template #cell-status="{ value, row }">
+            <div class="flex flex-wrap items-center gap-1.5">
               <span
                 :class="[
                   'inline-block h-2 w-2 rounded-full',
@@ -579,6 +579,13 @@
               ></span>
               <span class="text-sm text-gray-700 dark:text-gray-300">
                 {{ value === 'active' ? t('common.active') : t('admin.users.disabled') }}
+              </span>
+              <span
+                v-if="isViolationBanned(row)"
+                class="badge badge-danger"
+                data-test="violation-ban-badge"
+              >
+                {{ t('admin.users.violationBan.badge', { until: formatViolationBanUntil(row.violation_ban_until) }) }}
               </span>
             </div>
           </template>
@@ -1717,6 +1724,12 @@ const closeEditModal = () => {
   showEditModal.value = false
   editingUser.value = null
 }
+
+// 内容违规临时封禁徽章：仅在解封时间仍在未来时显示（过期时间戳视为未封禁）
+const isViolationBanned = (user: AdminUser): boolean =>
+  typeof user.violation_ban_until === 'number' && user.violation_ban_until * 1000 > Date.now()
+const formatViolationBanUntil = (unix?: number | null): string =>
+  unix ? formatDateTime(new Date(unix * 1000)) : '-'
 
 const handleToggleStatus = async (user: AdminUser) => {
   const newStatus = user.status === 'active' ? 'disabled' : 'active'

@@ -39,6 +39,9 @@ func (s *stubViolationBanCache) SetUserViolationBan(_ context.Context, userID in
 func (s *stubViolationBanCache) GetUserViolationBan(context.Context, int64) (time.Time, bool, error) {
 	return s.until, s.banned, s.getErr
 }
+func (s *stubViolationBanCache) GetUserViolationBans(context.Context, []int64) (map[int64]time.Time, error) {
+	return nil, s.getErr
+}
 func (s *stubViolationBanCache) ClearUserViolationBan(_ context.Context, userID int64) error {
 	s.cleared = userID
 	return nil

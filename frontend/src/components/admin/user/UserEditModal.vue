@@ -57,16 +57,40 @@
         <p class="input-hint">{{ t('admin.users.form.rpmLimitHint') }}</p>
       </div>
       <UserAttributeForm v-model="form.customAttributes" :user-id="user?.id" />
-      <div v-if="violationBan.loading || violationBan.banned" class="rounded-lg border px-4 py-3 text-sm" :class="violationBan.banned ? 'border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/30' : 'border-gray-200 dark:border-dark-700'">
-        <template v-if="violationBan.loading">
-          <span class="text-gray-500 dark:text-dark-400">{{ t('admin.users.violationBan.loading') }}</span>
-        </template>
-        <template v-else-if="violationBan.banned">
+      <div v-if="!violationBan.loading" class="rounded-lg border px-4 py-3 text-sm" :class="violationBan.banned ? 'border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/30' : 'border-gray-200 dark:border-dark-700'">
+        <template v-if="violationBan.banned">
           <p class="font-medium text-red-700 dark:text-red-300">{{ t('admin.users.violationBan.bannedTitle') }}</p>
           <p class="mt-1 text-red-600 dark:text-red-200">{{ t('admin.users.violationBan.bannedHint', { until: formatBanUntil(violationBan.until) }) }}</p>
           <button type="button" class="btn btn-secondary btn-sm mt-2" :disabled="violationBan.clearing" data-test="clear-violation-ban" @click="handleClearViolationBan">
             {{ violationBan.clearing ? t('admin.users.violationBan.clearing') : t('admin.users.violationBan.clear') }}
           </button>
+        </template>
+        <template v-else>
+          <p class="font-medium text-gray-800 dark:text-dark-100">{{ t('admin.users.violationBan.manualTitle') }}</p>
+          <p class="mt-1 text-xs text-gray-500 dark:text-dark-400">{{ t('admin.users.violationBan.manualHint') }}</p>
+          <div class="mt-2 flex flex-wrap items-center gap-2">
+            <select v-model="manualBanDuration" class="input w-auto text-sm" :aria-label="t('admin.users.violationBan.duration')" data-test="manual-ban-duration">
+              <option :value="10">{{ t('admin.users.violationBan.durations.10m') }}</option>
+              <option :value="30">{{ t('admin.users.violationBan.durations.30m') }}</option>
+              <option :value="60">{{ t('admin.users.violationBan.durations.1h') }}</option>
+              <option :value="1440">{{ t('admin.users.violationBan.durations.1d') }}</option>
+              <option :value="0">{{ t('admin.users.violationBan.durations.custom') }}</option>
+            </select>
+            <input
+              v-if="manualBanDuration === 0"
+              v-model.number="manualBanCustomMinutes"
+              type="number"
+              min="1"
+              max="10080"
+              class="input w-32 text-sm"
+              :placeholder="t('admin.users.violationBan.customMinutes')"
+              :aria-label="t('admin.users.violationBan.customMinutes')"
+              data-test="manual-ban-custom-minutes"
+            />
+            <button type="button" class="btn btn-secondary btn-sm" :disabled="violationBan.banning" data-test="manual-ban-submit" @click="handleManualViolationBan">
+              {{ violationBan.banning ? t('admin.users.violationBan.banning') : t('admin.users.violationBan.manualBan') }}
+            </button>
+          </div>
         </template>
       </div>
     </form>
@@ -105,7 +129,26 @@ const submitting = ref(false); const passwordCopied = ref(false)
 const form = reactive({ email: '', password: '', username: '', notes: '', role: 'user', concurrency: 1, rpm_limit: 0, customAttributes: {} as UserAttributeValuesMap })
 
 // 用户内容违规临时封禁状态（独立于表单，只读展示 + 解除操作）
-const violationBan = reactive<{ loading: boolean; banned: boolean; until: string | null; clearing: boolean }>({ loading: false, banned: false, until: null, clearing: false })
+const violationBan = reactive<{ loading: boolean; banned: boolean; until: string | null; clearing: boolean; banning: boolean }>({ loading: false, banned: false, until: null, clearing: false, banning: false })
+const manualBanDuration = ref(30)
+const manualBanCustomMinutes = ref(60)
+const handleManualViolationBan = async () => {
+  if (!props.user || violationBan.banning) return
+  const minutes = manualBanDuration.value === 0 ? manualBanCustomMinutes.value : manualBanDuration.value
+  if (!Number.isInteger(minutes) || minutes < 1 || minutes > 10080) {
+    appStore.showError(t('admin.users.violationBan.invalidDuration'))
+    return
+  }
+  violationBan.banning = true
+  try {
+    const status = await adminAPI.users.banUser(props.user.id, minutes)
+    violationBan.banned = status.banned
+    violationBan.until = status.until ?? null
+    appStore.showSuccess(t('admin.users.violationBan.banApplied'))
+  } catch (e: any) {
+    appStore.showError(e?.message || t('admin.users.violationBan.banFailed'))
+  } finally { violationBan.banning = false }
+}
 const loadViolationBan = async (userId: number) => {
   violationBan.loading = true
   violationBan.banned = false

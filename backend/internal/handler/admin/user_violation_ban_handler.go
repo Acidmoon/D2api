@@ -1,6 +1,7 @@
 package admin
 
 import (
+	"net/http"
 	"strconv"
 	"time"
 
@@ -43,6 +44,42 @@ func (h *UserHandler) GetViolationBan(c *gin.Context) {
 		}
 	}
 	response.Success(c, result)
+}
+
+// CreateViolationBanRequest 手动封禁请求
+type CreateViolationBanRequest struct {
+	DurationMinutes int `json:"duration_minutes" binding:"required"`
+}
+
+// CreateViolationBan 手动封禁用户（内容违规临时封禁键）
+// POST /api/v1/admin/users/:id/violation-ban
+// body: {"duration_minutes": N}，N ∈ [1, 10080]
+func (h *UserHandler) CreateViolationBan(c *gin.Context) {
+	userID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		response.BadRequest(c, "Invalid user ID")
+		return
+	}
+	var req CreateViolationBanRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "Invalid request body")
+		return
+	}
+	if req.DurationMinutes < 1 || req.DurationMinutes > 10080 {
+		response.BadRequest(c, "duration_minutes must be between 1 and 10080")
+		return
+	}
+	if h.violationBanCache == nil {
+		response.Error(c, http.StatusServiceUnavailable, "violation ban cache unavailable")
+		return
+	}
+	duration := time.Duration(req.DurationMinutes) * time.Minute
+	until := time.Now().Add(duration)
+	if err := h.violationBanCache.SetUserViolationBan(c.Request.Context(), userID, until, duration); err != nil {
+		response.InternalError(c, "Failed to set violation ban")
+		return
+	}
+	response.Success(c, ViolationBanResponse{UserID: userID, Banned: true, Until: &until})
 }
 
 // DeleteViolationBan 解除用户内容违规临时封禁

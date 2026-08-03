@@ -110,6 +110,38 @@ func (c *violationCounterCache) GetUserViolationBan(ctx context.Context, userID 
 	return until, true, nil
 }
 
+// GetUserViolationBans 批量读取用户临时封禁状态（MGet 一次往返）
+func (c *violationCounterCache) GetUserViolationBans(ctx context.Context, userIDs []int64) (map[int64]time.Time, error) {
+	result := make(map[int64]time.Time)
+	if len(userIDs) == 0 {
+		return result, nil
+	}
+	keys := make([]string, len(userIDs))
+	for i, id := range userIDs {
+		keys[i] = fmt.Sprintf("%s%d", userViolationBanPrefix, id)
+	}
+	values, err := c.rdb.MGet(ctx, keys...).Result()
+	if err != nil {
+		return nil, fmt.Errorf("batch get user violation bans: %w", err)
+	}
+	now := time.Now()
+	for i, value := range values {
+		raw, ok := value.(string)
+		if !ok {
+			continue
+		}
+		unix, err := strconv.ParseInt(raw, 10, 64)
+		if err != nil {
+			continue
+		}
+		until := time.Unix(unix, 0)
+		if now.Before(until) {
+			result[userIDs[i]] = until
+		}
+	}
+	return result, nil
+}
+
 // ClearUserViolationBan 删除用户的临时封禁键（管理员解除封禁）
 func (c *violationCounterCache) ClearUserViolationBan(ctx context.Context, userID int64) error {
 	key := fmt.Sprintf("%s%d", userViolationBanPrefix, userID)

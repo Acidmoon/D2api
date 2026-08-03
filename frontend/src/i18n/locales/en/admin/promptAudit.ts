@@ -65,6 +65,8 @@ export default {
       windowMinutes: 'Counting window (minutes)',
       banDurationMinutes: 'Ban duration (minutes)',
       notifyHint: 'Ban notification emails reuse the recipient list of group-unavailable alerts (configured in alert settings), with a 30-minute cooldown per user. Admins can view and lift the ban in user management.',
+      whitelist: 'Whitelisted users', whitelistHint: 'One user ID per line or comma-separated. Requests from whitelisted users skip content auditing entirely (no audit model call, no counting, no ban).',
+      whitelistCount: '{count} user IDs recognized', whitelistInvalid: 'Unrecognized input: {values} (ignored, will not be saved)',
     },
     saveBar: { enabled: 'Enable prompt audit', blocking: 'Synchronous blocking', storePass: 'Store safe events', dirty: 'Unsaved changes', synced: 'Configuration synced' },
     blockingConfirm: {

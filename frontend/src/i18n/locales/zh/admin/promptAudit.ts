@@ -65,6 +65,8 @@ export default {
       windowMinutes: '统计窗口（分钟）',
       banDurationMinutes: '封禁时长（分钟）',
       notifyHint: '封禁告警邮件复用“分组不可用警告”的收件人列表（在告警设置中配置），同一用户 30 分钟内只发一次。管理员可在用户管理中查看并解除封禁。',
+      whitelist: '白名单用户', whitelistHint: '每行或逗号分隔一个用户 ID。白名单用户的请求不经过内容审核（不调用审核模型、不计数、不封禁）。',
+      whitelistCount: '已识别 {count} 个用户 ID', whitelistInvalid: '无法识别的输入：{values}（已忽略，不会保存）',
     },
     saveBar: { enabled: '启用提示词审计', blocking: '同步阻止', storePass: '保存安全事件', dirty: '有未保存的更改', synced: '配置已同步' },
     blockingConfirm: {

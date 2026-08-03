@@ -82,6 +82,10 @@ func (f *fakeCounter) GetUserViolationBan(context.Context, int64) (time.Time, bo
 	return time.Time{}, false, nil
 }
 
+func (f *fakeCounter) GetUserViolationBans(context.Context, []int64) (map[int64]time.Time, error) {
+	return nil, nil
+}
+
 func (f *fakeCounter) ClearUserViolationBan(context.Context, int64) error { return nil }
 
 func (f *fakeCounter) banCount() int {
@@ -317,4 +321,50 @@ func TestNotify_NoRecipientsSkips(t *testing.T) {
 		t.Fatalf("no recipients should skip email, got %s", mail.to)
 	case <-time.After(100 * time.Millisecond):
 	}
+}
+
+func TestCheck_WhitelistedUserSkipsEvaluation(t *testing.T) {
+	evaluator := &fakeEvaluator{decision: blockDecision()}
+	counter := &fakeCounter{}
+	cfg := guardTestConfig(true, 1, 10, 60)
+	cfg.UserGuard.WhitelistUserIDs = []int64{7, 1001, 2000}
+	svc := NewGuardService(&fakeConfigStore{cfg: cfg, active: true}, evaluator, &fakeSettings{}, newFakeEmailSender(), counter)
+
+	decision, err := svc.Check(context.Background(), guardTestInput())
+	require.NoError(t, err)
+	require.Nil(t, decision)
+	// 白名单用户不产生任何审核 API 调用、不计数
+	require.Zero(t, evaluator.calls)
+	require.Zero(t, counter.incremented)
+	require.Zero(t, counter.banCount())
+}
+
+func TestCheck_NonWhitelistedUserStillAudited(t *testing.T) {
+	evaluator := &fakeEvaluator{decision: blockDecision()}
+	counter := &fakeCounter{}
+	cfg := guardTestConfig(true, 1, 10, 60)
+	cfg.UserGuard.WhitelistUserIDs = []int64{7, 2000}
+	svc := NewGuardService(&fakeConfigStore{cfg: cfg, active: true}, evaluator, &fakeSettings{}, newFakeEmailSender(), counter)
+
+	decision, err := svc.Check(context.Background(), guardTestInput())
+	require.NoError(t, err)
+	require.NotNil(t, decision)
+	require.True(t, decision.Blocked)
+	require.Equal(t, 1, evaluator.calls)
+	require.Equal(t, 1, counter.incremented)
+}
+
+func TestCheck_EmptyWhitelistBehaviorUnchanged(t *testing.T) {
+	evaluator := &fakeEvaluator{decision: blockDecision()}
+	counter := &fakeCounter{}
+	cfg := guardTestConfig(true, 1, 10, 60)
+	cfg.UserGuard.WhitelistUserIDs = []int64{}
+	svc := NewGuardService(&fakeConfigStore{cfg: cfg, active: true}, evaluator, &fakeSettings{}, newFakeEmailSender(), counter)
+
+	decision, err := svc.Check(context.Background(), guardTestInput())
+	require.NoError(t, err)
+	require.NotNil(t, decision)
+	require.True(t, decision.Blocked)
+	require.Equal(t, 1, evaluator.calls)
+	require.Equal(t, 1, counter.incremented)
 }

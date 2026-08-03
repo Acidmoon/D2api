@@ -38,6 +38,7 @@ export const DEFAULT_USER_GUARD: PromptAuditUserGuard = {
   threshold: 3,
   window_minutes: 10,
   ban_duration_minutes: 60,
+  whitelist_user_ids: [],
 }
 
 export const SCANNER_CATALOG = [
@@ -83,7 +84,32 @@ function normalizeUserGuard(value: PromptAuditUserGuard | undefined): PromptAudi
     window_minutes: value.window_minutes > 0 ? value.window_minutes : DEFAULT_USER_GUARD.window_minutes,
     ban_duration_minutes:
       value.ban_duration_minutes > 0 ? value.ban_duration_minutes : DEFAULT_USER_GUARD.ban_duration_minutes,
+    whitelist_user_ids: Array.isArray(value.whitelist_user_ids) ? [...value.whitelist_user_ids] : [],
   }
+}
+
+export interface UserGuardWhitelistParseResult {
+  ids: number[]
+  invalid: string[]
+}
+
+// 解析白名单文本框输入：每行或逗号分隔一个用户 ID。
+// 返回去重升序的有效正整数 ID 与无法识别的原始片段（供前端提示）。
+export function parseUserGuardWhitelist(raw: string): UserGuardWhitelistParseResult {
+  const ids = new Set<number>()
+  const invalid: string[] = []
+  for (const token of raw.split(/[\n,，;；]/)) {
+    const trimmed = token.trim()
+    if (!trimmed) continue
+    const value = Number(trimmed)
+    if (Number.isInteger(value) && value > 0) ids.add(value)
+    else invalid.push(trimmed)
+  }
+  return { ids: [...ids].sort((a, b) => a - b), invalid }
+}
+
+export function formatUserGuardWhitelist(ids: number[]): string {
+  return (ids ?? []).join('\n')
 }
 
 export function createDefaultEndpoint(index = 1): PromptAuditEndpointDraft {
@@ -134,6 +160,7 @@ export function buildUpdateRequest(draft: PromptAuditDraft): PromptAuditUpdateRe
       threshold: Number(draft.user_guard.threshold),
       window_minutes: Number(draft.user_guard.window_minutes),
       ban_duration_minutes: Number(draft.user_guard.ban_duration_minutes),
+      whitelist_user_ids: [...(draft.user_guard.whitelist_user_ids ?? [])].sort((a, b) => a - b),
     },
   }
 }

@@ -26,6 +26,7 @@ export interface PromptAuditUserGuard {
   threshold: number
   window_minutes: number
   ban_duration_minutes: number
+  whitelist_user_ids: number[]
 }
 
 export interface PromptAuditConfig {

@@ -416,6 +416,18 @@ export async function getViolationBan(id: number): Promise<UserViolationBanStatu
 }
 
 /**
+ * Manually ban a user with the content-violation temporary ban
+ * @param id - User ID
+ * @param durationMinutes - Ban duration in minutes (1-10080)
+ */
+export async function banUser(id: number, durationMinutes: number): Promise<UserViolationBanStatus> {
+  const { data } = await apiClient.post<UserViolationBanStatus>(`/admin/users/${id}/violation-ban`, {
+    duration_minutes: durationMinutes,
+  })
+  return data
+}
+
+/**
  * Clear user's content-violation temporary ban
  * @param id - User ID
  */
@@ -443,6 +455,7 @@ export const usersAPI = {
   updatePlatformQuotas,
   resetPlatformQuotaWindow,
   getViolationBan,
+  banUser,
   clearViolationBan,
 }
 

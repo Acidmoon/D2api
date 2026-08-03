@@ -6,7 +6,9 @@ import {
   draftFingerprint,
   emptyEventFilters,
   eventFilterPayload,
+  formatUserGuardWhitelist,
   hasExplicitDeleteRange,
+  parseUserGuardWhitelist,
   SCANNER_CATALOG,
 } from '../viewModel'
 
@@ -26,7 +28,7 @@ const config = (): PromptAuditConfig => ({
     model: 'sileader/qwen3guard:0.6b', timeout_ms: 3000, input_limit: 4000, enabled: true,
     has_token: true, token_status: 'configured',
   }],
-  user_guard: { enabled: false, threshold: 3, window_minutes: 10, ban_duration_minutes: 60 },
+  user_guard: { enabled: false, threshold: 3, window_minutes: 10, ban_duration_minutes: 60, whitelist_user_ids: [] },
   config_version: 7,
   updated_at: '2026-07-16T00:00:00Z',
   updated_by: 1,
@@ -80,10 +82,16 @@ describe('Prompt Audit view model', () => {
     const legacy = { ...config() } as unknown as PromptAuditConfig
     delete (legacy as { user_guard?: unknown }).user_guard
     const draft = configToDraft(legacy)
-    expect(draft.user_guard).toEqual({ enabled: false, threshold: 3, window_minutes: 10, ban_duration_minutes: 60 })
+    expect(draft.user_guard).toEqual({ enabled: false, threshold: 3, window_minutes: 10, ban_duration_minutes: 60, whitelist_user_ids: [] })
 
-    draft.user_guard = { enabled: true, threshold: 5, window_minutes: 30, ban_duration_minutes: 120 }
-    expect(buildUpdateRequest(draft).user_guard).toEqual({ enabled: true, threshold: 5, window_minutes: 30, ban_duration_minutes: 120 })
+    draft.user_guard = { enabled: true, threshold: 5, window_minutes: 30, ban_duration_minutes: 120, whitelist_user_ids: [9, 3] }
+    expect(buildUpdateRequest(draft).user_guard).toEqual({ enabled: true, threshold: 5, window_minutes: 30, ban_duration_minutes: 120, whitelist_user_ids: [3, 9] })
+  })
+
+  it('parses whitelist text with dedupe, sorting, and invalid token reporting', () => {
+    expect(parseUserGuardWhitelist('3\n9, 5\n3\nabc\n-1,0，7；')).toEqual({ ids: [3, 5, 7, 9], invalid: ['abc', '-1', '0'] })
+    expect(parseUserGuardWhitelist('')).toEqual({ ids: [], invalid: [] })
+    expect(formatUserGuardWhitelist([3, 5])).toBe('3\n5')
   })
 
   it('requires a valid explicit range and sends canonical ISO timestamps for filter deletion', () => {

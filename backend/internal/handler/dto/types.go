@@ -48,6 +48,9 @@ type AdminUser struct {
 	// GroupRates 用户专属分组倍率配置
 	// map[groupID]rateMultiplier
 	GroupRates map[int64]float64 `json:"group_rates,omitempty"`
+	// ViolationBanUntil 内容违规临时封禁的解封时间（Unix 秒）；
+	// 缺省/null 表示未封禁。由用户列表接口在鉴权缓存之外实时查询填充。
+	ViolationBanUntil *int64 `json:"violation_ban_until,omitempty"`
 }
 
 type APIKey struct {

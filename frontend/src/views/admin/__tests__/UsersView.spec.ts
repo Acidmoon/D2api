@@ -98,6 +98,7 @@ const DataTableStub = {
       </template>
       <div v-for="row in data" :key="row.id">
         <slot name="cell-last_used_at" :value="row.last_used_at" :row="row" />
+        <slot name="cell-status" :value="row.status" :row="row" />
       </div>
     </div>
   `
@@ -197,6 +198,55 @@ describe('admin UsersView', () => {
       }),
       expect.any(Object)
     )
+  })
+
+  it('shows violation ban badge only for users banned into the future', async () => {
+    const futureUnix = Math.floor(Date.now() / 1000) + 3600
+    const pastUnix = Math.floor(Date.now() / 1000) - 3600
+    listUsers.mockResolvedValue({
+      items: [
+        createAdminUser({ id: 1, email: 'banned@example.com', violation_ban_until: futureUnix }),
+        createAdminUser({ id: 2, email: 'expired@example.com', violation_ban_until: pastUnix }),
+        createAdminUser({ id: 3, email: 'clean@example.com' })
+      ],
+      total: 3,
+      page: 1,
+      page_size: 20,
+      pages: 1
+    })
+    const wrapper = mount(UsersView, {
+      global: {
+        stubs: {
+          AppLayout: { template: '<div><slot /></div>' },
+          TablePageLayout: {
+            template: '<div><slot name="filters" /><slot name="table" /><slot name="pagination" /></div>'
+          },
+          DataTable: DataTableStub,
+          Pagination: true,
+          ConfirmDialog: true,
+          EmptyState: true,
+          GroupBadge: true,
+          Select: true,
+          UserAttributesConfigModal: true,
+          UserConcurrencyCell: true,
+          UserCreateModal: true,
+          UserEditModal: true,
+          BulkEditUserModal: BulkEditUserModalStub,
+          UserPlatformQuotaModal: true,
+          UserApiKeysModal: true,
+          UserAllowedGroupsModal: true,
+          UserBalanceModal: true,
+          UserBalanceHistoryModal: true,
+          GroupReplaceModal: true,
+          Icon: true,
+          Teleport: true
+        }
+      }
+    })
+    await flushPromises()
+    const badges = wrapper.findAll('[data-test="violation-ban-badge"]')
+    expect(badges).toHaveLength(1)
+    expect(badges[0].text()).toContain('admin.users.violationBan.badge')
   })
 
   it('clears usage current-page sort when switching to last_used_at server sort', async () => {

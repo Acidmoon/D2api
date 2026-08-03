@@ -91,6 +91,11 @@ func (s *GuardService) Check(ctx context.Context, input service.UserGuardCheckIn
 	if !ok || !cfg.UserGuard.Enabled {
 		return nil, nil
 	}
+	if input.UserID > 0 && cfg.UserGuard.IsWhitelisted(input.UserID) {
+		// 白名单用户完全跳过审核：不产生任何审核 API 调用、不计数、不封禁。
+		slog.Debug("user_violation_guard.whitelist_skip", "user_id", input.UserID)
+		return nil, nil
+	}
 	if len(cfg.EnabledEndpoints()) == 0 {
 		return nil, nil
 	}

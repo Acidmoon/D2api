@@ -512,7 +512,7 @@ func TestUserGuardConfigRoundTrip(t *testing.T) {
 
 	next, err := manager.buildNextStorage(DefaultStorageConfig(), request, 9)
 	require.NoError(t, err)
-	require.Equal(t, UserGuardConfig{Enabled: true, Threshold: 5, WindowMinutes: 30, BanDurationMinutes: 120}, next.UserGuard)
+	require.Equal(t, UserGuardConfig{Enabled: true, Threshold: 5, WindowMinutes: 30, BanDurationMinutes: 120, WhitelistUserIDs: []int64{}}, next.UserGuard)
 
 	active, err := ActiveFromStorage(next, true, prefixEncryptor{})
 	require.NoError(t, err)
@@ -587,4 +587,58 @@ func TestEndpointSystemPromptRoundTripAndValidation(t *testing.T) {
 	err = validateUpdateConfigRequest(req3)
 	require.Error(t, err)
 	require.Equal(t, "prompt_audit_invalid_system_prompt", infraerrors.Reason(err))
+}
+
+func TestUserGuardWhitelistRoundTripAndValidation(t *testing.T) {
+	// update → storage：去重 + 升序归一化，四种载体携带
+	manager := &ConfigManager{encryptor: prefixEncryptor{}, encryptionKeyConfigured: true}
+	request := promptAuditUpdateRequest(1, 1, "")
+	request.UserGuard = UserGuardConfig{Enabled: true, Threshold: 3, WindowMinutes: 10, BanDurationMinutes: 60, WhitelistUserIDs: []int64{9, 3, 9, 5}}
+	next, err := manager.buildNextStorage(DefaultStorageConfig(), request, 1)
+	require.NoError(t, err)
+	require.Equal(t, []int64{3, 5, 9}, next.UserGuard.WhitelistUserIDs)
+
+	active, err := ActiveFromStorage(next, true, prefixEncryptor{})
+	require.NoError(t, err)
+	require.Equal(t, []int64{3, 5, 9}, active.UserGuard.WhitelistUserIDs)
+	require.True(t, active.UserGuard.IsWhitelisted(5))
+	require.False(t, active.UserGuard.IsWhitelisted(4))
+	require.False(t, active.UserGuard.IsWhitelisted(0))
+
+	public := PublicFromStorage(next, true, nil)
+	require.Equal(t, []int64{3, 5, 9}, public.UserGuard.WhitelistUserIDs)
+
+	raw, err := json.Marshal(next)
+	require.NoError(t, err)
+	require.Contains(t, string(raw), `"whitelist_user_ids":[3,5,9]`)
+	parsed, err := ParseStorageConfig(string(raw))
+	require.NoError(t, err)
+	require.Equal(t, []int64{3, 5, 9}, parsed.UserGuard.WhitelistUserIDs)
+
+	// 非法值拒绝（update 原始路径与 storage 解析路径）
+	req2 := promptAuditUpdateRequest(1, 1, "")
+	req2.UserGuard = UserGuardConfig{WhitelistUserIDs: []int64{1, -2}}
+	err = validateUpdateConfigRequest(req2)
+	require.Error(t, err)
+	require.Equal(t, "user_guard_invalid_whitelist_user", infraerrors.Reason(err))
+
+	_, err = ParseStorageConfig(`{"user_guard":{"enabled":false,"whitelist_user_ids":[1,0]}}`)
+	require.Error(t, err)
+	require.Equal(t, "user_guard_invalid_whitelist_user", infraerrors.Reason(err))
+
+	// 超上限拒绝
+	tooMany := make([]int64, UserGuardMaxWhitelistSize+1)
+	for i := range tooMany {
+		tooMany[i] = int64(i + 1)
+	}
+	req3 := promptAuditUpdateRequest(1, 1, "")
+	req3.UserGuard = UserGuardConfig{WhitelistUserIDs: tooMany}
+	err = validateUpdateConfigRequest(req3)
+	require.Error(t, err)
+	require.Equal(t, "user_guard_invalid_whitelist", infraerrors.Reason(err))
+
+	// 空列表/缺省保持合法（enabled 需配启用节点，这里只验证白名单字段本身）
+	storage, err := ParseStorageConfig(`{"user_guard":{"enabled":false,"threshold":3,"window_minutes":10,"ban_duration_minutes":60}}`)
+	require.NoError(t, err)
+	require.Empty(t, storage.UserGuard.WhitelistUserIDs)
 }
