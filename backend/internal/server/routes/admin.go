@@ -108,6 +108,9 @@ func RegisterAdminRoutes(
 		// 渠道监控
 		registerChannelMonitorRoutes(admin, h)
 
+		// 模型指纹检测
+		registerFingerprintRoutes(admin, h)
+
 		// 风控中心
 		registerContentModerationRoutes(admin, h)
 
@@ -753,6 +756,18 @@ func registerChannelMonitorRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 		templates.DELETE("/:id", h.Admin.ChannelMonitorTemplate.Delete)
 		templates.GET("/:id/monitors", h.Admin.ChannelMonitorTemplate.AssociatedMonitors)
 		templates.POST("/:id/apply", h.Admin.ChannelMonitorTemplate.Apply)
+	}
+}
+
+// registerFingerprintRoutes 模型指纹检测（独立挂件，仅 admin）：发起检测 + 参考基准管理。
+func registerFingerprintRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
+	fingerprint := admin.Group("/fingerprint")
+	{
+		fingerprint.POST("/audits", h.Admin.Fingerprint.CreateAudit)
+		fingerprint.GET("/audits", h.Admin.Fingerprint.ListAudits)
+		fingerprint.GET("/audits/:id", h.Admin.Fingerprint.GetAudit)
+		fingerprint.POST("/references", h.Admin.Fingerprint.RegisterReference)
+		fingerprint.GET("/references", h.Admin.Fingerprint.ListReferences)
 	}
 }
 

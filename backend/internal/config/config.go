@@ -83,6 +83,7 @@ type Config struct {
 	Default                 DefaultConfig                 `mapstructure:"default"`
 	RateLimit               RateLimitConfig               `mapstructure:"rate_limit"`
 	Pricing                 PricingConfig                 `mapstructure:"pricing"`
+	Fingerprint             FingerprintConfig             `mapstructure:"fingerprint"`
 	Gateway                 GatewayConfig                 `mapstructure:"gateway"`
 	APIKeyAuth              APIKeyAuthCacheConfig         `mapstructure:"api_key_auth_cache"`
 	SubscriptionCache       SubscriptionCacheConfig       `mapstructure:"subscription_cache"`
@@ -655,6 +656,12 @@ type PricingConfig struct {
 	UpdateIntervalHours int `mapstructure:"update_interval_hours"`
 	// 哈希校验间隔（分钟）
 	HashCheckIntervalMinutes int `mapstructure:"hash_check_interval_minutes"`
+}
+
+// FingerprintConfig 模型指纹检测模块配置（纯文件存储，不进数据库）。
+type FingerprintConfig struct {
+	// 数据目录：references/ 存参考指纹，audits/ 存检测报告
+	DataDir string `mapstructure:"data_dir"`
 }
 
 type ServerConfig struct {
@@ -2146,6 +2153,9 @@ func setDefaults() {
 	viper.SetDefault("pricing.fallback_file", "./resources/model-pricing/model_prices_and_context_window.json")
 	viper.SetDefault("pricing.update_interval_hours", 24)
 	viper.SetDefault("pricing.hash_check_interval_minutes", 10)
+
+	// Fingerprint - 模型指纹检测（参考指纹与检测报告的 JSON 文件存储根目录）
+	viper.SetDefault("fingerprint.data_dir", "./data/fingerprint")
 
 	// Timezone (default to Asia/Shanghai for Chinese users)
 	viper.SetDefault("timezone", "Asia/Shanghai")

@@ -789,6 +789,7 @@ var ProviderSet = wire.NewSet(
 	ProvideChannelMonitorService,
 	ProvideChannelMonitorRunner,
 	NewChannelMonitorRequestTemplateService,
+	ProvideFingerprintService,
 	ProvideUserPlatformQuotaUsageFlusher,
 )
 
@@ -834,6 +835,15 @@ func ProvideChannelMonitorService(
 	encryptor SecretEncryptor,
 ) *ChannelMonitorService {
 	return NewChannelMonitorService(repo, encryptor)
+}
+
+// ProvideFingerprintService 创建模型指纹检测服务（异步任务 + 文件存储）。
+// 复用 AccountService 取账号凭证（仅任务运行期持有），数据目录来自 fingerprint.data_dir。
+func ProvideFingerprintService(
+	accountSvc *AccountService,
+	cfg *config.Config,
+) *FingerprintService {
+	return NewFingerprintService(accountSvc, cfg)
 }
 
 // ProvideChannelMonitorRunner 创建并启动渠道监控调度器。
