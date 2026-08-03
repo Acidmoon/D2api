@@ -277,6 +277,34 @@ func TestExtractFingerprintCodexSSE(t *testing.T) {
 	if _, _, serr := extractFingerprintCodexSSE([]byte(noCompleted)); serr == "" {
 		t.Fatal("缺 response.completed 应报错")
 	}
+
+	// 真实 chatgpt.com Codex 端点格式（2026-08 实测）：文本在 delta 事件里累积，
+	// response.completed 事件的 response.output 为空数组（不重复回显正文）。
+	real := "data: {\"type\":\"response.created\",\"response\":{\"id\":\"x\"}}\n\n" +
+		"data: {\"type\":\"response.output_text.delta\",\"delta\":\"3\",\"sequence_number\":4}\n\n" +
+		"data: {\"type\":\"response.output_text.delta\",\"delta\":\"7\",\"sequence_number\":5}\n\n" +
+		"data: {\"type\":\"response.completed\",\"response\":{\"status\":\"completed\",\"output\":[],\"usage\":{\"output_tokens\":5}}}\n\n" +
+		"data: [DONE]\n\n"
+	text, tokens, serr = extractFingerprintCodexSSE([]byte(real))
+	if serr != "" {
+		t.Fatalf("真实 Codex 格式不应报错: %s", serr)
+	}
+	if text != "37" {
+		t.Fatalf("应从 delta 事件累积文本，实际 text=%q", text)
+	}
+	if tokens != 5 {
+		t.Fatalf("tokens=%d, want 5（usage 取自 completed 事件）", tokens)
+	}
+
+	// 标准 Responses API 格式兑底：无 delta 事件，completed 的 output 数组有正文。
+	std := "data: {\"type\":\"response.completed\",\"response\":{\"output\":[{\"type\":\"message\",\"content\":[{\"type\":\"output_text\",\"text\":\"42\"}]}],\"usage\":{\"output_tokens\":2}}}\n\n"
+	text, _, serr = extractFingerprintCodexSSE([]byte(std))
+	if serr != "" {
+		t.Fatalf("标准格式兑底不应报错: %s", serr)
+	}
+	if text != "42" {
+		t.Fatalf("兑底应从 completed 的 output 提取，实际 text=%q", text)
+	}
 }
 
 // 上游 400 拒绝 max_output_tokens 时：置位省略标记 + 本次可重试；

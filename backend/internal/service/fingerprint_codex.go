@@ -133,11 +133,16 @@ func codexFingerprintHeaders(t *fingerprintProbeTarget) map[string]string {
 	return out
 }
 
-// extractFingerprintCodexSSE 解析 Codex 流式响应：取 response.completed 事件的完整
-// response 对象，复用 extractOpenAIResponsesText 抽文本、usage.output_tokens 取输出 token 数。
+// extractFingerprintCodexSSE 解析 Codex 流式响应：
+// 文本从 response.output_text.delta 事件累积（chatgpt.com Codex 端点在
+// response.completed 事件里的 response.output 可能是空数组，2026-08 实测；
+// 与账号测试连接 account_test_service 的流解析方式一致）；
+// usage.output_tokens 取自 completed 事件的 usage；delta 累积为空时
+// 兑底尝试 completed 事件的完整 response.output（兼容标准 Responses API 格式）。
 // 返回 (text, completionTokens, errMsg)；errMsg 非空表示本次流式失败。
 func extractFingerprintCodexSSE(body []byte) (string, int, string) {
 	var completed []byte
+	var textBuilder strings.Builder
 	streamErr := ""
 	for _, line := range strings.Split(string(body), "\n") {
 		line = strings.TrimSpace(line)
@@ -150,6 +155,9 @@ func extractFingerprintCodexSSE(body []byte) (string, int, string) {
 		}
 		payloadBytes := []byte(payload)
 		switch gjson.GetBytes(payloadBytes, "type").String() {
+		case "response.output_text.delta":
+			// Codex 流式文本在 delta 事件里，必须从事件流累积。
+			textBuilder.WriteString(gjson.GetBytes(payloadBytes, "delta").String())
 		case "response.completed", "response.done":
 			completed = []byte(gjson.GetBytes(payloadBytes, "response").Raw)
 		case "response.failed":
@@ -170,5 +178,10 @@ func extractFingerprintCodexSSE(body []byte) (string, int, string) {
 	if len(completed) == 0 {
 		return "", 0, "stream ended before response.completed"
 	}
-	return extractOpenAIResponsesText(completed), int(gjson.GetBytes(completed, "usage.output_tokens").Int()), ""
+	text := textBuilder.String()
+	if strings.TrimSpace(text) == "" {
+		// 兑底：部分上游（标准 Responses API）在 completed 事件里回显完整 output 数组。
+		text = extractOpenAIResponsesText(completed)
+	}
+	return text, int(gjson.GetBytes(completed, "usage.output_tokens").Int()), ""
 }
