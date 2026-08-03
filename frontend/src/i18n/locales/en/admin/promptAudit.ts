@@ -56,6 +56,7 @@ export default {
       title: 'Audit policy', description: 'Configure group scope, nine input-risk categories, workers, and queue bounds.', scope: 'Scope', allGroups: 'All groups', selectedGroups: 'Selected groups',
       searchGroups: 'Search groups', noGroups: 'No matching groups', missingGroups: 'Configured IDs for groups that no longer exist', selectedCount: '{count} groups selected',
       scanners: 'Qwen3Guard input-risk categories', workerCount: 'Worker count', queueCapacity: 'Persistent queue capacity', strategy: 'Node strategy', strategyHint: 'Try nodes in configuration order and fail over when allowed.',
+      latestTurnOnly: 'Audit only the latest turn', latestTurnOnlyHint: 'When enabled, only the latest turn of the conversation is extracted for auditing, which greatly reduces audit calls and latency for long conversations; when disabled, the entire input is audited.',
     },
     userGuard: {
       title: 'User violation auto-ban',

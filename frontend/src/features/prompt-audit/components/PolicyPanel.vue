@@ -66,6 +66,20 @@
           <p class="font-medium text-gray-800 dark:text-dark-100">{{ t('admin.promptAudit.policy.strategy') }}</p>
           <p class="mt-1">priority · {{ t('admin.promptAudit.policy.strategyHint') }}</p>
         </div>
+        <label class="flex cursor-pointer items-start gap-2 text-sm text-gray-700 dark:text-dark-200">
+          <input
+            type="checkbox"
+            class="mt-0.5"
+            :checked="draft.blocking_latest_turn_only"
+            :aria-label="t('admin.promptAudit.policy.latestTurnOnly')"
+            data-test="blocking-latest-turn-only"
+            @change="patch({ blocking_latest_turn_only: ($event.target as HTMLInputElement).checked })"
+          />
+          <span>
+            {{ t('admin.promptAudit.policy.latestTurnOnly') }}
+            <span class="mt-0.5 block text-xs font-normal text-gray-500 dark:text-dark-400">{{ t('admin.promptAudit.policy.latestTurnOnlyHint') }}</span>
+          </span>
+        </label>
       </div>
     </div>
 

@@ -135,6 +135,8 @@ export function buildUpdateRequest(draft: PromptAuditDraft): PromptAuditUpdateRe
     expected_config_version: draft.config_version,
     enabled: draft.enabled,
     blocking_enabled: draft.enabled && draft.blocking_enabled,
+    // 旧配置无此字段,undefined 归一化为 false
+    blocking_latest_turn_only: draft.blocking_latest_turn_only === true,
     store_pass_events: draft.store_pass_events,
     strategy: 'priority',
     worker_count: Number(draft.worker_count),

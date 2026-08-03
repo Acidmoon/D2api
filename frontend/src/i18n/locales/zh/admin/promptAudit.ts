@@ -56,6 +56,7 @@ export default {
       title: '审计策略', description: '配置适用分组、九类输入风险、Worker 与队列边界。', scope: '适用范围', allGroups: '全部分组', selectedGroups: '指定分组',
       searchGroups: '搜索分组', noGroups: '没有匹配分组', missingGroups: '配置中包含已删除的分组 ID', selectedCount: '已选择 {count} 个分组',
       scanners: 'Qwen3Guard 输入风险分类', workerCount: 'Worker 数量', queueCapacity: '持久队列容量', strategy: '节点策略', strategyHint: '按配置顺序优先尝试，必要时故障切换。',
+      latestTurnOnly: '仅审核最后一轮内容', latestTurnOnlyHint: '开启后仅提取对话的最后一轮输入送审，可显著减少长对话的审核调用量与耗时；关闭则审核全部输入。',
     },
     userGuard: {
       title: '用户违规自动封禁',
