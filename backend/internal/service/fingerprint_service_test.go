@@ -1,9 +1,16 @@
 package service
 
 import (
+	"context"
 	"encoding/json"
+	"io"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/tidwall/gjson"
 )
 
 // healthyFingerprintResults 构造一轮全部达标的电池结果（16 cell 各 12 个有效样本）。
@@ -192,6 +199,21 @@ func TestBuildCodexFingerprintBody(t *testing.T) {
 	if _, ok := m2["reasoning"]; ok {
 		t.Fatal("codexReasoningUnsupported 置位后应省略 reasoning 字段")
 	}
+
+	// 上游拒绝后省略 max_output_tokens 字段（与真实转发 rejected-field retry 一致）。
+	target.codexReasoningUnsupported.Store(false)
+	target.maxOutputTokensUnsupported.Store(true)
+	body, err = buildCodexFingerprintBody(target, "Pick a color.", fingerprintProbeTemperature)
+	if err != nil {
+		t.Fatalf("buildCodexFingerprintBody: %v", err)
+	}
+	var m3 map[string]any
+	if err := json.Unmarshal(body, &m3); err != nil {
+		t.Fatalf("body 非合法 JSON: %v", err)
+	}
+	if _, ok := m3["max_output_tokens"]; ok {
+		t.Fatal("maxOutputTokensUnsupported 置位后应省略 max_output_tokens 字段")
+	}
 }
 
 // Codex 请求头：Bearer、chatgpt-account-id、Codex 身份头配套。
@@ -254,5 +276,81 @@ func TestExtractFingerprintCodexSSE(t *testing.T) {
 	noCompleted := "data: {\"type\":\"response.output_text.delta\",\"delta\":\"4\"}\n\n"
 	if _, _, serr := extractFingerprintCodexSSE([]byte(noCompleted)); serr == "" {
 		t.Fatal("缺 response.completed 应报错")
+	}
+}
+
+// 上游 400 拒绝 max_output_tokens 时：置位省略标记 + 本次可重试；
+// 重试请求省略该字段后成功。覆盖 runProbeOnce 的 rejected-field 检测与
+// buildBody Responses 分支的省略逻辑（与真实转发 openai_gateway_forward 一致）。
+func TestRunProbeOnceResponsesMaxTokensRejected(t *testing.T) {
+	// 临时替换 SSRF 安全 client 为普通 client，让 httptest (127.0.0.1) 可连通。
+	orig := monitorHTTPClient
+	monitorHTTPClient = &http.Client{Timeout: 5 * time.Second}
+	t.Cleanup(func() { monitorHTTPClient = orig })
+
+	var calls int
+	var bodies [][]byte
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() { _ = r.Body.Close() }()
+		b, _ := io.ReadAll(r.Body)
+		bodies = append(bodies, b)
+		calls++
+		w.Header().Set("Content-Type", "application/json")
+		if calls == 1 {
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte(`{"detail":"Unsupported parameter: max_output_tokens"}`))
+			return
+		}
+		_, _ = w.Write([]byte(`{"output":[{"type":"message","status":"completed","role":"assistant","content":[{"type":"output_text","text":"42"}]}]}`))
+	}))
+	defer srv.Close()
+
+	target := &fingerprintProbeTarget{
+		provider: MonitorProviderOpenAI,
+		apiMode:  MonitorAPIModeResponses,
+		baseURL:  srv.URL,
+		apiKey:   "sk-test",
+		model:    "gpt-5.4",
+	}
+	pacer := &fingerprintPacer{}
+	ctx := context.Background()
+
+	// 第一次：400 拒绝 max_output_tokens → 置位 + 可重试。
+	outcome, perr := target.runProbeOnce(ctx, "Name a random number between 1 and 100.", fingerprintProbeTemperature, pacer)
+	if perr == nil {
+		t.Fatalf("首次探测应收到 400 错误，outcome=%+v", outcome)
+	}
+	if !perr.retryable {
+		t.Fatalf("400 字段拒绝应标记可重试，实际 %v", perr)
+	}
+	if perr.statusCode != http.StatusBadRequest {
+		t.Fatalf("statusCode = %d, want 400", perr.statusCode)
+	}
+	if !target.maxOutputTokensUnsupported.Load() {
+		t.Fatal("400 后应置位 maxOutputTokensUnsupported")
+	}
+	if len(bodies) != 1 {
+		t.Fatalf("body 数量 = %d, want 1", len(bodies))
+	}
+	if !gjson.ValidBytes(bodies[0]) {
+		t.Fatalf("首个请求体非 JSON: %s", bodies[0])
+	}
+	if !gjson.GetBytes(bodies[0], "max_output_tokens").Exists() {
+		t.Fatal("首个请求应携带 max_output_tokens")
+	}
+
+	// 重试：省略 max_output_tokens → 200 成功。
+	outcome, perr = target.runProbeOnce(ctx, "Name a random number between 1 and 100.", fingerprintProbeTemperature, pacer)
+	if perr != nil {
+		t.Fatalf("重试不应失败: %v", perr)
+	}
+	if outcome.text != "42" {
+		t.Fatalf("text = %q, want 42", outcome.text)
+	}
+	if len(bodies) != 2 {
+		t.Fatalf("body 数量 = %d, want 2", len(bodies))
+	}
+	if gjson.GetBytes(bodies[1], "max_output_tokens").Exists() {
+		t.Fatal("重试请求应省略 max_output_tokens")
 	}
 }

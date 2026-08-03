@@ -400,6 +400,10 @@ type fingerprintProbeTarget struct {
 	geminiThinkingUnsupported atomic.Bool
 	// codexReasoningUnsupported Codex 拒绝 reasoning 字段 → 后续请求省略（省略，不判不适用）。
 	codexReasoningUnsupported atomic.Bool
+	// maxOutputTokensUnsupported 上游（Codex/Responses）拒绝 max_output_tokens 字段
+	// （400 且错误提到 max_output_tokens）→ 后续请求省略该字段，本次允许重试。
+	// 与真实转发 openai_gateway_forward 的 rejected-field retry 行为一致；省略，不判不适用。
+	maxOutputTokensUnsupported atomic.Bool
 }
 
 // resolveTarget 按 target_type 分发到账号/外部端点解析。
@@ -846,6 +850,18 @@ func (t *fingerprintProbeTarget) runProbeOnce(ctx context.Context, prompt string
 		}
 		lower := strings.ToLower(snippet)
 		switch {
+		case status == http.StatusBadRequest && strings.Contains(lower, "max_output_tokens") &&
+			(t.codexOAuth || (t.provider == MonitorProviderOpenAI && t.apiMode == MonitorAPIModeResponses)):
+			// Codex/Responses：上游 schema 窄不认 max_output_tokens 字段（仅这两个分支的请求体携带该字段）。
+			// 与真实转发 openai_gateway_forward 的 rejected-field retry 一致：后续省略该字段，本次允许重试
+			// （省略，不判不适用；一词约束在用户消息内，输出不受限后模型仍应遵守）。
+			t.maxOutputTokensUnsupported.Store(true)
+			perr.retryable = true
+			// 上游一次拒绝多个非法字段时（如同时列出 max_output_tokens 与 reasoning），
+			// 一并置位 reasoning 降级，避免重试循环里 reasoning case 永远轮不到而耗尽预算。
+			if t.codexOAuth && (strings.Contains(lower, "reasoning") || strings.Contains(lower, "effort")) {
+				t.codexReasoningUnsupported.Store(true)
+			}
 		case t.codexOAuth && status == http.StatusBadRequest &&
 			(strings.Contains(lower, "reasoning") || strings.Contains(lower, "effort")):
 			// Codex：reasoning 字段被拒 → 后续请求省略该字段，本次允许重试（省略，不判不适用）。
@@ -883,15 +899,19 @@ func (t *fingerprintProbeTarget) buildBody(prompt string, temperature float64) (
 	}
 	switch {
 	case t.provider == MonitorProviderOpenAI && t.apiMode == MonitorAPIModeResponses:
-		return json.Marshal(map[string]any{
-			"model":             t.model,
-			"instructions":      fingerprintSystemPrompt,
-			"input":             prompt,
-			"temperature":       temperature,
-			"max_output_tokens": fingerprintMaxTokens,
-			"stream":            false,
-			"reasoning":         map[string]any{"effort": "none"},
-		})
+		body := map[string]any{
+			"model":        t.model,
+			"instructions": fingerprintSystemPrompt,
+			"input":        prompt,
+			"temperature":  temperature,
+			"stream":       false,
+			"reasoning":    map[string]any{"effort": "none"},
+		}
+		// 上游拒绝该字段后省略（见 runProbeOnce 的 rejected-field 重试），避免持续 400。
+		if !t.maxOutputTokensUnsupported.Load() {
+			body["max_output_tokens"] = fingerprintMaxTokens
+		}
+		return json.Marshal(body)
 	case t.provider == MonitorProviderOpenAI || t.provider == MonitorProviderGrok:
 		return json.Marshal(map[string]any{
 			"model": t.model,

@@ -81,6 +81,10 @@ func parseFingerprintRetryAfter(h http.Header) (time.Duration, bool) {
 // temperature 刻意不发送：Codex/gpt-5 系对非默认 temperature 敏感（可能 400），
 // Codex CLI 真实流量也不带该字段；默认温度即 1.0，正好是指纹定义温度。
 // T=0 探测因此实际也按默认温度采样，t0 快信号降级为「同温度答案一致性」对比（双侧一致，仍有效）。
+//
+// max_output_tokens 与 reasoning 都可能被上游拒绝（400，schema 窄）：被拒后由
+// runProbeOnce 置位对应标记，后续请求省略该字段重试——与真实转发
+// openai_gateway_forward 的 rejected-field retry 行为一致。
 func buildCodexFingerprintBody(t *fingerprintProbeTarget, prompt string, _ float64) ([]byte, error) {
 	body := map[string]any{
 		"model":        t.model,
@@ -93,9 +97,12 @@ func buildCodexFingerprintBody(t *fingerprintProbeTarget, prompt string, _ float
 				},
 			},
 		},
-		"max_output_tokens": fingerprintMaxTokens,
-		"stream":            true,
-		"store":             false,
+		"stream": true,
+		"store":  false,
+	}
+	// 上游拒绝 max_output_tokens 字段后省略（省略，不判不适用）。
+	if !t.maxOutputTokensUnsupported.Load() {
+		body["max_output_tokens"] = fingerprintMaxTokens
 	}
 	// reasoning 尽量关；上游拒绝该字段时（400 且提到 reasoning/effort）由
 	// codexReasoningUnsupported 标记后续省略（省略，不判不适用）。
