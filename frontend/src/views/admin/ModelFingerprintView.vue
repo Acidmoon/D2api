@@ -57,6 +57,7 @@
           :accounts="accounts"
           :loading="auditsLoading"
           @select="openReport"
+          @remove="askDeleteAudit"
         />
       </div>
     </div>
@@ -66,6 +67,15 @@
       :audit-id="selectedAuditId"
       :accounts="accounts"
       @close="showReport = false"
+    />
+
+    <ConfirmDialog
+      :show="showDeleteConfirm"
+      :title="t('admin.fingerprint.records.deleteConfirmTitle')"
+      :message="t('admin.fingerprint.records.deleteConfirmMessage', { id: deleteAuditId ?? '' })"
+      danger
+      @confirm="confirmDeleteAudit"
+      @cancel="showDeleteConfirm = false"
     />
   </AppLayout>
 </template>
@@ -83,6 +93,7 @@ import FingerprintAuditForm from '@/components/admin/fingerprint/FingerprintAudi
 import FingerprintReferencePanel from '@/components/admin/fingerprint/FingerprintReferencePanel.vue'
 import FingerprintAuditTable from '@/components/admin/fingerprint/FingerprintAuditTable.vue'
 import FingerprintReportDialog from '@/components/admin/fingerprint/FingerprintReportDialog.vue'
+import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 
 const { t } = useI18n()
 const appStore = useAppStore()
@@ -154,6 +165,30 @@ function handleAuditCreated() {
 function openReport(id: string) {
   selectedAuditId.value = id
   showReport.value = true
+}
+
+// 删除检测记录：ConfirmDialog 确认后调用 DELETE /audits/:id 并刷新列表
+const showDeleteConfirm = ref(false)
+const deleteAuditId = ref<string | null>(null)
+
+function askDeleteAudit(id: string) {
+  deleteAuditId.value = id
+  showDeleteConfirm.value = true
+}
+
+async function confirmDeleteAudit() {
+  showDeleteConfirm.value = false
+  const id = deleteAuditId.value
+  if (!id) return
+  try {
+    await adminAPI.fingerprint.deleteAudit(id)
+    appStore.showSuccess(t('admin.fingerprint.records.deleted'))
+  } catch (err: unknown) {
+    appStore.showError(extractApiErrorMessage(err, t('admin.fingerprint.records.deleteFailed')))
+  } finally {
+    deleteAuditId.value = null
+    void loadAudits()
+  }
 }
 
 onMounted(() => {

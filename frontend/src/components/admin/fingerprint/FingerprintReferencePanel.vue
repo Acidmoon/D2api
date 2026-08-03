@@ -18,6 +18,40 @@
       <button type="submit" class="btn btn-primary whitespace-nowrap" :disabled="registering">
         {{ registering ? t('admin.fingerprint.references.submitting') : t('admin.fingerprint.references.submit') }}
       </button>
+
+      <!-- 高级选项：请求节奏（并发/间隔），留空用后端默认（2 并发 + 500ms） -->
+      <details class="rounded-lg border border-gray-200 dark:border-dark-700 md:col-span-3">
+        <summary class="cursor-pointer select-none px-3 py-2 text-sm text-gray-600 dark:text-gray-400">
+          {{ t('admin.fingerprint.create.advanced') }}
+        </summary>
+        <div class="grid grid-cols-1 gap-4 px-3 pb-3 sm:grid-cols-2">
+          <div>
+            <label class="input-label">{{ t('admin.fingerprint.create.concurrency') }}</label>
+            <input
+              v-model.number="registerConcurrency"
+              type="number"
+              min="1"
+              max="16"
+              class="input"
+              :placeholder="t('admin.fingerprint.create.concurrencyPlaceholder')"
+            />
+            <p class="mt-1 text-xs text-gray-400">{{ t('admin.fingerprint.create.concurrencyHint') }}</p>
+          </div>
+          <div>
+            <label class="input-label">{{ t('admin.fingerprint.create.intervalMs') }}</label>
+            <input
+              v-model.number="registerIntervalMs"
+              type="number"
+              min="0"
+              max="60000"
+              step="100"
+              class="input"
+              :placeholder="t('admin.fingerprint.create.intervalMsPlaceholder')"
+            />
+            <p class="mt-1 text-xs text-gray-400">{{ t('admin.fingerprint.create.intervalMsHint') }}</p>
+          </div>
+        </div>
+      </details>
     </form>
 
     <!-- 注册失败原因持久展示（轮询拿到 failed 后不再只是一个提示弹窗） -->
@@ -56,15 +90,25 @@
       </template>
 
       <template #cell-actions="{ row }">
-        <button
-          v-if="row.source === 'account_sampled' && row.source_account_id"
-          type="button"
-          class="btn btn-secondary px-2.5 py-1 text-xs"
-          :disabled="registering"
-          @click="handleReRegister(row)"
-        >
-          {{ t('admin.fingerprint.references.reRegister') }}
-        </button>
+        <div class="flex items-center gap-2">
+          <button
+            v-if="row.source === 'account_sampled' && row.source_account_id"
+            type="button"
+            class="btn btn-secondary px-2.5 py-1 text-xs"
+            :disabled="registering"
+            @click="handleReRegister(row)"
+          >
+            {{ t('admin.fingerprint.references.reRegister') }}
+          </button>
+          <button
+            type="button"
+            class="btn btn-secondary px-2.5 py-1 text-xs text-red-600 dark:text-red-400"
+            :disabled="registering"
+            @click="askDelete(row)"
+          >
+            {{ t('admin.fingerprint.references.delete') }}
+          </button>
+        </div>
       </template>
 
       <template #empty>
@@ -74,6 +118,15 @@
         />
       </template>
     </DataTable>
+
+    <ConfirmDialog
+      :show="showDeleteConfirm"
+      :title="t('admin.fingerprint.references.deleteConfirmTitle')"
+      :message="t('admin.fingerprint.references.deleteConfirmMessage', { model: deleteTarget?.model ?? '' })"
+      danger
+      @confirm="confirmDelete"
+      @cancel="showDeleteConfirm = false"
+    />
   </div>
 </template>
 
@@ -83,12 +136,13 @@ import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
 import { extractApiErrorMessage } from '@/utils/apiError'
 import { adminAPI } from '@/api/admin'
-import type { FingerprintReference } from '@/api/admin/fingerprint'
+import type { FingerprintReference, RegisterReferenceParams } from '@/api/admin/fingerprint'
 import type { Account } from '@/types'
 import type { Column } from '@/components/common/types'
 import DataTable from '@/components/common/DataTable.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import Select from '@/components/common/Select.vue'
+import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import { formatDateTimeToMinute } from '@/utils/format'
 import { useFingerprintFormat } from '@/composables/useFingerprintFormat'
 
@@ -111,6 +165,33 @@ const registerModel = ref('')
 const registering = ref(false)
 // 注册任务的失败原因（成功后清空，下一次发起时也清空）
 const registerError = ref('')
+// 高级选项：留空（null）时后端用默认值
+const registerConcurrency = ref<number | null>(null)
+const registerIntervalMs = ref<number | null>(null)
+
+// 删除参考：ConfirmDialog 确认后调用 DELETE /references/:model
+const showDeleteConfirm = ref(false)
+const deleteTarget = ref<FingerprintReference | null>(null)
+
+function askDelete(row: FingerprintReference) {
+  deleteTarget.value = row
+  showDeleteConfirm.value = true
+}
+
+async function confirmDelete() {
+  showDeleteConfirm.value = false
+  const target = deleteTarget.value
+  if (!target) return
+  try {
+    await adminAPI.fingerprint.deleteReference(target.model)
+    appStore.showSuccess(t('admin.fingerprint.references.deleted'))
+  } catch (err: unknown) {
+    appStore.showError(extractApiErrorMessage(err, t('admin.fingerprint.references.deleteFailed')))
+  } finally {
+    deleteTarget.value = null
+    emit('changed')
+  }
+}
 
 const columns = computed<Column[]>(() => [
   { key: 'model', label: t('admin.fingerprint.references.columns.model'), sortable: false },
@@ -170,7 +251,7 @@ async function startRegistration(accountId: number, model: string) {
   registering.value = true
   registerError.value = ''
   try {
-    const task = await adminAPI.fingerprint.registerReference({ account_id: accountId, model })
+    const task = await adminAPI.fingerprint.registerReference(buildRegisterParams(accountId, model))
     appStore.showSuccess(t('admin.fingerprint.references.registered'))
     pollRegisterTask(task.task_id)
   } catch (err: unknown) {
@@ -178,6 +259,18 @@ async function startRegistration(accountId: number, model: string) {
     registerError.value = extractApiErrorMessage(err, t('admin.fingerprint.references.registerFailed'))
     appStore.showError(registerError.value)
   }
+}
+
+/** 组装注册参数：高级选项只在填了数字时携带（清空后端用默认值） */
+function buildRegisterParams(accountId: number, model: string): RegisterReferenceParams {
+  const params: RegisterReferenceParams = { account_id: accountId, model }
+  if (typeof registerConcurrency.value === 'number' && !Number.isNaN(registerConcurrency.value)) {
+    params.concurrency = registerConcurrency.value
+  }
+  if (typeof registerIntervalMs.value === 'number' && !Number.isNaN(registerIntervalMs.value)) {
+    params.interval_ms = registerIntervalMs.value
+  }
+  return params
 }
 
 async function handleRegister() {

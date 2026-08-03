@@ -37,11 +37,17 @@ type fingerprintAuditCreateRequest struct {
 	// ReferenceAccountID 提供时先对该账号现场采样注册参考，再测目标。
 	ReferenceAccountID *int64 `json:"reference_account_id"`
 	KeepRaw            bool   `json:"keep_raw"`
+	// 执行节奏（可选）：并发 0=默认 2（clamp 1–16），间隔 nil=默认 500ms（clamp 0–60000）。
+	Concurrency int  `json:"concurrency"`
+	IntervalMs  *int `json:"interval_ms"`
 }
 
 type fingerprintReferenceCreateRequest struct {
 	AccountID int64  `json:"account_id" binding:"required"`
 	Model     string `json:"model" binding:"required,max=200"`
+	// 执行节奏（可选）：同 audits。
+	Concurrency int  `json:"concurrency"`
+	IntervalMs  *int `json:"interval_ms"`
 }
 
 // --- Handlers ---
@@ -66,6 +72,8 @@ func (h *FingerprintHandler) CreateAudit(c *gin.Context) {
 		Model:          req.Model,
 		ReferenceModel: req.ReferenceModel,
 		KeepRaw:        req.KeepRaw,
+		Concurrency:    req.Concurrency,
+		IntervalMs:     req.IntervalMs,
 		OperatorID:     subject.UserID,
 	}
 	if req.AccountID != nil {
@@ -123,7 +131,7 @@ func (h *FingerprintHandler) RegisterReference(c *gin.Context) {
 		return
 	}
 
-	status, err := h.fingerprintService.StartReferenceRegistration(c.Request.Context(), req.AccountID, req.Model)
+	status, err := h.fingerprintService.StartReferenceRegistration(c.Request.Context(), req.AccountID, req.Model, req.Concurrency, req.IntervalMs)
 	if err != nil {
 		response.ErrorFrom(c, err)
 		return
@@ -140,4 +148,34 @@ func (h *FingerprintHandler) ListReferences(c *gin.Context) {
 		return
 	}
 	response.Success(c, items)
+}
+
+// DeleteReference DELETE /api/v1/admin/fingerprint/references/:model
+// 删除参考指纹文件（model 参数经 slug 化，与写文件同一规则）。
+func (h *FingerprintHandler) DeleteReference(c *gin.Context) {
+	model := strings.TrimSpace(c.Param("model"))
+	if model == "" {
+		response.ErrorFrom(c, infraerrors.BadRequest("INVALID_MODEL", "invalid model"))
+		return
+	}
+	if err := h.fingerprintService.DeleteReference(model); err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, gin.H{"deleted": true})
+}
+
+// DeleteAudit DELETE /api/v1/admin/fingerprint/audits/:id
+// 删除检测报告文件；running 中的任务拒绝（409）。
+func (h *FingerprintHandler) DeleteAudit(c *gin.Context) {
+	id := strings.TrimSpace(c.Param("id"))
+	if id == "" {
+		response.ErrorFrom(c, infraerrors.BadRequest("INVALID_AUDIT_ID", "invalid audit id"))
+		return
+	}
+	if err := h.fingerprintService.DeleteAudit(id); err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, gin.H{"deleted": true})
 }

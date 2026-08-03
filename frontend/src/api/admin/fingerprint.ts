@@ -104,6 +104,9 @@ export interface FingerprintReport {
   error?: string
   /** 电池执行中最近一次探测失败的摘要（部分失败时帮助定位原因） */
   last_error?: string
+  /** 本次执行使用的并发数与请求间隔（毫秒） */
+  concurrency?: number
+  interval_ms?: number
   created_at: string
   duration_ms: number
   cells: FingerprintReportCell[]
@@ -137,11 +140,19 @@ export interface CreateAuditParams {
   /** 提供时先对该账号现场采样注册参考，再测目标 */
   reference_account_id?: number
   keep_raw?: boolean
+  /** 并发 worker 数：省略=后端默认 2，clamp [1,16] */
+  concurrency?: number
+  /** 请求间隔毫秒：省略=后端默认 500，clamp [0,60000] */
+  interval_ms?: number
 }
 
 export interface RegisterReferenceParams {
   account_id: number
   model: string
+  /** 并发 worker 数：省略=后端默认 2，clamp [1,16] */
+  concurrency?: number
+  /** 请求间隔毫秒：省略=后端默认 500，clamp [0,60000] */
+  interval_ms?: number
 }
 
 /**
@@ -199,6 +210,20 @@ export async function registerReference(
 }
 
 /**
+ * 删除参考指纹文件（model 经 encodeURIComponent 转义，后端按同一 slug 规则解析）。
+ */
+export async function deleteReference(model: string): Promise<void> {
+  await apiClient.delete(`/admin/fingerprint/references/${encodeURIComponent(model)}`)
+}
+
+/**
+ * 删除检测报告文件（running 中的任务后端会拒绝）。
+ */
+export async function deleteAudit(id: string): Promise<void> {
+  await apiClient.delete(`/admin/fingerprint/audits/${encodeURIComponent(id)}`)
+}
+
+/**
  * 参考指纹列表（按注册时间倒序）。
  */
 export async function listReferences(options?: {
@@ -217,6 +242,8 @@ export const fingerprintAPI = {
   isFingerprintReport,
   registerReference,
   listReferences,
+  deleteReference,
+  deleteAudit,
 }
 
 export default fingerprintAPI

@@ -766,8 +766,10 @@ func registerFingerprintRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 		fingerprint.POST("/audits", h.Admin.Fingerprint.CreateAudit)
 		fingerprint.GET("/audits", h.Admin.Fingerprint.ListAudits)
 		fingerprint.GET("/audits/:id", h.Admin.Fingerprint.GetAudit)
+		fingerprint.DELETE("/audits/:id", h.Admin.Fingerprint.DeleteAudit)
 		fingerprint.POST("/references", h.Admin.Fingerprint.RegisterReference)
 		fingerprint.GET("/references", h.Admin.Fingerprint.ListReferences)
+		fingerprint.DELETE("/references/:model", h.Admin.Fingerprint.DeleteReference)
 	}
 }
 

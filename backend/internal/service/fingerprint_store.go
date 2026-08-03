@@ -107,11 +107,14 @@ type FingerprintReport struct {
 	Flags           []string                   `json:"flags"`
 	Error           string                     `json:"error,omitempty"`
 	// LastError 电池执行中最近一次探测失败的摘要（已脱敏），便于页面展示失败原因。
-	LastError  string                   `json:"last_error,omitempty"`
-	CreatedBy  int64                    `json:"created_by,omitempty"`
-	CreatedAt  time.Time                `json:"created_at"`
-	DurationMs int64                    `json:"duration_ms"`
-	Cells      []*FingerprintReportCell `json:"cells"`
+	LastError string `json:"last_error,omitempty"`
+	// Concurrency / IntervalMs 本次执行使用的并发数与请求间隔（追溯用）。
+	Concurrency int                      `json:"concurrency"`
+	IntervalMs  int                      `json:"interval_ms"`
+	CreatedBy   int64                    `json:"created_by,omitempty"`
+	CreatedAt   time.Time                `json:"created_at"`
+	DurationMs  int64                    `json:"duration_ms"`
+	Cells       []*FingerprintReportCell `json:"cells"`
 }
 
 // FingerprintAuditSummary 检测记录列表行（报告摘要，不含 cells 明细）。
@@ -246,32 +249,70 @@ func (s *fingerprintStore) saveAuditReport(rep *FingerprintReport) error {
 
 // getAuditReport 按任务 ID 查报告文件（文件名后缀匹配）。
 func (s *fingerprintStore) getAuditReport(id string) (*FingerprintReport, error) {
+	path, err := s.findAuditReportPath(id)
+	if err != nil {
+		return nil, err
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("read audit report: %w", err)
+	}
+	var rep FingerprintReport
+	if err := json.Unmarshal(data, &rep); err != nil {
+		return nil, fmt.Errorf("parse audit report %s: %w", path, err)
+	}
+	return &rep, nil
+}
+
+// findAuditReportPath 按任务 ID 定位报告文件路径（文件名后缀匹配）。
+// id 含路径分隔符直接拒绝，防路径穿越。
+func (s *fingerprintStore) findAuditReportPath(id string) (string, error) {
 	if id == "" || strings.ContainsAny(id, `/\`) {
-		return nil, ErrFingerprintAuditNotFound
+		return "", ErrFingerprintAuditNotFound
 	}
 	entries, err := os.ReadDir(s.auditsDir())
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil, ErrFingerprintAuditNotFound
+			return "", ErrFingerprintAuditNotFound
 		}
-		return nil, fmt.Errorf("read audits dir: %w", err)
+		return "", fmt.Errorf("read audits dir: %w", err)
 	}
 	suffix := "-" + id + ".json"
 	for _, e := range entries {
 		if e.IsDir() || !strings.HasSuffix(e.Name(), suffix) {
 			continue
 		}
-		data, err := os.ReadFile(filepath.Join(s.auditsDir(), e.Name()))
-		if err != nil {
-			return nil, fmt.Errorf("read audit report: %w", err)
-		}
-		var rep FingerprintReport
-		if err := json.Unmarshal(data, &rep); err != nil {
-			return nil, fmt.Errorf("parse audit report %s: %w", e.Name(), err)
-		}
-		return &rep, nil
+		return filepath.Join(s.auditsDir(), e.Name()), nil
 	}
-	return nil, ErrFingerprintAuditNotFound
+	return "", ErrFingerprintAuditNotFound
+}
+
+// deleteAuditReport 按任务 ID 删除报告文件；不存在返回 ErrFingerprintAuditNotFound。
+func (s *fingerprintStore) deleteAuditReport(id string) error {
+	path, err := s.findAuditReportPath(id)
+	if err != nil {
+		return err
+	}
+	if err := os.Remove(path); err != nil {
+		if os.IsNotExist(err) {
+			return ErrFingerprintAuditNotFound
+		}
+		return fmt.Errorf("delete audit report: %w", err)
+	}
+	return nil
+}
+
+// deleteReference 删除 references/<model-slug>.json；不存在返回 ErrFingerprintReferenceNotFound。
+// model 与写文件走同一 slug 规则（fingerprintModelSlug），防路径穿越。
+func (s *fingerprintStore) deleteReference(model string) error {
+	path := filepath.Join(s.referencesDir(), fingerprintModelSlug(model)+".json")
+	if err := os.Remove(path); err != nil {
+		if os.IsNotExist(err) {
+			return ErrFingerprintReferenceNotFound
+		}
+		return fmt.Errorf("delete reference: %w", err)
+	}
+	return nil
 }
 
 // listAuditReports 扫描 audits 目录，按创建时间倒序返回摘要。

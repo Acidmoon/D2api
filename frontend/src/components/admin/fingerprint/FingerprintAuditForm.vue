@@ -95,6 +95,42 @@
         </div>
       </div>
 
+      <!-- 高级选项：请求节奏（并发/间隔），留空用后端默认（2 并发 + 500ms） -->
+      <div class="md:col-span-2">
+        <details class="rounded-lg border border-gray-200 dark:border-dark-700">
+          <summary class="cursor-pointer select-none px-3 py-2 text-sm text-gray-600 dark:text-gray-400">
+            {{ t('admin.fingerprint.create.advanced') }}
+          </summary>
+          <div class="grid grid-cols-1 gap-4 px-3 pb-3 sm:grid-cols-2">
+            <div>
+              <label class="input-label">{{ t('admin.fingerprint.create.concurrency') }}</label>
+              <input
+                v-model.number="form.concurrency"
+                type="number"
+                min="1"
+                max="16"
+                class="input"
+                :placeholder="t('admin.fingerprint.create.concurrencyPlaceholder')"
+              />
+              <p class="mt-1 text-xs text-gray-400">{{ t('admin.fingerprint.create.concurrencyHint') }}</p>
+            </div>
+            <div>
+              <label class="input-label">{{ t('admin.fingerprint.create.intervalMs') }}</label>
+              <input
+                v-model.number="form.interval_ms"
+                type="number"
+                min="0"
+                max="60000"
+                step="100"
+                class="input"
+                :placeholder="t('admin.fingerprint.create.intervalMsPlaceholder')"
+              />
+              <p class="mt-1 text-xs text-gray-400">{{ t('admin.fingerprint.create.intervalMsHint') }}</p>
+            </div>
+          </div>
+        </details>
+      </div>
+
       <div class="flex items-center justify-between md:col-span-2">
         <div>
           <label class="input-label mb-0">{{ t('admin.fingerprint.create.keepRaw') }}</label>
@@ -157,6 +193,8 @@ const form = reactive({
   reference_model: '',
   reference_account_id: null as number | null,
   keep_raw: false,
+  concurrency: null as number | null,
+  interval_ms: null as number | null,
 })
 
 const targetTabs = computed<{ value: FingerprintTargetType; label: string }[]>(() => [
@@ -234,6 +272,13 @@ function buildPayload(): CreateAuditParams {
   }
   if (referenceMode.value === 'enroll') {
     payload.reference_account_id = form.reference_account_id ?? undefined
+  }
+  // number input 清空时值为 null/''，只在填了数字时才带字段（后端用默认值）
+  if (typeof form.concurrency === 'number' && !Number.isNaN(form.concurrency)) {
+    payload.concurrency = form.concurrency
+  }
+  if (typeof form.interval_ms === 'number' && !Number.isNaN(form.interval_ms)) {
+    payload.interval_ms = form.interval_ms
   }
   return payload
 }

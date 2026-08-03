@@ -1,7 +1,9 @@
 package service
 
 import (
+	"context"
 	"math/rand/v2"
+	"sync"
 	"time"
 )
 
@@ -36,10 +38,24 @@ const (
 	fingerprintProbeTimeout = 45 * time.Second
 	// fingerprintMaxRetries 单探测失败后的指数退避重试次数。
 	fingerprintMaxRetries = 2
-	// fingerprintRetryBaseBackoff 重试退避基数（第 n 次重试等待 base * 2^n）。
+	// fingerprintRetryBaseBackoff 常规失败的重试退避基数（第 n 次重试等待 base * 2^(n-1)）。
 	fingerprintRetryBaseBackoff = 500 * time.Millisecond
-	// fingerprintWorkerCount 电池执行的并发 worker 数（有界并发 4–8 区间）。
-	fingerprintWorkerCount = 6
+	// fingerprintRateLimitRetryBaseBackoff 429（无 Retry-After 头）的重试退避基数：
+	// 第 n 次重试等待 base × (2n-1)，即 10s / 30s，比常规失败宽松得多。
+	fingerprintRateLimitRetryBaseBackoff = 10 * time.Second
+	// fingerprintRetryAfterCap 尊重 429 Retry-After 头的等待上限。
+	fingerprintRetryAfterCap = 120 * time.Second
+
+	// fingerprintDefaultConcurrency 默认并发 worker 数。
+	// Codex 订阅账号限流严格（5 小时窗口），默认并发 2 + 间隔 500ms ≈ 每秒最多 4 请求，
+	// 一轮 272 请求约 2.5–5 分钟；需要更快时由调用方显式调大。
+	fingerprintDefaultConcurrency = 2
+	// fingerprintMaxConcurrency 并发数上限（clamp）。
+	fingerprintMaxConcurrency = 16
+	// fingerprintDefaultIntervalMs 默认请求间隔：任意两个探测的发起间隔 ≥ 500ms。
+	fingerprintDefaultIntervalMs = 500
+	// fingerprintMaxIntervalMs 请求间隔上限（clamp，1 分钟）。
+	fingerprintMaxIntervalMs = 60000
 )
 
 // 电池覆盖的语言。
@@ -258,4 +274,77 @@ func GenerateProbe(rng *rand.Rand, taskID, language string) string {
 		return pool[rng.IntN(len(pool))]
 	}
 	return ""
+}
+
+// ---------- 执行节奏（并发 + 请求间隔） ----------
+
+// fingerprintExecConfig 一轮电池的执行节奏（已归一化）。
+type fingerprintExecConfig struct {
+	Concurrency int // worker 数
+	IntervalMs  int // 任意两个探测的最小发起间隔（毫秒）
+}
+
+// clampFingerprintConcurrency 并发数归一化：0/负值（缺省）→ 默认 2，其余 clamp 到 [1,16]。
+func clampFingerprintConcurrency(v int) int {
+	if v <= 0 {
+		return fingerprintDefaultConcurrency
+	}
+	if v > fingerprintMaxConcurrency {
+		return fingerprintMaxConcurrency
+	}
+	return v
+}
+
+// clampFingerprintIntervalMs 请求间隔归一化：nil（未设置）→ 默认 500ms，
+// 其余 clamp 到 [0,60000]。用指针区分「未设置」与「显式 0（不限速）」。
+func clampFingerprintIntervalMs(v *int) int {
+	if v == nil {
+		return fingerprintDefaultIntervalMs
+	}
+	if *v < 0 {
+		return 0
+	}
+	if *v > fingerprintMaxIntervalMs {
+		return fingerprintMaxIntervalMs
+	}
+	return *v
+}
+
+// fingerprintPacer 电池共享的节奏控制：任意两个探测请求的发起间隔 ≥ interval。
+// 采用「预约时隙」实现：mutex 内为每个请求分配不早于 lastStart+interval 的起始时刻，
+// 请求在锁外睡到自己的时隙，保证间隔的同时不串行化网络等待。
+type fingerprintPacer struct {
+	mu        sync.Mutex
+	interval  time.Duration
+	lastStart time.Time
+}
+
+// wait 阻塞到本请求预约的起始时刻（或 ctx 取消）。
+func (p *fingerprintPacer) wait(ctx context.Context) error {
+	if p == nil || p.interval <= 0 {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+			return nil
+		}
+	}
+	p.mu.Lock()
+	next := p.lastStart.Add(p.interval)
+	if now := time.Now(); next.Before(now) {
+		next = now
+	}
+	p.lastStart = next
+	p.mu.Unlock()
+
+	delay := time.Until(next)
+	if delay <= 0 {
+		return nil
+	}
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-time.After(delay):
+		return nil
+	}
 }

@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/Wei-Shaw/sub2api/internal/pkg/openai"
 	"github.com/tidwall/gjson"
@@ -22,11 +24,12 @@ import (
 // Codex 流式响应含 reasoning 加密内容回显，比监控模块的 64KB 预算大。
 const fingerprintResponseMaxBytes = 256 * 1024
 
-// postFingerprintRawJSON 与 postRawJSON 相同（SSRF 安全客户端），仅响应体上限不同。
-func postFingerprintRawJSON(ctx context.Context, fullURL string, payload []byte, headers map[string]string) ([]byte, int, error) {
+// postFingerprintRawJSON 与 postRawJSON 相同（SSRF 安全客户端），仅响应体上限不同；
+// 额外返回响应头（429 的 Retry-After 解析需要）。
+func postFingerprintRawJSON(ctx context.Context, fullURL string, payload []byte, headers map[string]string) ([]byte, int, http.Header, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, fullURL, bytes.NewReader(payload))
 	if err != nil {
-		return nil, 0, fmt.Errorf("build request: %w", err)
+		return nil, 0, nil, fmt.Errorf("build request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
@@ -36,15 +39,38 @@ func postFingerprintRawJSON(ctx context.Context, fullURL string, payload []byte,
 
 	resp, err := monitorHTTPClient.Do(req)
 	if err != nil {
-		return nil, 0, fmt.Errorf("do request: %w", err)
+		return nil, 0, nil, fmt.Errorf("do request: %w", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 
 	respBody, err := io.ReadAll(io.LimitReader(resp.Body, fingerprintResponseMaxBytes))
 	if err != nil {
-		return nil, resp.StatusCode, fmt.Errorf("read body: %w", err)
+		return nil, resp.StatusCode, resp.Header, fmt.Errorf("read body: %w", err)
 	}
-	return respBody, resp.StatusCode, nil
+	return respBody, resp.StatusCode, resp.Header, nil
+}
+
+// parseFingerprintRetryAfter 解析 429 响应的 Retry-After 头（秒数或 HTTP 日期），
+// 等待时长按 fingerprintRetryAfterCap 截断；缺失/无法解析返回 false。
+func parseFingerprintRetryAfter(h http.Header) (time.Duration, bool) {
+	v := strings.TrimSpace(h.Get("Retry-After"))
+	if v == "" {
+		return 0, false
+	}
+	if secs, err := strconv.Atoi(v); err == nil {
+		if secs < 0 {
+			return 0, false
+		}
+		return min(time.Duration(secs)*time.Second, fingerprintRetryAfterCap), true
+	}
+	if ts, err := http.ParseTime(v); err == nil {
+		d := time.Until(ts)
+		if d <= 0 {
+			return 0, true
+		}
+		return min(d, fingerprintRetryAfterCap), true
+	}
+	return 0, false
 }
 
 // buildCodexFingerprintBody 构造 Codex Responses 探测请求体。

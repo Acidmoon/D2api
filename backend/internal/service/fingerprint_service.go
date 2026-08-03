@@ -68,6 +68,9 @@ var (
 	ErrFingerprintAuditNotFound = infraerrors.NotFound(
 		"FINGERPRINT_AUDIT_NOT_FOUND", "fingerprint audit not found",
 	)
+	ErrFingerprintAuditRunning = infraerrors.New(
+		http.StatusConflict, "FINGERPRINT_AUDIT_RUNNING", "audit task is still running and cannot be deleted",
+	)
 )
 
 // 报告 flags（设计文档 §8）：出现即从指纹证据中剔除对应 cell。
@@ -155,6 +158,8 @@ type FingerprintAuditParams struct {
 	ReferenceModel     string
 	ReferenceAccountID int64 // >0 时先对该账号现场采样注册参考，再测目标
 	KeepRaw            bool  // true 时报告附加原始回答样本
+	Concurrency        int   // 并发 worker 数：0=默认 2，clamp [1,16]
+	IntervalMs         *int  // 请求间隔毫秒：nil=默认 500，clamp [0,60000]
 	OperatorID         int64
 }
 
@@ -252,14 +257,19 @@ func (s *FingerprintService) StartAudit(ctx context.Context, params FingerprintA
 	if refTarget != nil {
 		total += probesPerBattery
 	}
+	exec := fingerprintExecConfig{
+		Concurrency: clampFingerprintConcurrency(params.Concurrency),
+		IntervalMs:  clampFingerprintIntervalMs(params.IntervalMs),
+	}
 	task := s.newTask(FingerprintTaskKindAudit, params.Model, params.ReferenceModel, total, reportTarget)
-	go s.executeAudit(task, target, reportTarget, refTarget, refAccountID, reference, params)
+	go s.executeAudit(task, target, reportTarget, refTarget, refAccountID, reference, params, exec)
 	snap := task.snapshot()
 	return &snap, nil
 }
 
 // StartReferenceRegistration 注册参考指纹：对可信账号现场采样，写 references/<model>.json。
-func (s *FingerprintService) StartReferenceRegistration(ctx context.Context, accountID int64, model string) (*FingerprintTaskStatus, error) {
+// concurrency/intervalMs 语义同 StartAudit（0/nil 用默认值）。
+func (s *FingerprintService) StartReferenceRegistration(ctx context.Context, accountID int64, model string, concurrency int, intervalMs *int) (*FingerprintTaskStatus, error) {
 	model = strings.TrimSpace(model)
 	if model == "" {
 		return nil, ErrFingerprintMissingModel
@@ -268,9 +278,13 @@ func (s *FingerprintService) StartReferenceRegistration(ctx context.Context, acc
 	if err != nil {
 		return nil, err
 	}
+	exec := fingerprintExecConfig{
+		Concurrency: clampFingerprintConcurrency(concurrency),
+		IntervalMs:  clampFingerprintIntervalMs(intervalMs),
+	}
 	total := len(fingerprintCells()) * (fingerprintSamplesPerCell + fingerprintGreedySamplesPerCell)
 	task := s.newTask(FingerprintTaskKindRegisterReference, model, "", total, reportTarget)
-	go s.executeReferenceRegistration(task, target, accountID, model)
+	go s.executeReferenceRegistration(task, target, accountID, model, exec)
 	snap := task.snapshot()
 	return &snap, nil
 }
@@ -338,6 +352,30 @@ func (s *FingerprintService) ListAudits() ([]*FingerprintAuditSummary, error) {
 // ListReferences 参考指纹列表（扫 references 目录，按注册时间倒序）。
 func (s *FingerprintService) ListReferences() ([]*FingerprintReference, error) {
 	return s.store.listReferences()
+}
+
+// DeleteReference 删除参考指纹文件（model 走与写文件相同的 slug 规则）。
+func (s *FingerprintService) DeleteReference(model string) error {
+	model = strings.TrimSpace(model)
+	if model == "" {
+		return ErrFingerprintReferenceNotFound
+	}
+	return s.store.deleteReference(model)
+}
+
+// DeleteAudit 删除检测报告文件；running 中的任务拒绝删除（409）。
+func (s *FingerprintService) DeleteAudit(id string) error {
+	if task, ok := s.getTask(id); ok && task.snapshot().Status == FingerprintStatusRunning {
+		return ErrFingerprintAuditRunning
+	}
+	if err := s.store.deleteAuditReport(id); err != nil {
+		return err
+	}
+	// 顺带清理内存任务（完成/失败状态），避免 GET 再查到。
+	s.mu.Lock()
+	delete(s.tasks, id)
+	s.mu.Unlock()
+	return nil
 }
 
 // ---------- 目标解析 ----------
@@ -495,7 +533,7 @@ func validateFingerprintExternalURL(raw string) error {
 // ---------- 任务执行 ----------
 
 // executeAudit 后台执行：可选先注册参考 → 对被测目标跑电池 → 评分 → 写报告文件。
-func (s *FingerprintService) executeAudit(task *fingerprintTask, target *fingerprintProbeTarget, reportTarget FingerprintReportTarget, refTarget *fingerprintProbeTarget, refAccountID *int64, loadedRef *FingerprintReference, params FingerprintAuditParams) {
+func (s *FingerprintService) executeAudit(task *fingerprintTask, target *fingerprintProbeTarget, reportTarget FingerprintReportTarget, refTarget *fingerprintProbeTarget, refAccountID *int64, loadedRef *FingerprintReference, params FingerprintAuditParams, exec fingerprintExecConfig) {
 	defer func() {
 		if r := recover(); r != nil {
 			task.finish(FingerprintStatusFailed, fmt.Errorf("panic: %v", r))
@@ -509,7 +547,7 @@ func (s *FingerprintService) executeAudit(task *fingerprintTask, target *fingerp
 	// 参考基准：现场注册（写 references 文件）或复用已加载的参考。
 	reference := loadedRef
 	if refTarget != nil {
-		refResults, refLastErr := s.runBattery(ctx, refTarget, onProgress)
+		refResults, refLastErr := s.runBattery(ctx, refTarget, exec, onProgress)
 		// 采样质量不达标：不写参考（保留同名旧文件），整个任务失败，不再测目标。
 		if err := s.finishReferenceRegistration(params.ReferenceModel, refAccountID, refResults, refLastErr); err != nil {
 			task.finish(FingerprintStatusFailed, err)
@@ -518,7 +556,7 @@ func (s *FingerprintService) executeAudit(task *fingerprintTask, target *fingerp
 		reference = buildFingerprintReference(params.ReferenceModel, refAccountID, refResults)
 	}
 
-	results, lastErr := s.runBattery(ctx, target, onProgress)
+	results, lastErr := s.runBattery(ctx, target, exec, onProgress)
 	cells, score, verdict, band, k, avgN, splitHalf, t0Mismatch, flags := scoreFingerprintBattery(results, reference, params.KeepRaw)
 	// reasoning 关不掉 → 整个模型不适用单 token 指纹：标记 not_applicable 且不硬出判定（§8）。
 	if target.reasoningRejected.Load() {
@@ -545,6 +583,8 @@ func (s *FingerprintService) executeAudit(task *fingerprintTask, target *fingerp
 		T0MismatchCells: t0Mismatch,
 		Flags:           flags,
 		LastError:       lastErr,
+		Concurrency:     exec.Concurrency,
+		IntervalMs:      exec.IntervalMs,
 		CreatedBy:       params.OperatorID,
 		CreatedAt:       task.snapshot().CreatedAt,
 		DurationMs:      time.Since(start).Milliseconds(),
@@ -560,7 +600,7 @@ func (s *FingerprintService) executeAudit(task *fingerprintTask, target *fingerp
 // executeReferenceRegistration 后台执行参考注册：电池 → 质量门槛 → 写 references/<model>.json。
 // 采样质量不达标（≥10 有效样本的 cell 数 < 8）时任务失败且不写文件——
 // 已有同名旧参考文件时保留旧的，避免空参考覆盖好参考。
-func (s *FingerprintService) executeReferenceRegistration(task *fingerprintTask, target *fingerprintProbeTarget, accountID int64, model string) {
+func (s *FingerprintService) executeReferenceRegistration(task *fingerprintTask, target *fingerprintProbeTarget, accountID int64, model string, exec fingerprintExecConfig) {
 	defer func() {
 		if r := recover(); r != nil {
 			task.finish(FingerprintStatusFailed, fmt.Errorf("panic: %v", r))
@@ -568,7 +608,7 @@ func (s *FingerprintService) executeReferenceRegistration(task *fingerprintTask,
 	}()
 	ctx, cancel := context.WithTimeout(context.Background(), fingerprintBatteryTimeout)
 	defer cancel()
-	results, lastErr := s.runBattery(ctx, target, func() { task.incProgress() })
+	results, lastErr := s.runBattery(ctx, target, exec, func() { task.incProgress() })
 	if err := s.finishReferenceRegistration(model, &accountID, results, lastErr); err != nil {
 		task.finish(FingerprintStatusFailed, err)
 		return
@@ -643,15 +683,18 @@ func newFingerprintCellResult() *fingerprintCellResult {
 }
 
 // runBattery 对目标跑完整探测电池：16 cell × (15 次 T=1.0 + 2 次 T=0)，
-// cell 顺序随机打乱；有界并发 worker 池，单探测失败指数退避重试，失败样本不计入数据。
+// cell 顺序随机打乱；worker 数与请求间隔由 exec 控制（所有 worker 共享一个节奏控制器），
+// 单探测失败指数退避重试，失败样本不计入数据。
 // 返回各 cell 结果与最后一次探测失败的摘要（已脱敏；无失败为空串）。
-func (s *FingerprintService) runBattery(ctx context.Context, target *fingerprintProbeTarget, onProgress func()) (map[string]*fingerprintCellResult, string) {
+func (s *FingerprintService) runBattery(ctx context.Context, target *fingerprintProbeTarget, exec fingerprintExecConfig, onProgress func()) (map[string]*fingerprintCellResult, string) {
 	rng := newFingerprintRNG()
 	cells := fingerprintShuffledCells(rng)
 	results := make(map[string]*fingerprintCellResult, len(cells))
 	for _, c := range cells {
 		results[c.Key()] = newFingerprintCellResult()
 	}
+	// 共享节奏控制：任意两个请求的发起间隔 ≥ exec.IntervalMs。
+	pacer := &fingerprintPacer{interval: time.Duration(exec.IntervalMs) * time.Millisecond}
 
 	type probeJob struct {
 		cell        fingerprintCell
@@ -666,7 +709,7 @@ func (s *FingerprintService) runBattery(ctx context.Context, target *fingerprint
 	worker := func() {
 		defer wg.Done()
 		for j := range jobs {
-			outcome, err := target.runProbe(ctx, j.prompt, j.temperature)
+			outcome, err := target.runProbe(ctx, j.prompt, j.temperature, pacer)
 			resultsMu.Lock()
 			res := results[j.cell.Key()]
 			switch {
@@ -702,7 +745,7 @@ func (s *FingerprintService) runBattery(ctx context.Context, target *fingerprint
 			}
 		}
 	}
-	for i := 0; i < fingerprintWorkerCount; i++ {
+	for i := 0; i < exec.Concurrency; i++ {
 		wg.Add(1)
 		go worker()
 	}
@@ -728,27 +771,36 @@ type fingerprintProbeOutcome struct {
 	latencyMs        int
 }
 
-// fingerprintProbeError 单次探测失败：携带可重试标记；message 已脱敏。
+// fingerprintProbeError 单次探测失败：携带可重试标记与限流信息；message 已脱敏。
 type fingerprintProbeError struct {
-	message   string
-	retryable bool
+	message    string
+	retryable  bool
+	statusCode int           // 非 2xx 的 HTTP 状态码（429 用于限流退避）
+	retryAfter time.Duration // 429 响应的 Retry-After（已按 120s 上限截断）
 }
 
 func (e *fingerprintProbeError) Error() string { return e.message }
 
-// runProbe 单次探测（含指数退避重试，最多 fingerprintMaxRetries 次）。
-func (t *fingerprintProbeTarget) runProbe(ctx context.Context, prompt string, temperature float64) (*fingerprintProbeOutcome, error) {
-	var lastErr error
+// runProbe 单次探测（含退避重试，最多 fingerprintMaxRetries 次）。
+// 常规失败走指数退避；429 有 Retry-After 按其值等待，否则用更长的退避（10s/30s）。
+func (t *fingerprintProbeTarget) runProbe(ctx context.Context, prompt string, temperature float64, pacer *fingerprintPacer) (*fingerprintProbeOutcome, error) {
+	var lastErr *fingerprintProbeError
 	for attempt := 0; attempt <= fingerprintMaxRetries; attempt++ {
 		if attempt > 0 {
 			backoff := fingerprintRetryBaseBackoff << (attempt - 1)
+			if lastErr != nil && lastErr.statusCode == http.StatusTooManyRequests {
+				backoff = fingerprintRateLimitRetryBaseBackoff * time.Duration(2*attempt-1)
+				if lastErr.retryAfter > 0 {
+					backoff = lastErr.retryAfter
+				}
+			}
 			select {
 			case <-ctx.Done():
 				return nil, ctx.Err()
 			case <-time.After(backoff):
 			}
 		}
-		outcome, perr := t.runProbeOnce(ctx, prompt, temperature)
+		outcome, perr := t.runProbeOnce(ctx, prompt, temperature, pacer)
 		if perr == nil {
 			return outcome, nil
 		}
@@ -760,17 +812,22 @@ func (t *fingerprintProbeTarget) runProbe(ctx context.Context, prompt string, te
 	return nil, lastErr
 }
 
-// runProbeOnce 发一次探测请求：构造 provider 特定 body → postRawJSON（SSRF 安全客户端）→ 提取文本与 usage。
-func (t *fingerprintProbeTarget) runProbeOnce(ctx context.Context, prompt string, temperature float64) (*fingerprintProbeOutcome, *fingerprintProbeError) {
+// runProbeOnce 发一次探测请求：先过共享节奏控制，再构造 provider 特定 body →
+// postFingerprintRawJSON（SSRF 安全客户端）→ 提取文本与 usage。
+func (t *fingerprintProbeTarget) runProbeOnce(ctx context.Context, prompt string, temperature float64, pacer *fingerprintPacer) (*fingerprintProbeOutcome, *fingerprintProbeError) {
 	body, err := t.buildBody(prompt, temperature)
 	if err != nil {
 		return nil, &fingerprintProbeError{message: err.Error()}
 	}
 	reqCtx, cancel := context.WithTimeout(ctx, fingerprintProbeTimeout)
 	defer cancel()
+	// 节奏控制计入请求超时预算：等待时隙也算发起前耗时。
+	if err := pacer.wait(reqCtx); err != nil {
+		return nil, &fingerprintProbeError{message: err.Error()}
+	}
 
 	start := time.Now()
-	respBytes, status, err := postFingerprintRawJSON(reqCtx, t.requestURL(), body, t.headers())
+	respBytes, status, respHeader, err := postFingerprintRawJSON(reqCtx, t.requestURL(), body, t.headers())
 	latencyMs := int(time.Since(start) / time.Millisecond)
 	if err != nil {
 		// 网络/超时错误：可重试。
@@ -778,9 +835,14 @@ func (t *fingerprintProbeTarget) runProbeOnce(ctx context.Context, prompt string
 	}
 	if status < 200 || status >= 300 {
 		snippet := sanitizeErrorMessage(truncateForErrorBody(string(respBytes)))
-		perr := &fingerprintProbeError{message: fmt.Sprintf("upstream HTTP %d: %s", status, snippet)}
+		perr := &fingerprintProbeError{message: fmt.Sprintf("upstream HTTP %d: %s", status, snippet), statusCode: status}
 		if status == http.StatusTooManyRequests || status >= 500 {
 			perr.retryable = true
+		}
+		if status == http.StatusTooManyRequests {
+			if d, ok := parseFingerprintRetryAfter(respHeader); ok {
+				perr.retryAfter = d
+			}
 		}
 		lower := strings.ToLower(snippet)
 		switch {

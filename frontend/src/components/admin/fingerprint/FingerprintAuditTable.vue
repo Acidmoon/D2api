@@ -68,9 +68,20 @@
     </template>
 
     <template #cell-actions="{ row }">
-      <button type="button" class="btn btn-secondary px-2.5 py-1 text-xs" @click="emit('select', row.id)">
-        {{ t('admin.fingerprint.records.detail') }}
-      </button>
+      <div class="flex items-center gap-2">
+        <button type="button" class="btn btn-secondary px-2.5 py-1 text-xs" @click="emit('select', row.id)">
+          {{ t('admin.fingerprint.records.detail') }}
+        </button>
+        <!-- running 中的任务后端拒绝删除，前端也不给入口 -->
+        <button
+          v-if="row.status !== 'running'"
+          type="button"
+          class="btn btn-secondary px-2.5 py-1 text-xs text-red-600 dark:text-red-400"
+          @click="emit('remove', row.id)"
+        >
+          {{ t('admin.fingerprint.records.delete') }}
+        </button>
+      </div>
     </template>
 
     <template #empty>
@@ -101,6 +112,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'select', id: string): void
+  (e: 'remove', id: string): void
 }>()
 
 const { t } = useI18n()
