@@ -42,6 +42,9 @@ func (s *stubViolationBanCache) GetUserViolationBan(context.Context, int64) (tim
 func (s *stubViolationBanCache) GetUserViolationBans(context.Context, []int64) (map[int64]time.Time, error) {
 	return nil, s.getErr
 }
+func (s *stubViolationBanCache) ClaimViolationDedup(context.Context, int64, string, time.Duration) (bool, error) {
+	return true, nil
+}
 func (s *stubViolationBanCache) ClearUserViolationBan(_ context.Context, userID int64) error {
 	s.cleared = userID
 	return nil

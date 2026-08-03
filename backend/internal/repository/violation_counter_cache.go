@@ -14,6 +14,7 @@ const (
 	violationCounterPrefix        = "violation_count:user:"
 	violationNotifyCooldownPrefix = "violation_notify_cooldown:user:"
 	userViolationBanPrefix        = "user_violation_ban:"
+	violationDedupPrefix          = "violation_dedup:user:"
 	violationCounterMinTTLSeconds = 60
 )
 
@@ -74,6 +75,20 @@ func (c *violationCounterCache) ClaimViolationNotifyCooldown(ctx context.Context
 	ok, err := c.rdb.SetNX(ctx, key, time.Now().Unix(), cooldown).Result()
 	if err != nil {
 		return false, fmt.Errorf("claim violation notify cooldown: %w", err)
+	}
+	return ok, nil
+}
+
+// ClaimViolationDedup 抢占违规去重键（SET NX EX），key = violation_dedup:user:{userID}:{hash}
+// 返回 true 表示窗口内首次违规；TTL 与计数窗口一致
+func (c *violationCounterCache) ClaimViolationDedup(ctx context.Context, userID int64, hash string, ttl time.Duration) (bool, error) {
+	if ttl <= 0 {
+		return true, nil
+	}
+	key := fmt.Sprintf("%s%d:%s", violationDedupPrefix, userID, hash)
+	ok, err := c.rdb.SetNX(ctx, key, time.Now().Unix(), ttl).Result()
+	if err != nil {
+		return false, fmt.Errorf("claim violation dedup: %w", err)
 	}
 	return ok, nil
 }

@@ -3,6 +3,7 @@ package accountguard
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"testing"
 	"time"
@@ -46,6 +47,9 @@ type fakeCounter struct {
 	claimOK     bool
 	incrErr     error
 	bans        []banRecord
+	dedup       map[string]time.Time
+	dedupErr    error
+	now         time.Time //  fake 时钟，用于模拟去重键过期
 }
 
 func (f *fakeCounter) IncrementViolationCount(_ context.Context, _ int64, _ time.Duration) (int64, error) {
@@ -87,6 +91,28 @@ func (f *fakeCounter) GetUserViolationBans(context.Context, []int64) (map[int64]
 }
 
 func (f *fakeCounter) ClearUserViolationBan(context.Context, int64) error { return nil }
+
+// ClaimViolationDedup 模拟 SET NX EX：窗口内重复键返回 false，过期后重新可计。
+func (f *fakeCounter) ClaimViolationDedup(_ context.Context, userID int64, hash string, ttl time.Duration) (bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.dedupErr != nil {
+		return false, f.dedupErr
+	}
+	if f.dedup == nil {
+		f.dedup = map[string]time.Time{}
+	}
+	key := fmt.Sprintf("%d:%s", userID, hash)
+	now := f.now
+	if now.IsZero() {
+		now = time.Now()
+	}
+	if expiry, exists := f.dedup[key]; exists && now.Before(expiry) {
+		return false, nil
+	}
+	f.dedup[key] = now.Add(ttl)
+	return true, nil
+}
 
 func (f *fakeCounter) banCount() int {
 	f.mu.Lock()
@@ -227,7 +253,10 @@ func TestCheck_ThresholdTriggersUserBanResetAndNotify(t *testing.T) {
 	require.Zero(t, counter.banCount())
 
 	// 第二次违规：计数 2 达到阈值 → 封禁用户 + 清零 + 邮件
-	_, err = svc.Check(context.Background(), guardTestInput())
+	// （使用不同内容，避免触发窗口内违规去重）
+	secondInput := guardTestInput()
+	secondInput.Body = []byte(`{"model":"claude-test","messages":[{"role":"user","content":"another bad prompt"}]}`)
+	_, err = svc.Check(context.Background(), secondInput)
 	require.NoError(t, err)
 	require.Equal(t, 1, counter.banCount())
 	ban := counter.bans[0]
@@ -367,4 +396,102 @@ func TestCheck_EmptyWhitelistBehaviorUnchanged(t *testing.T) {
 	require.True(t, decision.Blocked)
 	require.Equal(t, 1, evaluator.calls)
 	require.Equal(t, 1, counter.incremented)
+}
+
+func TestCheck_DedupSameContentCountsOnce(t *testing.T) {
+	evaluator := &fakeEvaluator{decision: blockDecision()}
+	counter := &fakeCounter{}
+	// 阈值 2：若重试不去重，3 次阻断就会把阈值打满并封禁
+	svc := NewGuardService(&fakeConfigStore{cfg: guardTestConfig(true, 2, 10, 60), active: true}, evaluator, &fakeSettings{}, newFakeEmailSender(), counter)
+
+	for i := 0; i < 3; i++ {
+		decision, err := svc.Check(context.Background(), guardTestInput())
+		require.NoError(t, err)
+		require.NotNil(t, decision)
+		require.True(t, decision.Blocked, "重试仍应 403 阻断")
+	}
+	require.Equal(t, 3, evaluator.calls)
+	require.Equal(t, 1, counter.incremented, "同一内容窗口内只计一次")
+	require.Zero(t, counter.banCount())
+}
+
+func TestCheck_DedupDifferentContentCountsEach(t *testing.T) {
+	evaluator := &fakeEvaluator{decision: blockDecision()}
+	counter := &fakeCounter{claimOK: true}
+	svc := NewGuardService(&fakeConfigStore{cfg: guardTestConfig(true, 2, 10, 60), active: true}, evaluator, &fakeSettings{raw: "[]"}, newFakeEmailSender(), counter)
+
+	bodies := []string{
+		`{"model":"m","messages":[{"role":"user","content":"bad one"}]}`,
+		`{"model":"m","messages":[{"role":"user","content":"bad two"}]}`,
+	}
+	for _, body := range bodies {
+		input := guardTestInput()
+		input.Body = []byte(body)
+		decision, err := svc.Check(context.Background(), input)
+		require.NoError(t, err)
+		require.True(t, decision.Blocked)
+	}
+	require.Equal(t, 2, counter.incremented, "不同内容每次都计数")
+	require.Equal(t, 1, counter.banCount(), "达阈值触发封禁")
+}
+
+func TestCheck_DedupPrefersClientRequestID(t *testing.T) {
+	evaluator := &fakeEvaluator{decision: blockDecision()}
+	counter := &fakeCounter{}
+	svc := NewGuardService(&fakeConfigStore{cfg: guardTestConfig(true, 2, 10, 60), active: true}, evaluator, &fakeSettings{}, newFakeEmailSender(), counter)
+
+	// 两条不同内容但同一 client_request_id → 只计一次
+	for _, body := range []string{
+		`{"model":"m","messages":[{"role":"user","content":"bad one"}]}`,
+		`{"model":"m","messages":[{"role":"user","content":"bad two"}]}`,
+	} {
+		input := guardTestInput()
+		input.Body = []byte(body)
+		input.RequestID = "crid-retry-1"
+		decision, err := svc.Check(context.Background(), input)
+		require.NoError(t, err)
+		require.True(t, decision.Blocked)
+	}
+	require.Equal(t, 1, counter.incremented)
+
+	// 换一个 crid → 重新计数
+	input := guardTestInput()
+	input.RequestID = "crid-retry-2"
+	_, err := svc.Check(context.Background(), input)
+	require.NoError(t, err)
+	require.Equal(t, 2, counter.incremented)
+}
+
+func TestCheck_DedupKeyExpiryAllowsRecount(t *testing.T) {
+	evaluator := &fakeEvaluator{decision: blockDecision()}
+	start := time.Now()
+	counter := &fakeCounter{now: start}
+	// 窗口 1 分钟，阈值 2：第一次计入后拨快时钟越过窗口，再次违规应重新计数
+	svc := NewGuardService(&fakeConfigStore{cfg: guardTestConfig(true, 2, 1, 60), active: true}, evaluator, &fakeSettings{}, newFakeEmailSender(), counter)
+
+	_, err := svc.Check(context.Background(), guardTestInput())
+	require.NoError(t, err)
+	require.Equal(t, 1, counter.incremented)
+
+	_, err = svc.Check(context.Background(), guardTestInput())
+	require.NoError(t, err)
+	require.Equal(t, 1, counter.incremented, "窗口内重复内容不计数")
+
+	counter.now = start.Add(2 * time.Minute)
+	_, err = svc.Check(context.Background(), guardTestInput())
+	require.NoError(t, err)
+	require.Equal(t, 2, counter.incremented, "去重键过期后重新计数")
+}
+
+func TestCheck_DedupRedisErrorStillCounts(t *testing.T) {
+	evaluator := &fakeEvaluator{decision: blockDecision()}
+	counter := &fakeCounter{dedupErr: errors.New("redis down")}
+	svc := NewGuardService(&fakeConfigStore{cfg: guardTestConfig(true, 2, 10, 60), active: true}, evaluator, &fakeSettings{}, newFakeEmailSender(), counter)
+
+	for i := 0; i < 2; i++ {
+		decision, err := svc.Check(context.Background(), guardTestInput())
+		require.NoError(t, err)
+		require.True(t, decision.Blocked)
+	}
+	require.Equal(t, 2, counter.incremented, "Redis 出错时宁多勿漏，照常计数")
 }

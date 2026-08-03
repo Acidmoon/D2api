@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -58,6 +59,10 @@ type ViolationCounterCache interface {
 	// ClaimViolationNotifyCooldown 以 SET NX EX 语义抢占用户的告警冷却窗口，
 	// 返回 true 表示本次调用获得发送权（冷却期内其他调用返回 false）。
 	ClaimViolationNotifyCooldown(ctx context.Context, userID int64, cooldown time.Duration) (bool, error)
+	// ClaimViolationDedup 以 SET NX EX 语义抢占一条违规的去重键，
+	// 返回 true 表示窗口内首次违规（应计数）；false 表示窗口内已计过
+	// （客户端自动重试同一内容，仍 403 阻断但不再计数）。
+	ClaimViolationDedup(ctx context.Context, userID int64, hash string, ttl time.Duration) (bool, error)
 	// SetUserViolationBan 写入用户临时封禁键（值=解封时间，TTL=封禁时长，到期自动恢复）。
 	SetUserViolationBan(ctx context.Context, userID int64, until time.Time, ttl time.Duration) error
 	// GetUserViolationBan 读取用户临时封禁状态，返回 (解封时间, 是否封禁中)。
@@ -96,6 +101,14 @@ func runUserViolationGuard(guard UserViolationGuard, ctx context.Context, c *gin
 		Protocol: protocol,
 		Model:    model,
 		Body:     body,
+	}
+	// 客户端自带的请求标识（部分 agent 客户端重试时会复用同一 ID）用于违规去重；
+	// 注意 ctx 里的 ctxkey.ClientRequestID 是服务端按请求生成的 UUID，每次重试都不同，
+	// 不能用于去重，因此这里只读取入站 header。限制长度防止异常值进入 Redis 键。
+	if c != nil {
+		if crid := strings.TrimSpace(c.GetHeader("X-Client-Request-ID")); crid != "" && len(crid) <= 64 {
+			input.RequestID = crid
+		}
 	}
 	if apiKey := getAPIKeyFromContext(c); apiKey != nil {
 		input.APIKeyID = apiKey.ID

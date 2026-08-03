@@ -58,6 +58,9 @@ func (f *fakeViolationBanCache) ClearUserViolationBan(_ context.Context, userID 
 	delete(f.bans, userID)
 	return nil
 }
+func (f *fakeViolationBanCache) ClaimViolationDedup(context.Context, int64, string, time.Duration) (bool, error) {
+	return true, nil
+}
 
 type listUsersAdminStub struct {
 	service.AdminService

@@ -11,6 +11,8 @@ package accountguard
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"html"
 	"log/slog"
@@ -135,14 +137,52 @@ func (s *GuardService) Check(ctx context.Context, input service.UserGuardCheckIn
 		return nil, nil
 	}
 	reason := violationReason(decision.Result)
-	slog.Warn("user_violation_guard.violation",
-		"user_id", input.UserID,
-		"username", input.Username,
-		"account_id", input.Account.ID,
-		"reason", reason,
-	)
-	s.recordViolation(ctx, input, cfg.UserGuard, reason)
+	if s.shouldCountViolation(ctx, input, cfg.UserGuard, snapshot.ScanText) {
+		slog.Warn("user_violation_guard.violation",
+			"user_id", input.UserID,
+			"username", input.Username,
+			"account_id", input.Account.ID,
+			"reason", reason,
+		)
+		s.recordViolation(ctx, input, cfg.UserGuard, reason)
+	} else {
+		// 同一用户、同一内容在计数窗口内已计过一次（典型场景：agent 客户端
+		// 收到 403 后自动重试同一请求）。重试仍 403 阻断，但不再计数/封禁/告警。
+		slog.Info("user_violation_guard.dedup_hit",
+			"user_id", input.UserID,
+			"account_id", input.Account.ID,
+			"reason", reason,
+		)
+	}
 	return &service.UserGuardDecision{Blocked: true, Reason: reason}, nil
+}
+
+// shouldCountViolation 违规去重：同一用户、同一内容在计数窗口内只计一次。
+// 去重键优先级：客户端请求 ID（crid）> 送审文本内容 hash。
+// Redis 出错时返回 true（计数照常，宁多勿漏）。
+func (s *GuardService) shouldCountViolation(ctx context.Context, input service.UserGuardCheckInput, guardCfg securityaudit.UserGuardConfig, scanText string) bool {
+	if s.counter == nil {
+		return true
+	}
+	ttl := time.Duration(guardCfg.WindowMinutes) * time.Minute
+	claimed, err := s.counter.ClaimViolationDedup(ctx, input.UserID, violationDedupHash(input.RequestID, scanText), ttl)
+	if err != nil {
+		slog.Warn("user_violation_guard.dedup_failed", "user_id", input.UserID, "err", err)
+		return true
+	}
+	return claimed
+}
+
+// violationDedupHash 计算违规去重键的哈希部分。
+// crid 取客户端入站 header（重试复用同一 ID 的客户端天然去重）；
+// 否则对实际送审文本（快照 ScanText，非原始 body）取 sha256，
+// 避免原始 body 中无关字段差异导致同一内容被重复计数。
+func violationDedupHash(requestID, scanText string) string {
+	if requestID != "" {
+		return "crid:" + requestID
+	}
+	sum := sha256.Sum256([]byte(scanText))
+	return "content:" + hex.EncodeToString(sum[:])
 }
 
 // recordViolation 按用户计数并在达到阈值时临时封禁该用户 + 异步告警。

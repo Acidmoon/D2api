@@ -59,7 +59,7 @@ export default {
     },
     userGuard: {
       title: 'User violation auto-ban',
-      description: 'After an upstream account is selected and before the request is sent, the audit pool judges the content. Violating requests are rejected with 403. When a user reaches the violation threshold within the window, all API keys of that user are temporarily banned and automatically recover when it expires.',
+      description: 'After an upstream account is selected and before the request is sent, the audit pool judges the content. Violating requests are rejected with 403. When a user reaches the violation threshold within the window, all API keys of that user are temporarily banned and automatically recover when it expires. Automatic retries of the same content count only once per window.',
       enabled: 'Enable user violation guard',
       threshold: 'Violation threshold (count)',
       windowMinutes: 'Counting window (minutes)',
