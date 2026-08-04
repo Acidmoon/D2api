@@ -106,6 +106,8 @@ func (cfg UserGuardConfig) IsWhitelisted(userID int64) bool {
 	return i < len(cfg.WhitelistUserIDs) && cfg.WhitelistUserIDs[i] == userID
 }
 
+// storageConfig 的 AuditRoles 字段：提取审计文本时保留的消息角色；
+// 缺省/为空时按默认 DefaultAuditRoles（仅 user）生效，详见 canonicalAuditRoles。
 type storageConfig struct {
 	Enabled                bool              `json:"enabled"`
 	BlockingEnabled        bool              `json:"blocking_enabled"`
@@ -115,6 +117,7 @@ type storageConfig struct {
 	WorkerCount            int               `json:"worker_count"`
 	QueueCapacity          int               `json:"queue_capacity"`
 	Scanners               []string          `json:"scanners"`
+	AuditRoles             []string          `json:"audit_roles"`
 	AllGroups              bool              `json:"all_groups"`
 	GroupIDs               []int64           `json:"group_ids"`
 	Endpoints              []StorageEndpoint `json:"endpoints"`
@@ -153,6 +156,7 @@ type ActiveConfig struct {
 	WorkerCount            int
 	QueueCapacity          int
 	Scanners               []string
+	AuditRoles             []string
 	AllGroups              bool
 	GroupIDs               []int64
 	Endpoints              []ActiveEndpoint
@@ -187,6 +191,7 @@ type PublicConfig struct {
 	WorkerCount            int              `json:"worker_count"`
 	QueueCapacity          int              `json:"queue_capacity"`
 	Scanners               []string         `json:"scanners"`
+	AuditRoles             []string         `json:"audit_roles"`
 	AllGroups              bool             `json:"all_groups"`
 	GroupIDs               []int64          `json:"group_ids"`
 	Endpoints              []PublicEndpoint `json:"endpoints"`
@@ -221,10 +226,62 @@ type UpdateConfigRequest struct {
 	WorkerCount            int              `json:"worker_count"`
 	QueueCapacity          int              `json:"queue_capacity"`
 	Scanners               []string         `json:"scanners"`
+	AuditRoles             []string         `json:"audit_roles"`
 	AllGroups              bool             `json:"all_groups"`
 	GroupIDs               []int64          `json:"group_ids"`
 	Endpoints              []UpdateEndpoint `json:"endpoints"`
 	UserGuard              UserGuardConfig  `json:"user_guard"`
+}
+
+// DefaultAuditRoles 默认只提取 user 角色消息用于审计。系统提示词、开发者指令、
+// assistant/tool 轮次主要由平台方或上游工具控制，且体量巨大（如 Codex 巨型系统
+// 提示词，生产日志 input_chars 曾高达 146952），全量提取会打爆审核模型的输入上限；
+// 管理员可按分组在配置中显式加入 system/developer/assistant/model/tool。
+var DefaultAuditRoles = []string{"user"}
+
+// AuditRoleNames 管理员可选的审计提取角色。model 是 gemini 协议的助手输出角色
+// （OpenAI 侧 assistant 的对应物），isAssistantOutputSegment 同时识别两者，
+// 因此配置层一并开放，避免管理员配了 assistant 也恢复不了 gemini 的 model 轮次。
+var AuditRoleNames = []string{"user", "system", "developer", "assistant", "model", "tool"}
+
+func isAuditRoleName(role string) bool {
+	normalized := strings.ToLower(strings.TrimSpace(role))
+	for _, name := range AuditRoleNames {
+		if name == normalized {
+			return true
+		}
+	}
+	return false
+}
+
+// canonicalAuditRoles 归一化审计角色：小写、trim、去重、丢弃未知角色，按
+// AuditRoleNames 顺序输出。存储配置中的未知角色静默丢弃（与
+// canonicalScannerIDs 一致），避免旧库或手改配置拖垮整个配置加载。
+func canonicalAuditRoles(values []string) []string {
+	seen := make(map[string]struct{}, len(values))
+	for _, value := range values {
+		role := strings.ToLower(strings.TrimSpace(value))
+		if isAuditRoleName(role) {
+			seen[role] = struct{}{}
+		}
+	}
+	result := make([]string, 0, len(seen))
+	for _, role := range AuditRoleNames {
+		if _, ok := seen[role]; ok {
+			result = append(result, role)
+		}
+	}
+	return result
+}
+
+// validateAuditRoles 校验审计提取角色名合法性；空列表合法（由 normalize 填默认值）。
+func validateAuditRoles(roles []string) error {
+	for _, role := range roles {
+		if !isAuditRoleName(role) {
+			return infraerrors.BadRequest("prompt_audit_invalid_audit_role", "提示词审计提取角色仅支持 user/system/developer/assistant/model/tool")
+		}
+	}
+	return nil
 }
 
 func DefaultStorageConfig() storageConfig {
@@ -237,6 +294,7 @@ func DefaultStorageConfig() storageConfig {
 		WorkerCount:            DefaultWorkerCount,
 		QueueCapacity:          DefaultQueueCapacity,
 		Scanners:               append([]string(nil), AllScannerIDs...),
+		AuditRoles:             append([]string(nil), DefaultAuditRoles...),
 		AllGroups:              true,
 		GroupIDs:               []int64{},
 		Endpoints:              []StorageEndpoint{},
@@ -279,6 +337,12 @@ func normalizeStorageConfig(cfg *storageConfig) {
 		cfg.Scanners = append([]string(nil), AllScannerIDs...)
 	}
 	cfg.Scanners = canonicalScannerIDs(cfg.Scanners)
+	// 先归一化再判空回填：[""]/[" "] 归一化后为空列表也必须回填默认，
+	// 保持「审计角色永不为空 → 默认 ["user"]」不变量。
+	cfg.AuditRoles = canonicalAuditRoles(cfg.AuditRoles)
+	if len(cfg.AuditRoles) == 0 {
+		cfg.AuditRoles = append([]string(nil), DefaultAuditRoles...)
+	}
 	cfg.GroupIDs = canonicalInt64s(cfg.GroupIDs)
 	// 白名单只去重+排序，保留非法值（<=0）交由 validate 拒绝，
 	// 避免静默改变管理员的配置意图。
@@ -325,6 +389,9 @@ func validateStorageConfig(cfg storageConfig) error {
 	}
 	if len(cfg.Scanners) == 0 {
 		return infraerrors.BadRequest("prompt_audit_scanners_required", "至少需要启用一个风险分类")
+	}
+	if err := validateAuditRoles(cfg.AuditRoles); err != nil {
+		return err
 	}
 	seen := make(map[string]struct{}, len(cfg.Endpoints))
 	enabled := 0
@@ -408,6 +475,9 @@ func validateUpdateConfigRequest(req UpdateConfigRequest) error {
 		if _, ok := ScannerCatalog[NormalizeCategory(scanner)]; !ok {
 			return infraerrors.BadRequest("prompt_audit_invalid_scanner", "提示词审计风险分类无效")
 		}
+	}
+	if err := validateAuditRoles(req.AuditRoles); err != nil {
+		return err
 	}
 	if !req.AllGroups {
 		if len(req.GroupIDs) == 0 {
@@ -507,7 +577,7 @@ func PublicFromStorage(cfg storageConfig, riskControlEnabled bool, invalidTokenE
 	return PublicConfig{
 		Enabled: cfg.Enabled, BlockingEnabled: cfg.BlockingEnabled, BlockingLatestTurnOnly: cfg.BlockingLatestTurnOnly, StorePassEvents: cfg.StorePassEvents,
 		EffectiveMode: active.EffectiveMode(), Strategy: cfg.Strategy, WorkerCount: cfg.WorkerCount,
-		QueueCapacity: cfg.QueueCapacity, Scanners: scanners, AllGroups: cfg.AllGroups,
+		QueueCapacity: cfg.QueueCapacity, Scanners: scanners, AuditRoles: append([]string(nil), cfg.AuditRoles...), AllGroups: cfg.AllGroups,
 		GroupIDs: groupIDs, Endpoints: endpoints, UserGuard: cfg.UserGuard, ConfigVersion: cfg.ConfigVersion,
 		UpdatedAt: cfg.UpdatedAt, UpdatedBy: cfg.UpdatedBy, ChangeSummary: cfg.ChangeSummary,
 	}
@@ -518,7 +588,8 @@ func ActiveFromStorage(cfg storageConfig, riskControlEnabled bool, encryptor Sec
 		RiskControlEnabled: riskControlEnabled, Enabled: cfg.Enabled, BlockingEnabled: cfg.BlockingEnabled,
 		BlockingLatestTurnOnly: cfg.BlockingLatestTurnOnly,
 		StorePassEvents:        cfg.StorePassEvents, Strategy: cfg.Strategy, WorkerCount: cfg.WorkerCount,
-		QueueCapacity: cfg.QueueCapacity, Scanners: append([]string(nil), cfg.Scanners...), AllGroups: cfg.AllGroups,
+		QueueCapacity: cfg.QueueCapacity, Scanners: append([]string(nil), cfg.Scanners...),
+		AuditRoles: append([]string(nil), cfg.AuditRoles...), AllGroups: cfg.AllGroups,
 		GroupIDs: append([]int64(nil), cfg.GroupIDs...), UserGuard: cfg.UserGuard, ConfigVersion: cfg.ConfigVersion,
 		UpdatedAt: cfg.UpdatedAt, UpdatedBy: cfg.UpdatedBy, ChangeSummary: cfg.ChangeSummary,
 		Endpoints: make([]ActiveEndpoint, 0, len(cfg.Endpoints)),

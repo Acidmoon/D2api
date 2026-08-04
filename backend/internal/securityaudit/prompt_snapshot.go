@@ -29,26 +29,39 @@ type promptSegment struct {
 	role string
 }
 
-func ExtractPromptSnapshot(req Request) (PromptSnapshot, error) {
-	return extractPromptSnapshot(req, false)
+// ExtractPromptSnapshot builds the complete audit snapshot for asynchronous
+// auditing. auditRoles restricts extraction to the listed message roles; a nil
+// or empty list defaults to user-only extraction (see DefaultAuditRoles).
+func ExtractPromptSnapshot(req Request, auditRoles []string) (PromptSnapshot, error) {
+	return extractPromptSnapshot(req, false, auditRoles)
 }
 
 // ExtractBlockingPromptSnapshot builds the narrow, low-latency blocking input
-// when configured. Asynchronous auditing always uses ExtractPromptSnapshot so
-// the complete client-controlled transcript is retained for review.
-func ExtractBlockingPromptSnapshot(req Request, latestTurnOnly bool) (PromptSnapshot, error) {
-	return extractPromptSnapshot(req, latestTurnOnly)
+// when configured. Asynchronous auditing likewise applies audit_roles: only
+// configured-role messages are retained rather than the complete client-
+// controlled transcript.
+func ExtractBlockingPromptSnapshot(req Request, latestTurnOnly bool, auditRoles []string) (PromptSnapshot, error) {
+	return extractPromptSnapshot(req, latestTurnOnly, auditRoles)
 }
 
-func extractPromptSnapshot(req Request, latestTurnOnly bool) (PromptSnapshot, error) {
+func extractPromptSnapshot(req Request, latestTurnOnly bool, auditRoles []string) (PromptSnapshot, error) {
 	var document any
 	if err := json.Unmarshal(req.Body, &document); err != nil {
 		return PromptSnapshot{}, errors.New("prompt audit request JSON is invalid")
 	}
-	extracted := extractProtocolSegments(req.Protocol, document)
-	segments := normalizeSegmentsLatestUserFirst(extracted)
+	roles := effectiveAuditRoles(auditRoles)
+	var segments []string
 	if latestTurnOnly {
-		segments = blockingSegmentsLatestUserAndPreviousOutput(extracted)
+		// Blocking 收窄必须先于角色过滤：在全量（未过滤）段上先做
+		// blockingSegmentsLatestUserAndPreviousOutput 收窄，再对收窄结果按角色过滤。
+		// 若先过滤再收窄，默认 user-only 下历史 user 段会因彼此相邻而合并成一段，
+		// 前一轮 assistant/model 输出也永远进不了收窄结果。
+		unfiltered := extractProtocolSegments(req.Protocol, document, AuditRoleNames)
+		narrowed := blockingSegmentsLatestUserAndPreviousOutput(unfiltered)
+		segments = promptSegmentTexts(filterSegmentsByAuditRoles(narrowed, roles))
+	} else {
+		extracted := extractProtocolSegments(req.Protocol, document, roles)
+		segments = normalizeSegmentsLatestUserFirst(extracted)
 	}
 	if len(segments) == 0 {
 		return PromptSnapshot{}, ErrNoPromptText
@@ -80,65 +93,96 @@ const DefaultPromptPreviewMaxRunes = 96
 // prompts are kept intact while bounding per-row storage.
 const DefaultFullPromptMaxRunes = 65536
 
-func extractProtocolSegments(protocol string, document any) []promptSegment {
+func extractProtocolSegments(protocol string, document any, auditRoles []string) []promptSegment {
 	root, _ := document.(map[string]any)
 	protocol = strings.ToLower(strings.TrimSpace(protocol))
 	switch protocol {
 	case "openai_chat_completions", "openai_chat", "chat_completions":
-		return extractChatLikeSegments(root)
+		return extractChatLikeSegments(root, auditRoles)
 	case "anthropic_messages", "claude_messages", "messages":
-		return append(extractAnthropicSystem(root["system"]), extractMessages(root["messages"], clientInstructionRoles...)...)
+		return append(extractAnthropicSystem(root["system"], auditRoles), extractMessages(root["messages"], auditRoles)...)
 	case "gemini", "gemini_generate_content":
-		return extractGeminiRoot(root)
+		return extractGeminiRoot(root, auditRoles)
 	case "openai_responses", "responses", "responses_websocket":
 		if frameType := stringValue(root["type"]); frameType != "" || protocol == "responses_websocket" {
 			if frameType != "response.create" {
 				return nil
 			}
 			if input, exists := root["input"]; exists && input != nil {
-				return append(extractInstructions(root["instructions"]), extractResponses(input)...)
+				return append(extractInstructions(root["instructions"], auditRoles), extractResponses(input, auditRoles)...)
 			}
 			if response, ok := root["response"].(map[string]any); ok {
-				return append(extractInstructions(response["instructions"]), extractResponses(response["input"])...)
+				return append(extractInstructions(response["instructions"], auditRoles), extractResponses(response["input"], auditRoles)...)
 			}
-			return extractInstructions(root["instructions"])
+			return extractInstructions(root["instructions"], auditRoles)
 		}
-		return append(extractInstructions(root["instructions"]), extractResponses(root["input"])...)
+		return append(extractInstructions(root["instructions"], auditRoles), extractResponses(root["input"], auditRoles)...)
 	case "openai_images", "grok_media", "media", "images":
-		return userPromptSegments(extractMediaPrompts(root))
+		return mediaPromptSegments(root, auditRoles)
 	default:
-		if segments := extractChatLikeSegments(root); len(segments) > 0 {
+		if segments := extractChatLikeSegments(root, auditRoles); len(segments) > 0 {
 			return segments
 		}
-		if responses := append(extractInstructions(root["instructions"]), extractResponses(root["input"])...); len(responses) > 0 {
+		if responses := append(extractInstructions(root["instructions"], auditRoles), extractResponses(root["input"], auditRoles)...); len(responses) > 0 {
 			return responses
 		}
-		if gemini := extractGeminiRoot(root); len(gemini) > 0 {
+		if gemini := extractGeminiRoot(root, auditRoles); len(gemini) > 0 {
 			return gemini
 		}
-		return userPromptSegments(extractMediaPrompts(root))
+		return mediaPromptSegments(root, auditRoles)
 	}
 }
 
-// clientInstructionRoles are roles a client may freely populate. Attackers can
-// place jailbreak/PII text in assistant/tool turns, so blocking audit must scan
-// them too—not only user/system/developer instructions.
-var clientInstructionRoles = []string{"user", "system", "developer", "assistant", "tool"}
+// effectiveAuditRoles 返回实际生效的审计提取角色：nil/空列表按默认
+// DefaultAuditRoles（仅 user）处理，并归一化为小写、去重（保持传入顺序，
+// 提取层允许任意角色名，配置层另有合法性校验）。
+func effectiveAuditRoles(roles []string) []string {
+	if len(roles) == 0 {
+		return append([]string(nil), DefaultAuditRoles...)
+	}
+	seen := make(map[string]struct{}, len(roles))
+	result := make([]string, 0, len(roles))
+	for _, role := range roles {
+		normalized := strings.ToLower(strings.TrimSpace(role))
+		if normalized == "" {
+			continue
+		}
+		if _, ok := seen[normalized]; ok {
+			continue
+		}
+		seen[normalized] = struct{}{}
+		result = append(result, normalized)
+	}
+	if len(result) == 0 {
+		return append([]string(nil), DefaultAuditRoles...)
+	}
+	return result
+}
 
-func extractChatLikeSegments(root map[string]any) []promptSegment {
+func rolesContain(roles []string, role string) bool {
+	target := strings.ToLower(strings.TrimSpace(role))
+	for _, candidate := range roles {
+		if candidate == target {
+			return true
+		}
+	}
+	return false
+}
+
+func extractChatLikeSegments(root map[string]any, auditRoles []string) []promptSegment {
 	if root == nil {
 		return nil
 	}
-	return extractMessages(root["messages"], clientInstructionRoles...)
+	return extractMessages(root["messages"], auditRoles)
 }
 
-func extractMessages(value any, wantedRoles ...string) []promptSegment {
+func extractMessages(value any, auditRoles []string) []promptSegment {
 	items, ok := value.([]any)
 	if !ok {
 		return nil
 	}
-	wanted := make(map[string]struct{}, len(wantedRoles))
-	for _, role := range wantedRoles {
+	wanted := make(map[string]struct{}, len(auditRoles))
+	for _, role := range auditRoles {
 		wanted[strings.ToLower(strings.TrimSpace(role))] = struct{}{}
 	}
 	result := make([]promptSegment, 0, len(items))
@@ -159,7 +203,10 @@ func extractMessages(value any, wantedRoles ...string) []promptSegment {
 	return result
 }
 
-func extractInstructions(value any) []promptSegment {
+func extractInstructions(value any, auditRoles []string) []promptSegment {
+	if !rolesContain(auditRoles, "system") {
+		return nil
+	}
 	switch typed := value.(type) {
 	case string:
 		if text := strings.TrimSpace(typed); text != "" {
@@ -173,7 +220,10 @@ func extractInstructions(value any) []promptSegment {
 	return nil
 }
 
-func extractAnthropicSystem(value any) []promptSegment {
+func extractAnthropicSystem(value any, auditRoles []string) []promptSegment {
+	if !rolesContain(auditRoles, "system") {
+		return nil
+	}
 	switch typed := value.(type) {
 	case string:
 		if text := strings.TrimSpace(typed); text != "" {
@@ -187,19 +237,29 @@ func extractAnthropicSystem(value any) []promptSegment {
 	return nil
 }
 
-func extractResponses(value any) []promptSegment {
+func extractResponses(value any, auditRoles []string) []promptSegment {
 	switch typed := value.(type) {
 	case string:
+		if !rolesContain(auditRoles, "user") {
+			return nil
+		}
 		return []promptSegment{{text: typed, user: true, role: "user"}}
 	case []any:
 		result := make([]promptSegment, 0, len(typed))
 		for _, item := range typed {
 			switch entry := item.(type) {
 			case string:
+				if !rolesContain(auditRoles, "user") {
+					continue
+				}
 				result = append(result, promptSegment{text: entry, user: true, role: "user"})
 			case map[string]any:
 				role := strings.ToLower(stringValue(entry["role"]))
-				if role != "" && !isClientInstructionRole(role) {
+				if role == "" {
+					if !rolesContain(auditRoles, "user") {
+						continue
+					}
+				} else if !rolesContain(auditRoles, role) {
 					continue
 				}
 				if content, exists := entry["content"]; exists {
@@ -214,7 +274,11 @@ func extractResponses(value any) []promptSegment {
 		return result
 	case map[string]any:
 		role := strings.ToLower(stringValue(typed["role"]))
-		if role != "" && !isClientInstructionRole(role) {
+		if role == "" {
+			if !rolesContain(auditRoles, "user") {
+				return nil
+			}
+		} else if !rolesContain(auditRoles, role) {
 			return nil
 		}
 		return promptSegmentsForRole(contentTexts(typed["content"]), role)
@@ -223,16 +287,7 @@ func extractResponses(value any) []promptSegment {
 	}
 }
 
-func isClientInstructionRole(role string) bool {
-	switch strings.ToLower(strings.TrimSpace(role)) {
-	case "user", "system", "developer", "assistant", "tool", "model":
-		return true
-	default:
-		return false
-	}
-}
-
-func extractGemini(value any) []promptSegment {
+func extractGemini(value any, auditRoles []string) []promptSegment {
 	var contents []any
 	switch typed := value.(type) {
 	case []any:
@@ -249,7 +304,11 @@ func extractGemini(value any) []promptSegment {
 			continue
 		}
 		role := strings.ToLower(stringValue(content["role"]))
-		if role != "" && !isClientInstructionRole(role) {
+		if role == "" {
+			if !rolesContain(auditRoles, "user") {
+				continue
+			}
+		} else if !rolesContain(auditRoles, role) {
 			continue
 		}
 		parts, _ := content["parts"].([]any)
@@ -264,32 +323,35 @@ func extractGemini(value any) []promptSegment {
 	return result
 }
 
-func extractGeminiRoot(root map[string]any) []promptSegment {
+func extractGeminiRoot(root map[string]any, auditRoles []string) []promptSegment {
 	if root == nil {
 		return nil
 	}
-	result := extractGeminiSystemInstruction(root["systemInstruction"])
-	result = append(result, extractGeminiSystemInstruction(root["system_instruction"])...)
-	result = append(result, extractGemini(root["contents"])...)
-	result = append(result, extractGemini(root["content"])...)
-	result = append(result, extractGeminiInstances(root["instances"])...)
+	result := extractGeminiSystemInstruction(root["systemInstruction"], auditRoles)
+	result = append(result, extractGeminiSystemInstruction(root["system_instruction"], auditRoles)...)
+	result = append(result, extractGemini(root["contents"], auditRoles)...)
+	result = append(result, extractGemini(root["content"], auditRoles)...)
+	result = append(result, extractGeminiInstances(root["instances"], auditRoles)...)
 	if requests, ok := root["requests"].([]any); ok {
 		for _, item := range requests {
 			request, ok := item.(map[string]any)
 			if !ok {
 				continue
 			}
-			result = append(result, extractGeminiSystemInstruction(request["systemInstruction"])...)
-			result = append(result, extractGeminiSystemInstruction(request["system_instruction"])...)
-			result = append(result, extractGemini(request["contents"])...)
-			result = append(result, extractGemini(request["content"])...)
-			result = append(result, extractGeminiInstances(request["instances"])...)
+			result = append(result, extractGeminiSystemInstruction(request["systemInstruction"], auditRoles)...)
+			result = append(result, extractGeminiSystemInstruction(request["system_instruction"], auditRoles)...)
+			result = append(result, extractGemini(request["contents"], auditRoles)...)
+			result = append(result, extractGemini(request["content"], auditRoles)...)
+			result = append(result, extractGeminiInstances(request["instances"], auditRoles)...)
 		}
 	}
 	return result
 }
 
-func extractGeminiSystemInstruction(value any) []promptSegment {
+func extractGeminiSystemInstruction(value any, auditRoles []string) []promptSegment {
+	if !rolesContain(auditRoles, "system") {
+		return nil
+	}
 	switch typed := value.(type) {
 	case string:
 		if text := strings.TrimSpace(typed); text != "" {
@@ -309,7 +371,7 @@ func extractGeminiSystemInstruction(value any) []promptSegment {
 		}
 		return systemPromptSegments(contentTexts(typed))
 	case []any:
-		segments := extractGemini(typed)
+		segments := extractGemini(typed, auditRoles)
 		for index := range segments {
 			segments[index].user = false
 			segments[index].role = "system"
@@ -319,7 +381,10 @@ func extractGeminiSystemInstruction(value any) []promptSegment {
 	return nil
 }
 
-func extractGeminiInstances(value any) []promptSegment {
+func extractGeminiInstances(value any, auditRoles []string) []promptSegment {
+	if !rolesContain(auditRoles, "user") {
+		return nil
+	}
 	instances, ok := value.([]any)
 	if !ok {
 		return nil
@@ -333,6 +398,14 @@ func extractGeminiInstances(value any) []promptSegment {
 		}
 	}
 	return result
+}
+
+// mediaPromptSegments 将图片/媒体类请求的确定性文本提示词视为 user 角色段。
+func mediaPromptSegments(root map[string]any, auditRoles []string) []promptSegment {
+	if !rolesContain(auditRoles, "user") {
+		return nil
+	}
+	return userPromptSegments(extractMediaPrompts(root))
 }
 
 func extractMediaPrompts(root map[string]any) []string {
@@ -461,13 +534,15 @@ func normalizeSegmentsLatestUserFirst(values []promptSegment) []string {
 // the current user turn and the nearest preceding assistant/model turn. It is
 // deliberately opt-in because full transcript scanning remains stronger at
 // finding client-controlled content placed in older or non-user messages.
-func blockingSegmentsLatestUserAndPreviousOutput(values []promptSegment) []string {
+// The narrowed segments keep their role info so callers can apply audit-role
+// filtering afterwards.
+func blockingSegmentsLatestUserAndPreviousOutput(values []promptSegment) []promptSegment {
 	normalized := normalizedPromptSegments(values)
 	latestUserStart := latestUserSegmentStart(normalized)
 	if latestUserStart < 0 {
 		// A request without user content cannot be narrowed safely. Preserve the
 		// established full-snapshot behavior for unusual protocol payloads.
-		return normalizeSegmentsLatestUserFirst(values)
+		return latestUserFirstSegments(normalized)
 	}
 	latestUserEnd := latestUserStart
 	for latestUserEnd < len(normalized) && isUserSegment(normalized[latestUserEnd]) {
@@ -492,7 +567,48 @@ func blockingSegmentsLatestUserAndPreviousOutput(values []promptSegment) []strin
 		selected = append(selected, normalized[start:index+1]...)
 		break
 	}
-	return promptSegmentTexts(selected)
+	return selected
+}
+
+// latestUserFirstSegments 与 normalizeSegmentsLatestUserFirst 的文本排序一致
+// （最新 user 段在前；无 user 段时最后一段在前），但保留角色信息，供 blocking
+// 收窄的退化分支在角色过滤前保持与异步路径相同的段顺序。
+func latestUserFirstSegments(values []promptSegment) []promptSegment {
+	normalized := normalizedPromptSegments(values)
+	if len(normalized) == 0 {
+		return nil
+	}
+	priorityIndex := len(normalized) - 1
+	for index := len(normalized) - 1; index >= 0; index-- {
+		if isUserSegment(normalized[index]) {
+			priorityIndex = index
+			break
+		}
+	}
+	result := make([]promptSegment, 0, len(normalized))
+	result = append(result, normalized[priorityIndex])
+	for index, segment := range normalized {
+		if index != priorityIndex {
+			result = append(result, segment)
+		}
+	}
+	return result
+}
+
+// filterSegmentsByAuditRoles 按审计角色过滤段，保持相对顺序；角色大小写/空白
+// 已由 effectiveAuditRoles 归一化，此处只需精确匹配。
+func filterSegmentsByAuditRoles(segments []promptSegment, auditRoles []string) []promptSegment {
+	wanted := make(map[string]struct{}, len(auditRoles))
+	for _, role := range auditRoles {
+		wanted[strings.ToLower(strings.TrimSpace(role))] = struct{}{}
+	}
+	result := make([]promptSegment, 0, len(segments))
+	for _, segment := range segments {
+		if _, ok := wanted[segment.role]; ok {
+			result = append(result, segment)
+		}
+	}
+	return result
 }
 
 func normalizedPromptSegments(values []promptSegment) []promptSegment {

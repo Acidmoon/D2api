@@ -37,6 +37,7 @@ func TestDefaultConfigIsOff(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, ModeOff, active.EffectiveMode())
 	require.Equal(t, AllScannerIDs, storage.Scanners)
+	require.Equal(t, []string{"user"}, storage.AuditRoles)
 	publicJSON, err := json.Marshal(PublicFromStorage(storage, true, nil))
 	require.NoError(t, err)
 	require.Contains(t, string(publicJSON), `"group_ids":[]`)
@@ -416,6 +417,7 @@ func TestParseLegacyConfigDefaultsMissingFieldsWithoutEnablingBlocking(t *testin
 	require.Equal(t, DefaultWorkerCount, storage.WorkerCount)
 	require.Equal(t, DefaultQueueCapacity, storage.QueueCapacity)
 	require.Equal(t, AllScannerIDs, storage.Scanners)
+	require.Equal(t, []string{"user"}, storage.AuditRoles)
 	require.True(t, storage.AllGroups)
 }
 
@@ -527,6 +529,67 @@ func TestUserGuardConfigRoundTrip(t *testing.T) {
 	parsed, err := ParseStorageConfig(string(raw))
 	require.NoError(t, err)
 	require.Equal(t, next.UserGuard, parsed.UserGuard)
+}
+
+func TestAuditRolesConfigRoundTripAndValidation(t *testing.T) {
+	manager := &ConfigManager{encryptor: prefixEncryptor{}, encryptionKeyConfigured: true}
+	request := promptAuditUpdateRequest(1, 1, "")
+	request.AuditRoles = []string{"user", "system", "assistant"}
+	next, err := manager.buildNextStorage(DefaultStorageConfig(), request, 9)
+	require.NoError(t, err)
+	require.Equal(t, []string{"user", "system", "assistant"}, next.AuditRoles)
+
+	active, err := ActiveFromStorage(next, true, prefixEncryptor{})
+	require.NoError(t, err)
+	require.Equal(t, []string{"user", "system", "assistant"}, active.AuditRoles)
+
+	public := PublicFromStorage(next, true, nil)
+	require.Equal(t, []string{"user", "system", "assistant"}, public.AuditRoles)
+
+	raw, err := json.Marshal(next)
+	require.NoError(t, err)
+	require.Contains(t, string(raw), `"audit_roles":["user","system","assistant"]`)
+	parsed, err := ParseStorageConfig(string(raw))
+	require.NoError(t, err)
+	require.Equal(t, []string{"user", "system", "assistant"}, parsed.AuditRoles)
+
+	// 旧配置缺省该字段时按默认 ["user"] 生效；空列表同样回退默认。
+	legacy, err := ParseStorageConfig(`{"enabled":false,"config_version":9}`)
+	require.NoError(t, err)
+	require.Equal(t, []string{"user"}, legacy.AuditRoles)
+	empty, err := ParseStorageConfig(`{"audit_roles":[]}`)
+	require.NoError(t, err)
+	require.Equal(t, []string{"user"}, empty.AuditRoles)
+
+	// 存储解析路径：未知角色归一化丢弃（与 scanner 行为一致），大小写/重复归并；
+	// model 是 gemini 协议合法角色，可经配置保留（修复前被误当未知角色丢弃）。
+	dropped, err := ParseStorageConfig(`{"audit_roles":["user","model","SYSTEM","user","evil"]}`)
+	require.NoError(t, err)
+	require.Equal(t, []string{"user", "system", "model"}, dropped.AuditRoles)
+
+	// 仅含空串/空白时归一化后为空，必须回填默认 ["user"]（修复前存成空列表）。
+	blankOnly, err := ParseStorageConfig(`{"audit_roles":[""]}`)
+	require.NoError(t, err)
+	require.Equal(t, []string{"user"}, blankOnly.AuditRoles)
+	mixed, err := ParseStorageConfig(`{"audit_roles":["", "user", "USER", " model "]}`)
+	require.NoError(t, err)
+	require.Equal(t, []string{"user", "model"}, mixed.AuditRoles)
+
+	// model（gemini 助手输出角色）可经请求路径配置并完整落库。
+	modelReq := promptAuditUpdateRequest(1, 1, "")
+	modelReq.AuditRoles = []string{"user", "model"}
+	modelNext, err := manager.buildNextStorage(DefaultStorageConfig(), modelReq, 9)
+	require.NoError(t, err)
+	require.Equal(t, []string{"user", "model"}, modelNext.AuditRoles)
+
+	// 请求路径拒绝未知角色，且不破坏现有合法 SaveConfig。
+	badReq := promptAuditUpdateRequest(1, 1, "")
+	badReq.AuditRoles = []string{"user", "evil"}
+	err = validateUpdateConfigRequest(badReq)
+	require.Error(t, err)
+	require.Equal(t, "prompt_audit_invalid_audit_role", infraerrors.Reason(err))
+	valid := promptAuditUpdateRequest(1, 1, "")
+	require.NoError(t, validateUpdateConfigRequest(valid))
 }
 
 func TestUserGuardDefaultsOffForLegacyConfig(t *testing.T) {

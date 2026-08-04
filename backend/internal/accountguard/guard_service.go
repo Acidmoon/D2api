@@ -113,7 +113,7 @@ func (s *GuardService) Check(ctx context.Context, input service.UserGuardCheckIn
 		Model:     input.Model,
 		Body:      input.Body,
 		Stage:     "user_guard",
-	}, cfg.BlockingLatestTurnOnly)
+	}, cfg.BlockingLatestTurnOnly, cfg.AuditRoles)
 	if err != nil {
 		// 无可扫描文本或请求体无法解析：放行，不计数。
 		return nil, nil
