@@ -226,9 +226,18 @@ func configAuditFields(request UpdateConfigRequest, saved *PublicConfig) map[str
 	if saved != nil {
 		version = saved.ConfigVersion
 	}
+	// AsyncLatestTurnOnly 为指针：省略（nil）时记录实际生效值（保存成功取新配置；
+	// 失败路径无从得知存储值则省略该字段，避免把 nil 当 false 记入审计）。
+	var asyncLatestTurnOnly any
+	if request.AsyncLatestTurnOnly != nil {
+		asyncLatestTurnOnly = *request.AsyncLatestTurnOnly
+	} else if saved != nil {
+		asyncLatestTurnOnly = saved.AsyncLatestTurnOnly
+	}
 	return map[string]any{
 		"enabled": request.Enabled, "blocking_enabled": request.BlockingEnabled,
 		"blocking_latest_turn_only": request.BlockingLatestTurnOnly,
+		"async_latest_turn_only":    asyncLatestTurnOnly,
 		"audit_roles":               request.AuditRoles,
 		"config_version":            version, "endpoint_count": len(request.Endpoints),
 		"scanner_count": len(request.Scanners), "all_groups": request.AllGroups,

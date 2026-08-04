@@ -30,28 +30,32 @@ type promptSegment struct {
 }
 
 // ExtractPromptSnapshot builds the complete audit snapshot for asynchronous
-// auditing. auditRoles restricts extraction to the listed message roles; a nil
-// or empty list defaults to user-only extraction (see DefaultAuditRoles).
-func ExtractPromptSnapshot(req Request, auditRoles []string) (PromptSnapshot, error) {
-	return extractPromptSnapshot(req, false, auditRoles)
+// auditing. asyncLatestTurnOnly narrows extraction to the single latest user
+// message (matching legacy content_moderation's last-user-message collection);
+// auditRoles restricts extraction to the listed message roles; a nil or empty
+// list defaults to user-only extraction (see DefaultAuditRoles).
+func ExtractPromptSnapshot(req Request, asyncLatestTurnOnly bool, auditRoles []string) (PromptSnapshot, error) {
+	return extractPromptSnapshot(req, false, asyncLatestTurnOnly, auditRoles)
 }
 
 // ExtractBlockingPromptSnapshot builds the narrow, low-latency blocking input
 // when configured. Asynchronous auditing likewise applies audit_roles: only
 // configured-role messages are retained rather than the complete client-
-// controlled transcript.
+// controlled transcript. Blocking behavior is deliberately independent of the
+// async latest-turn-only setting (BlockingLatestTurnOnly governs it instead).
 func ExtractBlockingPromptSnapshot(req Request, latestTurnOnly bool, auditRoles []string) (PromptSnapshot, error) {
-	return extractPromptSnapshot(req, latestTurnOnly, auditRoles)
+	return extractPromptSnapshot(req, latestTurnOnly, false, auditRoles)
 }
 
-func extractPromptSnapshot(req Request, latestTurnOnly bool, auditRoles []string) (PromptSnapshot, error) {
+func extractPromptSnapshot(req Request, latestTurnOnly bool, asyncLatestTurnOnly bool, auditRoles []string) (PromptSnapshot, error) {
 	var document any
 	if err := json.Unmarshal(req.Body, &document); err != nil {
 		return PromptSnapshot{}, errors.New("prompt audit request JSON is invalid")
 	}
 	roles := effectiveAuditRoles(auditRoles)
 	var segments []string
-	if latestTurnOnly {
+	switch {
+	case latestTurnOnly:
 		// Blocking 收窄必须先于角色过滤：在全量（未过滤）段上先做
 		// blockingSegmentsLatestUserAndPreviousOutput 收窄，再对收窄结果按角色过滤。
 		// 若先过滤再收窄，默认 user-only 下历史 user 段会因彼此相邻而合并成一段，
@@ -59,7 +63,15 @@ func extractPromptSnapshot(req Request, latestTurnOnly bool, auditRoles []string
 		unfiltered := extractProtocolSegments(req.Protocol, document, AuditRoleNames)
 		narrowed := blockingSegmentsLatestUserAndPreviousOutput(unfiltered)
 		segments = promptSegmentTexts(filterSegmentsByAuditRoles(narrowed, roles))
-	} else {
+	case asyncLatestTurnOnly:
+		// Async 收窄同样定位原始消息结构里的「最后一条 user 消息」而非过滤后拼接：
+		// 角色过滤会抹掉消息边界（如 [user,assistant,user] 在 user-only 下变成相邻
+		// 两段），只有回到原始 messages/input/contents 数组才能精确定位最后一条
+		// user 消息（与 blocking 收窄先于角色过滤同理）。收窄结果仍按 audit_roles
+		// 过滤：若角色不含 user，结果为 ErrNoPromptText。
+		narrowed := extractLatestUserTurnSegments(req.Protocol, document)
+		segments = normalizeSegmentsLatestUserFirst(filterSegmentsByAuditRoles(narrowed, roles))
+	default:
 		extracted := extractProtocolSegments(req.Protocol, document, roles)
 		segments = normalizeSegmentsLatestUserFirst(extracted)
 	}
@@ -130,6 +142,191 @@ func extractProtocolSegments(protocol string, document any, auditRoles []string)
 			return gemini
 		}
 		return mediaPromptSegments(root, auditRoles)
+	}
+}
+
+// extractLatestUserTurnSegments 按协议从原始请求结构中定位并提取「最后一条
+// user 消息」的文本段（AsyncLatestTurnOnly 收窄），对齐 legacy content_moderation
+// 的 collectLastRoleMessage / collectLastAnthropicUserMessage /
+// collectLastResponsesInput / collectLastGeminiContent 收集语义，并扩展为从尾部
+// 向前扫描定位最后一条 user 消息（legacy 只取数组最后一条且要求其为 user，这里是
+// 超集）：定位的是 messages/input/contents 数组中最后一条 user 消息，而不是对整段
+// 历史按角色过滤后拼接——过滤会抹掉消息边界，相邻 user 消息会混成一段。返回段保留
+// role 信息，供调用方继续做 audit_roles 过滤与优先段标记。媒体类请求没有消息数组
+// 结构，整个请求即一次用户提示词，无可收窄的历史，保持全量确定性文本提示词。
+func extractLatestUserTurnSegments(protocol string, document any) []promptSegment {
+	root, _ := document.(map[string]any)
+	protocol = strings.ToLower(strings.TrimSpace(protocol))
+	switch protocol {
+	case "openai_chat_completions", "openai_chat", "chat_completions",
+		"anthropic_messages", "claude_messages", "messages":
+		return lastUserMessageSegments(root["messages"])
+	case "gemini", "gemini_generate_content":
+		return lastGeminiUserTurnSegments(root)
+	case "openai_responses", "responses", "responses_websocket":
+		if frameType := stringValue(root["type"]); frameType != "" || protocol == "responses_websocket" {
+			if frameType != "response.create" {
+				return nil
+			}
+			if input, exists := root["input"]; exists && input != nil {
+				return lastResponsesUserMessageSegments(input)
+			}
+			if response, ok := root["response"].(map[string]any); ok {
+				return lastResponsesUserMessageSegments(response["input"])
+			}
+			return nil
+		}
+		return lastResponsesUserMessageSegments(root["input"])
+	case "openai_images", "grok_media", "media", "images":
+		return mediaPromptSegments(root, AuditRoleNames)
+	default:
+		if segments := lastUserMessageSegments(root["messages"]); len(segments) > 0 {
+			return segments
+		}
+		if segments := lastResponsesUserMessageSegments(root["input"]); len(segments) > 0 {
+			return segments
+		}
+		if segments := lastGeminiUserTurnSegments(root); len(segments) > 0 {
+			return segments
+		}
+		return mediaPromptSegments(root, AuditRoleNames)
+	}
+}
+
+// lastUserMessageSegments 从 messages 数组中从尾部向前定位最后一条 user 消息，
+// 提取其全部文本段（同一消息的多文本块全部保留），对齐 legacy collectLastRoleMessage
+// 收集整条 user 消息的语义并扩展为向后扫描定位（legacy 只认数组最后一条且必须是
+// user，这里允许其前面存在非 user 消息）。找不到 user 消息时返回 nil。
+func lastUserMessageSegments(value any) []promptSegment {
+	items, ok := value.([]any)
+	if !ok {
+		return nil
+	}
+	for index := len(items) - 1; index >= 0; index-- {
+		message, ok := items[index].(map[string]any)
+		if !ok {
+			continue
+		}
+		if strings.ToLower(stringValue(message["role"])) != "user" {
+			continue
+		}
+		result := make([]promptSegment, 0, 2)
+		for _, text := range contentTexts(message["content"]) {
+			result = append(result, promptSegment{text: text, user: true, role: "user"})
+		}
+		return result
+	}
+	return nil
+}
+
+// lastResponsesUserMessageSegments 定位 responses input 中最后一条 user 输入
+// （role 为空或 user 的条目；纯字符串 input 视为一条 user 消息），对齐 legacy
+// collectLastResponsesInput 的 isResponsesUserTextItem 判定。
+func lastResponsesUserMessageSegments(value any) []promptSegment {
+	if items, ok := value.([]any); ok {
+		for index := len(items) - 1; index >= 0; index-- {
+			if !isResponsesUserItem(items[index]) {
+				continue
+			}
+			// 包成单元素数组复用 extractResponses 的数组分支：它同时处理 content 数组
+			// 与顶层 text（input_text 条目），而单 map 分支只认 content。
+			if segments := extractResponses([]any{items[index]}, AuditRoleNames); len(segments) > 0 {
+				return normalizeNarrowedSegmentRoles(segments)
+			}
+		}
+		return nil
+	}
+	if !isResponsesUserItem(value) {
+		return nil
+	}
+	return normalizeNarrowedSegmentRoles(extractResponses([]any{value}, AuditRoleNames))
+}
+
+// normalizeNarrowedSegmentRoles 将 role 为空（input_text/无角色条目等）的段标记
+// 为 user：后续 audit_roles 过滤按精确 role 匹配，空 role 会被误过滤，而空 role
+// 条目在 responses/gemini 语义中即用户输入（与 isResponsesUserItem 判定一致）。
+func normalizeNarrowedSegmentRoles(segments []promptSegment) []promptSegment {
+	for index := range segments {
+		if segments[index].role == "" {
+			segments[index].user = true
+			segments[index].role = "user"
+		}
+	}
+	return segments
+}
+
+// isResponsesUserItem 判定 responses 条目是否算 user 消息：纯字符串输入、
+// role 为空（input_text 等）或显式 role=user。
+func isResponsesUserItem(value any) bool {
+	switch typed := value.(type) {
+	case string:
+		return true
+	case map[string]any:
+		role := strings.ToLower(stringValue(typed["role"]))
+		return role == "" || role == "user"
+	default:
+		return false
+	}
+}
+
+// lastGeminiUserTurnSegments 从 contents/content/instances（及 requests 内嵌套的
+// 同名字段）中定位最后一条 user 内容并提取其文本段，对齐 legacy
+// collectLastGeminiContent 的 role 为空或 user 判定。源顺序与 extractGeminiRoot
+// 一致（根字段在前，requests 按正序追加），随后从尾部向前扫描取最后命中的一条，
+// 保证文档序「最后」= 最后一个 request 内的 user 内容。
+func lastGeminiUserTurnSegments(root map[string]any) []promptSegment {
+	if root == nil {
+		return nil
+	}
+	sources := []any{root["contents"], root["content"], root["instances"]}
+	if requests, ok := root["requests"].([]any); ok {
+		for _, item := range requests {
+			if request, ok := item.(map[string]any); ok {
+				sources = append(sources, request["contents"], request["content"], request["instances"])
+			}
+		}
+	}
+	for index := len(sources) - 1; index >= 0; index-- {
+		if segments := lastGeminiUserItemSegments(sources[index]); len(segments) > 0 {
+			return segments
+		}
+	}
+	return nil
+}
+
+// lastGeminiUserItemSegments 从单个 gemini 源（contents 数组、instances 数组或
+// 单条内容对象）中定位最后一条 user 消息。instances[].prompt 视为 user 提示词。
+func lastGeminiUserItemSegments(value any) []promptSegment {
+	switch typed := value.(type) {
+	case []any:
+		for index := len(typed) - 1; index >= 0; index-- {
+			item, ok := typed[index].(map[string]any)
+			if !ok {
+				continue
+			}
+			if prompt := stringValue(item["prompt"]); prompt != "" {
+				return []promptSegment{{text: prompt, user: true, role: "user"}}
+			}
+			role := strings.ToLower(stringValue(item["role"]))
+			if role != "" && role != "user" {
+				continue
+			}
+			if segments := extractGemini(item, AuditRoleNames); len(segments) > 0 {
+				return normalizeNarrowedSegmentRoles(segments)
+			}
+		}
+		return nil
+	case map[string]any:
+		if prompt := stringValue(typed["prompt"]); prompt != "" {
+			return []promptSegment{{text: prompt, user: true, role: "user"}}
+		}
+		role := strings.ToLower(stringValue(typed["role"]))
+		if role != "" && role != "user" {
+			return nil
+		}
+		return normalizeNarrowedSegmentRoles(extractGemini(typed, AuditRoleNames))
+	default:
+		return nil
 	}
 }
 

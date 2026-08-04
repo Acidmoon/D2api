@@ -22,6 +22,8 @@ func (prefixEncryptor) Decrypt(value string) (string, error) {
 	return value[4:], nil
 }
 
+func boolPtr(value bool) *bool { return &value }
+
 // testTotpKeyConfig mirrors a deployment with a fixed TOTP_ENCRYPTION_KEY so
 // unit tests may persist endpoint tokens.
 func testTotpKeyConfig() *config.Config {
@@ -33,6 +35,8 @@ func TestDefaultConfigIsOff(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, storage.Enabled)
 	require.False(t, storage.BlockingLatestTurnOnly)
+	// AsyncLatestTurnOnly 默认 true：异步审计只提取最新一条 user 消息。
+	require.True(t, storage.AsyncLatestTurnOnly)
 	active, err := ActiveFromStorage(storage, true, prefixEncryptor{})
 	require.NoError(t, err)
 	require.Equal(t, ModeOff, active.EffectiveMode())
@@ -64,6 +68,74 @@ func TestBlockingLatestTurnOnlyConfigRoundTrip(t *testing.T) {
 	require.True(t, active.BlockingLatestTurnOnly)
 	public := PublicFromStorage(next, true, nil)
 	require.True(t, public.BlockingLatestTurnOnly)
+}
+
+func TestAsyncLatestTurnOnlyConfigRoundTrip(t *testing.T) {
+	manager := &ConfigManager{encryptor: prefixEncryptor{}, encryptionKeyConfigured: true}
+	// update 携带 true：storage/active/public 全载体透传，changeSummary 落字段。
+	request := promptAuditUpdateRequest(1, 1, "")
+	request.AsyncLatestTurnOnly = boolPtr(true)
+	next, err := manager.buildNextStorage(DefaultStorageConfig(), request, 9)
+	require.NoError(t, err)
+	require.True(t, next.AsyncLatestTurnOnly)
+	require.Contains(t, changeSummary(next), `"async_latest_turn_only":true`)
+
+	active, err := ActiveFromStorage(next, true, prefixEncryptor{})
+	require.NoError(t, err)
+	require.True(t, active.AsyncLatestTurnOnly)
+	public := PublicFromStorage(next, true, nil)
+	require.True(t, public.AsyncLatestTurnOnly)
+
+	raw, err := json.Marshal(next)
+	require.NoError(t, err)
+	require.Contains(t, string(raw), `"async_latest_turn_only":true`)
+	parsed, err := ParseStorageConfig(string(raw))
+	require.NoError(t, err)
+	require.True(t, parsed.AsyncLatestTurnOnly)
+
+	// 显式 false 也可完整往返（更新路径允许关闭收窄，恢复多轮 user 历史）。
+	request.AsyncLatestTurnOnly = boolPtr(false)
+	nextOff, err := manager.buildNextStorage(parsed, request, 9)
+	require.NoError(t, err)
+	require.False(t, nextOff.AsyncLatestTurnOnly)
+	activeOff, err := ActiveFromStorage(nextOff, true, prefixEncryptor{})
+	require.NoError(t, err)
+	require.False(t, activeOff.AsyncLatestTurnOnly)
+	require.False(t, PublicFromStorage(nextOff, true, nil).AsyncLatestTurnOnly)
+
+	// 旧配置缺省该字段时按默认 true 生效；显式 false 的持久化配置保持 false。
+	legacy, err := ParseStorageConfig(`{"enabled":false,"config_version":9}`)
+	require.NoError(t, err)
+	require.True(t, legacy.AsyncLatestTurnOnly)
+	off, err := ParseStorageConfig(`{"enabled":false,"async_latest_turn_only":false,"config_version":9}`)
+	require.NoError(t, err)
+	require.False(t, off.AsyncLatestTurnOnly)
+}
+
+func TestAsyncLatestTurnOnlyUpdateOmitsFieldPreservesStorage(t *testing.T) {
+	manager := &ConfigManager{encryptor: prefixEncryptor{}, encryptionKeyConfigured: true}
+
+	// update 省略 async_latest_turn_only（nil）：保留存储现值，不静默重置为 false。
+	// 覆盖存储为 true 与 false 两条，防止 UI 保存把配置打回默认/关掉收窄。
+	for _, stored := range []bool{true, false} {
+		base := DefaultStorageConfig()
+		base.AsyncLatestTurnOnly = stored
+		request := promptAuditUpdateRequest(1, 1, "")
+		next, err := manager.buildNextStorage(base, request, 9)
+		require.NoError(t, err)
+		require.Equal(t, stored, next.AsyncLatestTurnOnly)
+	}
+
+	// 显式传 true/false 时正确覆盖存储值（双向）。
+	for _, override := range []bool{true, false} {
+		base := DefaultStorageConfig()
+		base.AsyncLatestTurnOnly = !override
+		request := promptAuditUpdateRequest(1, 1, "")
+		request.AsyncLatestTurnOnly = boolPtr(override)
+		next, err := manager.buildNextStorage(base, request, 9)
+		require.NoError(t, err)
+		require.Equal(t, override, next.AsyncLatestTurnOnly)
+	}
 }
 
 func TestConfigRejectsBlockingWithoutAudit(t *testing.T) {
@@ -419,6 +491,7 @@ func TestParseLegacyConfigDefaultsMissingFieldsWithoutEnablingBlocking(t *testin
 	require.Equal(t, AllScannerIDs, storage.Scanners)
 	require.Equal(t, []string{"user"}, storage.AuditRoles)
 	require.True(t, storage.AllGroups)
+	require.True(t, storage.AsyncLatestTurnOnly)
 }
 
 func TestUpdateConfigStrictBoundsAndKnownValues(t *testing.T) {

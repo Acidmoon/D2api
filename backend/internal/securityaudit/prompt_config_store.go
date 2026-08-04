@@ -344,6 +344,13 @@ func (m *ConfigManager) buildNextStorage(current storageConfig, req UpdateConfig
 		ConfigVersion: current.ConfigVersion, UpdatedBy: actorID,
 		Endpoints: make([]StorageEndpoint, 0, len(req.Endpoints)),
 	}
+	// AsyncLatestTurnOnly 为指针：nil（请求未携带该字段，如 UI 保存）时保留存储
+	// 现值，只有显式传 true/false 才覆盖，避免省略字段把配置静默重置为 false。
+	if req.AsyncLatestTurnOnly != nil {
+		next.AsyncLatestTurnOnly = *req.AsyncLatestTurnOnly
+	} else {
+		next.AsyncLatestTurnOnly = current.AsyncLatestTurnOnly
+	}
 	for _, endpoint := range req.Endpoints {
 		baseURL, err := NormalizeBaseURL(endpoint.BaseURL)
 		if err != nil {

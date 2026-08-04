@@ -233,7 +233,7 @@ func (s *fakePayloadStore) Ping(context.Context) error { return s.pingErr }
 
 func asyncConfig() ActiveConfig {
 	return ActiveConfig{
-		RiskControlEnabled: true, Enabled: true, BlockingEnabled: false, Strategy: "priority",
+		RiskControlEnabled: true, Enabled: true, BlockingEnabled: false, AsyncLatestTurnOnly: true, Strategy: "priority",
 		WorkerCount: 1, QueueCapacity: 8, Scanners: []string{"pii"}, AllGroups: true, ConfigVersion: 7,
 		Endpoints: []ActiveEndpoint{{ID: "guard", Enabled: true, TimeoutMS: 1000, InputLimit: 3}},
 	}
@@ -286,6 +286,32 @@ func TestEnqueuerStagingPayloadPublishProtocolAndFailureCleanup(t *testing.T) {
 		require.Equal(t, []string{"create_staging", "payload_set", "publish_queued", "payload_delete", "mark_staging_failed"}, trace)
 		require.Equal(t, "queue_publish_failed", repo.markedCode)
 		require.NotContains(t, payload.values, int64(43))
+	})
+}
+
+func TestEnqueuerAsyncLatestTurnOnlyNarrowsToLatestUserTurn(t *testing.T) {
+	req := Request{RequestID: "request-async-narrow", Protocol: "openai_chat_completions",
+		Body: []byte(`{"messages":[{"role":"user","content":"old user turn"},{"role":"assistant","content":"assistant turn"},{"role":"user","content":"latest user turn"}]}`)}
+
+	t.Run("default true keeps only latest user", func(t *testing.T) {
+		repo := &fakeJobRepository{createJob: &Job{ID: 45}}
+		payload := &fakePayloadStore{values: map[int64]string{}}
+		cfg := asyncConfig()
+		cfg.AsyncLatestTurnOnly = true
+		require.NoError(t, NewEnqueuer(&fakeConfigStore{cfg: cfg, active: true}, repo, payload).Enqueue(context.Background(), req))
+		require.Equal(t, "latest user turn", payload.values[45])
+		require.Equal(t, 1, repo.createdSnapshot.MessageCount)
+		require.NotContains(t, payload.values[45], "old user turn")
+	})
+
+	t.Run("false restores multi-turn user history", func(t *testing.T) {
+		repo := &fakeJobRepository{createJob: &Job{ID: 46}}
+		payload := &fakePayloadStore{values: map[int64]string{}}
+		cfg := asyncConfig()
+		cfg.AsyncLatestTurnOnly = false
+		require.NoError(t, NewEnqueuer(&fakeConfigStore{cfg: cfg, active: true}, repo, payload).Enqueue(context.Background(), req))
+		require.Equal(t, "latest user turn"+promptAuditPrioritySeparator+"old user turn", payload.values[46])
+		require.Equal(t, 2, repo.createdSnapshot.MessageCount)
 	})
 }
 
