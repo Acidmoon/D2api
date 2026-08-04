@@ -559,6 +559,79 @@ func TestBlockingPromptSnapshotPreservesFullScopeByDefaultAndWithoutUserInput(t 
 	require.Equal(t, fullWithoutUser, narrowWithoutUser)
 }
 
+func TestPromptSnapshotTrimsHugeSingleUserMessageToCap(t *testing.T) {
+	// 巨型单条 user 消息（20000 runes）在 async 收窄路径上被截断到
+	// MaxPromptAuditRunes：MessageCount 不变（单段截断），截断文本前 8000
+	// runes 与原文逐字符一致，尾部标记被丢弃。
+	text := strings.Repeat("最新😀é", 4000) // 5 runes × 4000 = 20000 runes
+	tail := "END_MARKER_SHOULD_BE_DROPPED"
+	body := []byte(`{"messages":[{"role":"user","content":` + string(mustJSON(t, text+tail)) + `}]}`)
+	snapshot, err := ExtractPromptSnapshot(Request{Protocol: "openai_chat_completions", Body: body}, true, nil)
+	require.NoError(t, err)
+	require.Equal(t, 1, snapshot.MessageCount)
+	require.Equal(t, MaxPromptAuditRunes, utf8.RuneCountInString(snapshot.ScanText))
+	require.Equal(t, MaxPromptAuditRunes, snapshot.PromptLength)
+	require.Equal(t, string([]rune(text)[:MaxPromptAuditRunes]), snapshot.ScanText)
+	require.NotContains(t, snapshot.ScanText, tail)
+}
+
+func TestPromptSnapshotTrimsCumulativeRunesAcrossSegments(t *testing.T) {
+	// 多段累计超限（全量路径）：最新 user 段（优先段，4000）完整、次新 user
+	// 段（3500）完整、最旧 user 段（5000）只保留开头 500 runes，累计恰为
+	// MaxPromptAuditRunes；段间分隔符计入 PromptLength 但不计入累计上限。
+	latest := strings.Repeat("甲", 4000)
+	oldest := strings.Repeat("乙", 3500)
+	middle := strings.Repeat("丙", 5000)
+	body := []byte(`{"messages":[` +
+		`{"role":"user","content":` + string(mustJSON(t, oldest)) + `},` +
+		`{"role":"user","content":` + string(mustJSON(t, middle)) + `},` +
+		`{"role":"user","content":` + string(mustJSON(t, latest)) + `}` +
+		`]}`)
+	snapshot, err := ExtractPromptSnapshot(Request{Protocol: "openai_chat_completions", Body: body}, false, nil)
+	require.NoError(t, err)
+	require.Equal(t, 3, snapshot.MessageCount)
+	require.Equal(t,
+		latest+promptAuditPrioritySeparator+oldest+"\n\n"+string([]rune(middle)[:500]),
+		snapshot.ScanText)
+	require.Equal(t, MaxPromptAuditRunes, utf8.RuneCountInString(latest)+utf8.RuneCountInString(oldest)+500)
+	require.Equal(t, utf8.RuneCountInString(metadataTextForTest(snapshot.ScanText)), snapshot.PromptLength)
+	require.Equal(t, MaxPromptAuditRunes+2*2, snapshot.PromptLength)
+}
+
+func TestPromptSnapshotKeepsSmallMessagesUntouched(t *testing.T) {
+	// 正常小消息（累计 < MaxPromptAuditRunes）完全保留：不触发截断，
+	// 段顺序与 MessageCount 均不变。
+	body := []byte(`{"messages":[` +
+		`{"role":"user","content":"first"},` +
+		`{"role":"user","content":"second"},` +
+		`{"role":"user","content":"third"}` +
+		`]}`)
+	snapshot, err := ExtractPromptSnapshot(Request{Protocol: "openai_chat_completions", Body: body}, false, nil)
+	require.NoError(t, err)
+	require.Equal(t, 3, snapshot.MessageCount)
+	require.Equal(t, "third"+promptAuditPrioritySeparator+"first\n\nsecond", snapshot.ScanText)
+	require.Equal(t, utf8.RuneCountInString(metadataTextForTest(snapshot.ScanText)), snapshot.PromptLength)
+}
+
+func TestBlockingPromptSnapshotTrimsHugeInputToCap(t *testing.T) {
+	// blocking（latestTurnOnly）路径同样受 MaxPromptAuditRunes 约束：巨型最新
+	// user 消息截断到 8000 runes，前一轮 assistant 输出在默认 user-only 角色
+	// 过滤下不进入审计文本。
+	latest := strings.Repeat("最新😀é", 4000) // 20000 runes
+	body := []byte(`{"messages":[` +
+		`{"role":"user","content":` + string(mustJSON(t, latest+"BLOCKING_TAIL")) + `},` +
+		`{"role":"assistant","content":"prior assistant output"}` +
+		`]}`)
+	snapshot, err := ExtractBlockingPromptSnapshot(Request{Protocol: "openai_chat_completions", Body: body}, true, nil)
+	require.NoError(t, err)
+	require.Equal(t, 1, snapshot.MessageCount)
+	require.Equal(t, MaxPromptAuditRunes, snapshot.PromptLength)
+	require.Equal(t, MaxPromptAuditRunes, utf8.RuneCountInString(snapshot.ScanText))
+	require.Equal(t, string([]rune(latest)[:MaxPromptAuditRunes]), snapshot.ScanText)
+	require.NotContains(t, snapshot.ScanText, "BLOCKING_TAIL")
+	require.NotContains(t, snapshot.ScanText, "prior assistant output")
+}
+
 func TestBuildPromptPreviewWithholdsMajorityOfOrdinaryText(t *testing.T) {
 	prompt := strings.Repeat("机密业务提示词内容", 40)
 	preview := BuildPromptPreview(prompt, DefaultPromptPreviewMaxRunes)

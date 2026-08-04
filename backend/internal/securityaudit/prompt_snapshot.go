@@ -75,6 +75,10 @@ func extractPromptSnapshot(req Request, latestTurnOnly bool, asyncLatestTurnOnly
 		extracted := extractProtocolSegments(req.Protocol, document, roles)
 		segments = normalizeSegmentsLatestUserFirst(extracted)
 	}
+	// 统一累计 rune 上限：blocking 收窄 / async 收窄 / 全量三条路径在拼装扫描
+	// 文本前先截断超限部分（保留前 MaxPromptAuditRunes runes），控制审核成本
+	// 与超时风险；截断后为空时保持既有 ErrNoPromptText 语义。
+	segments = trimSegmentsToRunes(segments, MaxPromptAuditRunes)
 	if len(segments) == 0 {
 		return PromptSnapshot{}, ErrNoPromptText
 	}
@@ -104,6 +108,14 @@ const DefaultPromptPreviewMaxRunes = 96
 // on an audit event for admin review. It is deliberately generous so realistic
 // prompts are kept intact while bounding per-row storage.
 const DefaultFullPromptMaxRunes = 65536
+
+// MaxPromptAuditRunes caps the total audit text (in runes) fed to the review
+// scanners. Prompts exceeding the cap are truncated to the leading runes,
+// applied cumulatively across segments on every extraction path (blocking,
+// async narrowed, and full snapshot), to bound review cost and scan timeout
+// risk: a single oversized user message previously produced hundreds of chunks
+// and invalid_response/timeout failures.
+const MaxPromptAuditRunes = 8000
 
 func extractProtocolSegments(protocol string, document any, auditRoles []string) []promptSegment {
 	root, _ := document.(map[string]any)
@@ -845,6 +857,31 @@ func promptSegmentTexts(values []promptSegment) []string {
 	result := make([]string, 0, len(values))
 	for _, value := range values {
 		result = append(result, value.text)
+	}
+	return result
+}
+
+// trimSegmentsToRunes 对 segments 文本施加累计 rune 上限：按顺序从首个段开始
+// 累计，预算内完整保留；首个超出预算的段只保留其开头（尾部删除），其后所有段
+// 丢弃。优先段（segments[0]，最新 user 回合）因此始终位于截断结果的头部。
+func trimSegmentsToRunes(segments []string, max int) []string {
+	if max <= 0 || len(segments) == 0 {
+		return segments
+	}
+	remaining := max
+	result := make([]string, 0, len(segments))
+	for _, segment := range segments {
+		if remaining == 0 {
+			break
+		}
+		runes := []rune(segment)
+		if len(runes) <= remaining {
+			result = append(result, segment)
+			remaining -= len(runes)
+			continue
+		}
+		result = append(result, string(runes[:remaining]))
+		remaining = 0
 	}
 	return result
 }
