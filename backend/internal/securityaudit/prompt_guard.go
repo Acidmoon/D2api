@@ -53,6 +53,33 @@ func (g *GuardEvaluator) Evaluate(ctx context.Context, cfg ActiveConfig, snapsho
 		logGuardFailure(snapshot, cfg, DecisionUnavailable, ErrorCodeUnavailable, "", g.clock.Now().Sub(start))
 		return nil, &GuardError{Code: ErrorCodeUnavailable}
 	}
+	// 内容查重：模型调用前，窗口内同 user 同 prompt_hash 已有确定性审核结论时
+	// 直接复用（pass/allow → allow；critical/block → block），跳过模型调用与
+	// 事件落库（上次结论仍在）。查重依赖 g.repo（PromptService 路径注入；
+	// accountguard 路径 repo 为 nil，其 Check 自行查重）。查重失败 fail-open：
+	// 继续原逻辑，不改变既有 fail-closed/fail-open 语义边界。
+	if cfg.DedupEnabled && g.repo != nil && snapshot.UserID > 0 && snapshot.PromptHash != "" {
+		since := g.clock.Now().Add(-time.Duration(cfg.DedupWindowMinutes) * time.Minute)
+		stored, found, lookupErr := g.repo.FindRecentDecisionByPromptHash(ctx, snapshot.UserID, snapshot.PromptHash, since, cfg.ConfigVersion)
+		if lookupErr != nil {
+			LogWarn(EventDedupLookupFailed, mergeLogFields(baseFields, map[string]any{
+				"prompt_hash": snapshot.PromptHash, "status": "failed", "error_code": "dedup_lookup_failed",
+			}))
+		} else if found {
+			if reused := DedupShortCircuitDecision(stored); reused != nil {
+				LogInfo(EventGuardDedupSkipped, mergeLogFields(baseFields, map[string]any{
+					"prompt_hash": snapshot.PromptHash, "decision": string(reused.Kind),
+					"window_minutes": cfg.DedupWindowMinutes, "status": "dedup_reused",
+				}))
+				if g.metrics != nil {
+					// 查重短路同样计入决策指标（kind=allow/block，latency≈0）与独立命中计数。
+					g.metrics.Observe(reused.Kind, g.clock.Now().Sub(start))
+					g.metrics.IncDedupHit()
+				}
+				return reused, nil
+			}
+		}
+	}
 	select {
 	case g.global <- struct{}{}:
 		defer func() { <-g.global }()

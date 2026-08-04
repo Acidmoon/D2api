@@ -24,6 +24,8 @@ func (prefixEncryptor) Decrypt(value string) (string, error) {
 
 func boolPtr(value bool) *bool { return &value }
 
+func intPtr(value int) *int { return &value }
+
 // testTotpKeyConfig mirrors a deployment with a fixed TOTP_ENCRYPTION_KEY so
 // unit tests may persist endpoint tokens.
 func testTotpKeyConfig() *config.Config {
@@ -777,4 +779,135 @@ func TestUserGuardWhitelistRoundTripAndValidation(t *testing.T) {
 	storage, err := ParseStorageConfig(`{"user_guard":{"enabled":false,"threshold":3,"window_minutes":10,"ban_duration_minutes":60}}`)
 	require.NoError(t, err)
 	require.Empty(t, storage.UserGuard.WhitelistUserIDs)
+}
+
+func TestDedupConfigDefaults(t *testing.T) {
+	// 默认：查重开启，窗口 10 分钟；空配置与缺省字段同样回退默认。
+	storage := DefaultStorageConfig()
+	require.True(t, storage.DedupEnabled)
+	require.Equal(t, DefaultDedupWindowMinutes, storage.DedupWindowMinutes)
+
+	parsed, err := ParseStorageConfig("")
+	require.NoError(t, err)
+	require.True(t, parsed.DedupEnabled)
+	require.Equal(t, DefaultDedupWindowMinutes, parsed.DedupWindowMinutes)
+
+	legacy, err := ParseStorageConfig(`{"enabled":false,"config_version":9}`)
+	require.NoError(t, err)
+	require.True(t, legacy.DedupEnabled)
+	require.Equal(t, DefaultDedupWindowMinutes, legacy.DedupWindowMinutes)
+
+	active, err := ActiveFromStorage(legacy, true, prefixEncryptor{})
+	require.NoError(t, err)
+	require.True(t, active.DedupEnabled)
+	require.Equal(t, DefaultDedupWindowMinutes, active.DedupWindowMinutes)
+
+	public := PublicFromStorage(legacy, true, nil)
+	require.True(t, public.DedupEnabled)
+	require.Equal(t, DefaultDedupWindowMinutes, public.DedupWindowMinutes)
+}
+
+func TestDedupConfigRoundTrip(t *testing.T) {
+	manager := &ConfigManager{encryptor: prefixEncryptor{}, encryptionKeyConfigured: true}
+	request := promptAuditUpdateRequest(1, 1, "")
+	request.DedupEnabled = boolPtr(false)
+	request.DedupWindowMinutes = intPtr(30)
+
+	next, err := manager.buildNextStorage(DefaultStorageConfig(), request, 9)
+	require.NoError(t, err)
+	require.False(t, next.DedupEnabled)
+	require.Equal(t, 30, next.DedupWindowMinutes)
+	require.Contains(t, changeSummary(next), `"dedup_enabled":false`)
+	require.Contains(t, changeSummary(next), `"dedup_window_minutes":30`)
+
+	active, err := ActiveFromStorage(next, true, prefixEncryptor{})
+	require.NoError(t, err)
+	require.False(t, active.DedupEnabled)
+	require.Equal(t, 30, active.DedupWindowMinutes)
+
+	public := PublicFromStorage(next, true, nil)
+	require.False(t, public.DedupEnabled)
+	require.Equal(t, 30, public.DedupWindowMinutes)
+
+	raw, err := json.Marshal(next)
+	require.NoError(t, err)
+	require.Contains(t, string(raw), `"dedup_enabled":false`)
+	require.Contains(t, string(raw), `"dedup_window_minutes":30`)
+	parsed, err := ParseStorageConfig(string(raw))
+	require.NoError(t, err)
+	require.False(t, parsed.DedupEnabled)
+	require.Equal(t, 30, parsed.DedupWindowMinutes)
+
+	// 显式开启 + 自定义窗口也可完整往返
+	request.DedupEnabled = boolPtr(true)
+	request.DedupWindowMinutes = intPtr(5)
+	on, err := manager.buildNextStorage(parsed, request, 9)
+	require.NoError(t, err)
+	require.True(t, on.DedupEnabled)
+	require.Equal(t, 5, on.DedupWindowMinutes)
+}
+
+func TestDedupUpdateOmitsFieldPreservesStorage(t *testing.T) {
+	manager := &ConfigManager{encryptor: prefixEncryptor{}, encryptionKeyConfigured: true}
+
+	// update 省略 dedup_enabled/dedup_window_minutes（nil）：保留存储现值，
+	// 防止 UI 保存把查重开关/窗口打回默认。
+	for _, enabled := range []bool{true, false} {
+		for _, window := range []int{5, 30} {
+			base := DefaultStorageConfig()
+			base.DedupEnabled = enabled
+			base.DedupWindowMinutes = window
+			request := promptAuditUpdateRequest(1, 1, "")
+			next, err := manager.buildNextStorage(base, request, 9)
+			require.NoError(t, err)
+			require.Equal(t, enabled, next.DedupEnabled)
+			require.Equal(t, window, next.DedupWindowMinutes)
+		}
+	}
+
+	// 显式传值时正确覆盖存储值（双向）。
+	for _, enabled := range []bool{true, false} {
+		base := DefaultStorageConfig()
+		base.DedupEnabled = !enabled
+		request := promptAuditUpdateRequest(1, 1, "")
+		request.DedupEnabled = boolPtr(enabled)
+		next, err := manager.buildNextStorage(base, request, 9)
+		require.NoError(t, err)
+		require.Equal(t, enabled, next.DedupEnabled)
+	}
+	base := DefaultStorageConfig()
+	base.DedupWindowMinutes = 60
+	request := promptAuditUpdateRequest(1, 1, "")
+	request.DedupWindowMinutes = intPtr(3)
+	next, err := manager.buildNextStorage(base, request, 9)
+	require.NoError(t, err)
+	require.Equal(t, 3, next.DedupWindowMinutes)
+}
+
+func TestDedupWindowValidation(t *testing.T) {
+	// storage 解析路径：窗口 0 由 normalize 回填默认；负值/超上限拒绝。
+	zero, err := ParseStorageConfig(`{"dedup_window_minutes":0,"config_version":9}`)
+	require.NoError(t, err)
+	require.Equal(t, DefaultDedupWindowMinutes, zero.DedupWindowMinutes)
+
+	for _, window := range []int{-1, MaxDedupWindowMinutes + 1} {
+		cfg := DefaultStorageConfig()
+		cfg.DedupWindowMinutes = window
+		err := validateStorageConfig(cfg)
+		require.Error(t, err)
+		require.Equal(t, "prompt_audit_invalid_dedup_window", infraerrors.Reason(err))
+	}
+
+	// update 请求路径：显式传 0/负值/超上限拒绝（指针非 nil 才校验，nil 表示未提交）。
+	for _, window := range []int{0, -1, MaxDedupWindowMinutes + 1} {
+		req := promptAuditUpdateRequest(1, 1, "")
+		req.DedupWindowMinutes = intPtr(window)
+		err := validateUpdateConfigRequest(req)
+		require.Error(t, err)
+		require.Equal(t, "prompt_audit_invalid_dedup_window", infraerrors.Reason(err))
+	}
+
+	// nil 指针不校验（省略字段保留存储现值）。
+	req := promptAuditUpdateRequest(1, 1, "")
+	require.NoError(t, validateUpdateConfigRequest(req))
 }

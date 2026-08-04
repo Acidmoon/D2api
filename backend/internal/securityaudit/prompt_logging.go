@@ -17,6 +17,9 @@ const (
 	EventJobEnqueued          = "prompt_audit.job_enqueued"
 	EventEnqueueSkipped       = "prompt_audit.enqueue_skipped"
 	EventEnqueueDropped       = "prompt_audit.enqueue_dropped"
+	EventEnqueueDedupSkipped  = "prompt_audit.enqueue_dedup_skipped"
+	EventGuardDedupSkipped    = "prompt_guard.dedup_skipped"
+	EventDedupLookupFailed    = "prompt_audit.dedup_lookup_failed"
 	EventAuditStarted         = "prompt_audit.started"
 	EventProcessingReclaimed  = "prompt_audit.processing_reclaimed"
 	EventProcessed            = "prompt_audit.processed"
@@ -40,7 +43,7 @@ const (
 var knownLogEvents = map[string]struct{}{
 	EventConfigUpdated: {}, EventConfigLoaded: {}, EventConfigReloadDegraded: {}, EventConfigTokenInvalid: {},
 	EventProbeStarted: {}, EventProbeFinished: {}, EventProbeFailed: {},
-	EventJobEnqueued: {}, EventEnqueueSkipped: {}, EventEnqueueDropped: {},
+	EventJobEnqueued: {}, EventEnqueueSkipped: {}, EventEnqueueDropped: {}, EventEnqueueDedupSkipped: {}, EventGuardDedupSkipped: {}, EventDedupLookupFailed: {},
 	EventAuditStarted: {}, EventProcessingReclaimed: {}, EventProcessed: {}, EventProcessFailed: {}, EventFindingRecorded: {},
 	EventChunkStarted: {}, EventChunkCompleted: {}, EventChunkFailed: {}, EventChunksAggregated: {},
 	EventEvaluationStarted: {}, EventGuardAllowed: {}, EventGuardBlocked: {}, EventGuardFailed: {}, EventResultRecordFailed: {},
@@ -56,6 +59,7 @@ var allowedLogFields = map[string]struct{}{
 	"queue_length": {}, "queue_capacity": {}, "stage": {}, "upstream_dispatched": {},
 	"billing_preconsumed": {}, "worker_id": {}, "reclaimed_total": {}, "attempts": {},
 	"max_attempts": {}, "claim_version": {}, "http_status": {}, "retryable": {},
+	"prompt_hash": {}, "window_minutes": {},
 }
 
 func LogInfo(event string, fields map[string]any) {

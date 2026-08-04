@@ -16,6 +16,7 @@ type AtomicMetrics struct {
 	blocked      atomic.Int64
 	unavailable  atomic.Int64
 	invalid      atomic.Int64
+	dedupHit     atomic.Int64
 	timeouts     atomic.Int64
 	failovers    atomic.Int64
 	bulkheadFull atomic.Int64
@@ -38,7 +39,8 @@ func (m *AtomicMetrics) Snapshot() GuardMetricsSnapshot {
 	snapshot := GuardMetricsSnapshot{
 		Total: m.total.Load(), Allowed: m.allowed.Load(), Flagged: m.flagged.Load(),
 		Blocked: m.blocked.Load(), Unavailable: m.unavailable.Load(), Invalid: m.invalid.Load(),
-		Timeouts: m.timeouts.Load(), Failovers: m.failovers.Load(), BulkheadFull: m.bulkheadFull.Load(),
+		DedupHits: m.dedupHit.Load(), Timeouts: m.timeouts.Load(), Failovers: m.failovers.Load(),
+		BulkheadFull: m.bulkheadFull.Load(),
 		RecordFailed: m.recordFailed.Load(), LatencyCount: m.total.Load(), LatencyMaxMS: m.latencyMax.Load(),
 	}
 	if snapshot.LatencyCount > 0 {
@@ -141,5 +143,13 @@ func (m *AtomicMetrics) IncBulkheadFull() {
 func (m *AtomicMetrics) IncRecordFailed() {
 	if m != nil {
 		m.recordFailed.Add(1)
+	}
+}
+
+// IncDedupHit 独立记录查重命中次数（blocking 短路与 async 跳过入队共用），
+// 用于度量内容查重功能的实际收益。
+func (m *AtomicMetrics) IncDedupHit() {
+	if m != nil {
+		m.dedupHit.Add(1)
 	}
 }

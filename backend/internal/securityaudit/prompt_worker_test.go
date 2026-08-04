@@ -89,6 +89,10 @@ type fakeJobRepository struct {
 	recordBlockingSnapshot PromptSnapshot
 	recordBlockingResult   *NormalizedResult
 	recordBlockingErr      error
+
+	dedupDecision string
+	dedupFound    bool
+	dedupErr      error
 }
 
 func (r *fakeJobRepository) record(value string) {
@@ -177,6 +181,12 @@ func (r *fakeJobRepository) RecordBlocking(_ context.Context, snapshot PromptSna
 	r.recordBlockingCalls++
 	r.recordBlockingSnapshot, r.recordBlockingResult = snapshot, result
 	return nil, r.recordBlockingErr
+}
+
+func (r *fakeJobRepository) FindRecentDecisionByPromptHash(_ context.Context, _ int64, _ string, _ time.Time, _ int64) (string, bool, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.dedupDecision, r.dedupFound, r.dedupErr
 }
 
 type fakePayloadStore struct {

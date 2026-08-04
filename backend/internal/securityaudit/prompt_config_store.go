@@ -351,6 +351,18 @@ func (m *ConfigManager) buildNextStorage(current storageConfig, req UpdateConfig
 	} else {
 		next.AsyncLatestTurnOnly = current.AsyncLatestTurnOnly
 	}
+	// DedupEnabled/DedupWindowMinutes 同为指针：UI 未携带时保留存储现值，
+	// 避免省略字段把查重开关/窗口静默重置为默认值。
+	if req.DedupEnabled != nil {
+		next.DedupEnabled = *req.DedupEnabled
+	} else {
+		next.DedupEnabled = current.DedupEnabled
+	}
+	if req.DedupWindowMinutes != nil {
+		next.DedupWindowMinutes = *req.DedupWindowMinutes
+	} else {
+		next.DedupWindowMinutes = current.DedupWindowMinutes
+	}
 	for _, endpoint := range req.Endpoints {
 		baseURL, err := NormalizeBaseURL(endpoint.BaseURL)
 		if err != nil {
@@ -415,6 +427,28 @@ func (m *ConfigManager) currentRiskControlEnabled() bool {
 		return snapshot.active.RiskControlEnabled
 	}
 	return false
+}
+
+// FindRecentDecisionByPromptHash 查重查询：返回该用户最近一条满足
+// user_id + prompt_hash + config_version + created_at >= since + decision 非空 的
+// 审核事件 decision（stage 不限，http/user_guard 记录都可复用，取最新）。SQL 参数化防注入。
+// config_version 过滤保证配置变更（换端点/加 scanner/改模型）后不再复用旧配置下的结论。
+// 该方法供 accountguard（用户级守护）在 Check 前复用最近审核结论，避免重复调用
+// 审核模型。放在 ConfigManager 上是因为它是 accountguard 已有的共享依赖（无需
+// 改动 wire 注入），查询本身只读、轻量；事件的读写仍归 PostgreSQLRepository。
+func (m *ConfigManager) FindRecentDecisionByPromptHash(ctx context.Context, userID int64, promptHash string, since time.Time, configVersion int64) (string, bool, error) {
+	if m == nil || m.db == nil {
+		return "", false, errors.New("prompt audit database unavailable")
+	}
+	var decision string
+	err := m.db.QueryRowContext(ctx, promptAuditRecentDecisionQuery, userID, promptHash, since.UTC(), configVersion).Scan(&decision)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", false, nil
+	}
+	if err != nil {
+		return "", false, err
+	}
+	return decision, true, nil
 }
 
 func (m *ConfigManager) observeExpectedState(raw string, riskControlEnabled bool) {

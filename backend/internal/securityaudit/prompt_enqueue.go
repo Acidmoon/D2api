@@ -3,6 +3,7 @@ package securityaudit
 import (
 	"context"
 	"errors"
+	"time"
 )
 
 type Enqueuer struct {
@@ -49,6 +50,28 @@ func (e *Enqueuer) Enqueue(ctx context.Context, req Request) error {
 		e.recordDropped()
 		LogWarn(EventEnqueueDropped, mergeLogFields(baseFields, map[string]any{"status": "dropped", "error_code": "snapshot_invalid"}))
 		return nil
+	}
+	// 内容查重：snapshot 生成后、enqueue 前，窗口内同 user 同 prompt_hash 已有
+	// 确定性审核结论（pass/critical）时跳过入队——agent 类客户端每次请求重复携带
+	// 相同最新提示词，重复送审只产生重复成本与重复事件。查重失败（DB 错误）
+	// fail-open：不阻断，继续正常 enqueue。
+	if cfg.DedupEnabled && snapshot.UserID > 0 && snapshot.PromptHash != "" {
+		since := time.Now().UTC().Add(-time.Duration(cfg.DedupWindowMinutes) * time.Minute)
+		stored, found, lookupErr := e.repo.FindRecentDecisionByPromptHash(ctx, snapshot.UserID, snapshot.PromptHash, since, cfg.ConfigVersion)
+		if lookupErr != nil {
+			LogWarn(EventDedupLookupFailed, mergeLogFields(baseFields, map[string]any{
+				"prompt_hash": snapshot.PromptHash, "status": "failed", "error_code": "dedup_lookup_failed",
+			}))
+		} else if found && ReusableDedupDecision(stored) {
+			LogInfo(EventEnqueueDedupSkipped, mergeLogFields(baseFields, map[string]any{
+				"prompt_hash": snapshot.PromptHash, "decision": stored,
+				"window_minutes": cfg.DedupWindowMinutes, "status": "skipped", "error_code": "dedup_hit",
+			}))
+			if e.metrics != nil {
+				e.metrics.IncDedupHit()
+			}
+			return nil
+		}
 	}
 	job, err := e.repo.CreateStagingWithCapacity(ctx, snapshot.Redacted(), cfg.ConfigVersion, 3, cfg.QueueCapacity)
 	if err != nil {

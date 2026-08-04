@@ -41,8 +41,12 @@ type EmailSender interface {
 
 // activeConfigStore 是 prompt-audit 生效配置读取的最小依赖
 // （由 *securityaudit.ConfigManager 满足）。
+// FindRecentDecisionByPromptHash 一并放在这里：它是 ConfigManager 已实现的只读
+// 查重查询（复用窗口内最近审核结论，跳过重复模型调用；config_version 过滤保证
+// 配置变更后不复用旧结论），避免为查重单独引入 repository 依赖而改动 wire 注入。
 type activeConfigStore interface {
 	Active() (securityaudit.ActiveConfig, bool)
+	FindRecentDecisionByPromptHash(ctx context.Context, userID int64, promptHash string, since time.Time, configVersion int64) (string, bool, error)
 }
 
 // promptGuardEvaluator 是同步评估器的最小依赖
@@ -118,7 +122,34 @@ func (s *GuardService) Check(ctx context.Context, input service.UserGuardCheckIn
 		// 无可扫描文本或请求体无法解析：放行，不计数。
 		return nil, nil
 	}
-	decision, err := s.evaluator.Evaluate(ctx, cfg, snapshot)
+	// 内容查重：模型调用前，窗口内同 user 同 prompt_hash 已有确定性审核结论时
+	// 复用。pass/allow → 直接放行；critical/block → 复用拦截并落入下方共享的
+	// 计数/封禁流程（封禁累计语义保持不变，仅跳过模型调用）。查重失败（DB
+	// 错误）fail-open：放行继续原逻辑，不改变既有行为。
+	var decision *securityaudit.PromptDecision
+	if cfg.DedupEnabled && snapshot.UserID > 0 && snapshot.PromptHash != "" {
+		since := s.now().Add(-time.Duration(cfg.DedupWindowMinutes) * time.Minute)
+		stored, found, lookupErr := s.config.FindRecentDecisionByPromptHash(ctx, snapshot.UserID, snapshot.PromptHash, since, cfg.ConfigVersion)
+		if lookupErr != nil {
+			slog.Warn("user_violation_guard.dedup_lookup_failed", "user_id", snapshot.UserID, "err", lookupErr)
+		} else if found {
+			if reused := securityaudit.DedupShortCircuitDecision(stored); reused != nil {
+				decision = reused
+				if reused.Kind != securityaudit.DecisionBlock {
+					slog.Info("user_violation_guard.dedup_allow_reused",
+						"user_id", snapshot.UserID, "prompt_hash", snapshot.PromptHash,
+						"window_minutes", cfg.DedupWindowMinutes)
+					return nil, nil
+				}
+				slog.Info("user_violation_guard.dedup_block_reused",
+					"user_id", snapshot.UserID, "prompt_hash", snapshot.PromptHash,
+					"window_minutes", cfg.DedupWindowMinutes)
+			}
+		}
+	}
+	if decision == nil {
+		decision, err = s.evaluator.Evaluate(ctx, cfg, snapshot)
+	}
 	if err != nil || decision == nil {
 		// 审核端点不可用/超时/响应非法：fail-open 放行，不计数。
 		slog.Warn("user_violation_guard.evaluate_failed",

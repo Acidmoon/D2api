@@ -75,6 +75,11 @@ type JobRepository interface {
 	ReclaimStale(ctx context.Context, stagingBefore, processingBefore time.Time, limit int) (int64, error)
 	QueueStats(ctx context.Context) (QueueStats, error)
 	RecordBlocking(ctx context.Context, snapshot PromptSnapshot, configVersion int64, result *NormalizedResult, storePassEvents bool) (*Event, error)
+	// FindRecentDecisionByPromptHash 查重查询：返回该用户最近一条满足
+	// user_id + prompt_hash + config_version + created_at >= since + decision 非空 的
+	// 审核事件 decision（stage 不限，取最新）。调用方用 ReusableDedupDecision 判断
+	// 该结论是否可复用（pass/critical 确定性结论），未命中返回 found=false。
+	FindRecentDecisionByPromptHash(ctx context.Context, userID int64, promptHash string, since time.Time, configVersion int64) (string, bool, error)
 }
 
 type PostgreSQLRepository struct {
@@ -84,6 +89,53 @@ type PostgreSQLRepository struct {
 
 func NewPostgreSQLRepository(db *sql.DB) *PostgreSQLRepository {
 	return &PostgreSQLRepository{db: db, clock: realClock{}}
+}
+
+// promptAuditRecentDecisionQuery 查重查询：最近一条 user_id + prompt_hash +
+// config_version + created_at >= since 且 decision 非空的审核事件 decision。
+// decision 列由 schema 约束 NOT NULL 且仅 pass/flag/critical，"decision <> ”" 为
+// 显式防御；stage 不限（http/user_guard 记录都参与），ORDER BY created_at DESC,
+// id DESC 取最新。config_version 过滤保证配置变更（换端点/加 scanner/改模型）
+// 后不再复用旧配置下的结论。
+const promptAuditRecentDecisionQuery = `
+	SELECT decision FROM prompt_audit_events
+	WHERE user_id=$1 AND prompt_hash=$2 AND created_at >= $3 AND decision <> '' AND config_version=$4
+	ORDER BY created_at DESC, id DESC LIMIT 1`
+
+func (r *PostgreSQLRepository) FindRecentDecisionByPromptHash(ctx context.Context, userID int64, promptHash string, since time.Time, configVersion int64) (string, bool, error) {
+	if r == nil || r.db == nil {
+		return "", false, errors.New("prompt audit database unavailable")
+	}
+	var decision string
+	err := r.db.QueryRowContext(ctx, promptAuditRecentDecisionQuery, userID, promptHash, since.UTC(), configVersion).Scan(&decision)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", false, nil
+	}
+	if err != nil {
+		return "", false, err
+	}
+	return decision, true, nil
+}
+
+// ReusableDedupDecision 报告历史审核决策是否可复用于提示词查重短路。事件表只
+// 落 pass/flag/critical：pass（判定安全）与 critical（判定拦截）是确定性结论，
+// flag 属警告、非确定性，不短路，避免跳过需要复核的内容。
+func ReusableDedupDecision(decision string) bool {
+	return decision == string(EventPass) || decision == string(EventCritical)
+}
+
+// DedupShortCircuitDecision 将可复用的历史决策映射为 blocking 短路决策：
+// pass → allow（放行）；critical（即产品语义的 block）→ block（复用拦截）；
+// flag/未知结论返回 nil，调用方维持既有流程不变。
+func DedupShortCircuitDecision(decision string) *PromptDecision {
+	switch decision {
+	case string(EventPass):
+		return &PromptDecision{Kind: DecisionAllow, AllowNextStage: true}
+	case string(EventCritical):
+		return &PromptDecision{Kind: DecisionBlock, ErrorCode: ErrorCodeBlocked, AllowNextStage: false}
+	default:
+		return nil
+	}
 }
 
 func (r *PostgreSQLRepository) CreateStagingWithCapacity(ctx context.Context, snapshot PromptSnapshot, configVersion int64, maxAttempts, capacity int) (*Job, error) {

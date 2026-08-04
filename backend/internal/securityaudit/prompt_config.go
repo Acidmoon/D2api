@@ -27,6 +27,11 @@ const (
 	// MaxSystemPromptChars 端点级系统提示词长度上限（Unicode 字符）。
 	MaxSystemPromptChars = 8000
 	DefaultPayloadTTL    = 30 * time.Minute
+	// DefaultDedupWindowMinutes 提示词审计查重默认窗口：窗口内同 user 同
+	// prompt_hash 已有确定性审核结论（pass/critical）时复用结论、跳过模型调用。
+	DefaultDedupWindowMinutes = 10
+	MinDedupWindowMinutes     = 1
+	MaxDedupWindowMinutes     = 1440
 )
 
 type SecretEncryptor interface {
@@ -109,24 +114,29 @@ func (cfg UserGuardConfig) IsWhitelisted(userID int64) bool {
 // storageConfig 的 AuditRoles 字段：提取审计文本时保留的消息角色；
 // 缺省/为空时按默认 DefaultAuditRoles（仅 user）生效，详见 canonicalAuditRoles。
 type storageConfig struct {
-	Enabled                bool              `json:"enabled"`
-	BlockingEnabled        bool              `json:"blocking_enabled"`
-	BlockingLatestTurnOnly bool              `json:"blocking_latest_turn_only"`
-	AsyncLatestTurnOnly    bool              `json:"async_latest_turn_only"`
-	StorePassEvents        bool              `json:"store_pass_events"`
-	Strategy               string            `json:"strategy"`
-	WorkerCount            int               `json:"worker_count"`
-	QueueCapacity          int               `json:"queue_capacity"`
-	Scanners               []string          `json:"scanners"`
-	AuditRoles             []string          `json:"audit_roles"`
-	AllGroups              bool              `json:"all_groups"`
-	GroupIDs               []int64           `json:"group_ids"`
-	Endpoints              []StorageEndpoint `json:"endpoints"`
-	UserGuard              UserGuardConfig   `json:"user_guard"`
-	ConfigVersion          int64             `json:"config_version"`
-	UpdatedAt              time.Time         `json:"updated_at"`
-	UpdatedBy              int64             `json:"updated_by"`
-	ChangeSummary          string            `json:"change_summary"`
+	Enabled                bool `json:"enabled"`
+	BlockingEnabled        bool `json:"blocking_enabled"`
+	BlockingLatestTurnOnly bool `json:"blocking_latest_turn_only"`
+	AsyncLatestTurnOnly    bool `json:"async_latest_turn_only"`
+	StorePassEvents        bool `json:"store_pass_events"`
+	// DedupEnabled 开启提示词内容查重：窗口内同 user 同 prompt_hash 已完成审核的
+	// 内容不再调用审核模型（async 跳过 enqueue；blocking 复用上次判定）。
+	DedupEnabled bool `json:"dedup_enabled"`
+	// DedupWindowMinutes 查重窗口（分钟）：仅复用窗口内的审核结论。
+	DedupWindowMinutes int               `json:"dedup_window_minutes"`
+	Strategy           string            `json:"strategy"`
+	WorkerCount        int               `json:"worker_count"`
+	QueueCapacity      int               `json:"queue_capacity"`
+	Scanners           []string          `json:"scanners"`
+	AuditRoles         []string          `json:"audit_roles"`
+	AllGroups          bool              `json:"all_groups"`
+	GroupIDs           []int64           `json:"group_ids"`
+	Endpoints          []StorageEndpoint `json:"endpoints"`
+	UserGuard          UserGuardConfig   `json:"user_guard"`
+	ConfigVersion      int64             `json:"config_version"`
+	UpdatedAt          time.Time         `json:"updated_at"`
+	UpdatedBy          int64             `json:"updated_by"`
+	ChangeSummary      string            `json:"change_summary"`
 }
 
 type ActiveEndpoint struct {
@@ -154,6 +164,8 @@ type ActiveConfig struct {
 	BlockingLatestTurnOnly bool
 	AsyncLatestTurnOnly    bool
 	StorePassEvents        bool
+	DedupEnabled           bool
+	DedupWindowMinutes     int
 	Strategy               string
 	WorkerCount            int
 	QueueCapacity          int
@@ -189,6 +201,8 @@ type PublicConfig struct {
 	BlockingLatestTurnOnly bool             `json:"blocking_latest_turn_only"`
 	AsyncLatestTurnOnly    bool             `json:"async_latest_turn_only"`
 	StorePassEvents        bool             `json:"store_pass_events"`
+	DedupEnabled           bool             `json:"dedup_enabled"`
+	DedupWindowMinutes     int              `json:"dedup_window_minutes"`
 	EffectiveMode          Mode             `json:"effective_mode"`
 	Strategy               string           `json:"strategy"`
 	WorkerCount            int              `json:"worker_count"`
@@ -226,17 +240,21 @@ type UpdateConfigRequest struct {
 	BlockingLatestTurnOnly bool  `json:"blocking_latest_turn_only"`
 	// AsyncLatestTurnOnly 为指针以区分「未提交」与「显式 false」：前端 UI 保存
 	// 未携带该字段时（nil）保留存储现值，避免配置被静默重置为 false。
-	AsyncLatestTurnOnly *bool            `json:"async_latest_turn_only"`
-	StorePassEvents     bool             `json:"store_pass_events"`
-	Strategy            string           `json:"strategy"`
-	WorkerCount         int              `json:"worker_count"`
-	QueueCapacity       int              `json:"queue_capacity"`
-	Scanners            []string         `json:"scanners"`
-	AuditRoles          []string         `json:"audit_roles"`
-	AllGroups           bool             `json:"all_groups"`
-	GroupIDs            []int64          `json:"group_ids"`
-	Endpoints           []UpdateEndpoint `json:"endpoints"`
-	UserGuard           UserGuardConfig  `json:"user_guard"`
+	AsyncLatestTurnOnly *bool `json:"async_latest_turn_only"`
+	StorePassEvents     bool  `json:"store_pass_events"`
+	// DedupEnabled/DedupWindowMinutes 为指针以区分「未提交」与「显式关闭/改值」：
+	// 前端 UI 保存未携带字段时（nil）保留存储现值，避免配置被静默重置。
+	DedupEnabled       *bool            `json:"dedup_enabled"`
+	DedupWindowMinutes *int             `json:"dedup_window_minutes"`
+	Strategy           string           `json:"strategy"`
+	WorkerCount        int              `json:"worker_count"`
+	QueueCapacity      int              `json:"queue_capacity"`
+	Scanners           []string         `json:"scanners"`
+	AuditRoles         []string         `json:"audit_roles"`
+	AllGroups          bool             `json:"all_groups"`
+	GroupIDs           []int64          `json:"group_ids"`
+	Endpoints          []UpdateEndpoint `json:"endpoints"`
+	UserGuard          UserGuardConfig  `json:"user_guard"`
 }
 
 // DefaultAuditRoles 默认只提取 user 角色消息用于审计。系统提示词、开发者指令、
@@ -297,6 +315,8 @@ func DefaultStorageConfig() storageConfig {
 		BlockingLatestTurnOnly: false,
 		AsyncLatestTurnOnly:    true,
 		StorePassEvents:        false,
+		DedupEnabled:           true,
+		DedupWindowMinutes:     DefaultDedupWindowMinutes,
 		Strategy:               "priority",
 		WorkerCount:            DefaultWorkerCount,
 		QueueCapacity:          DefaultQueueCapacity,
@@ -339,6 +359,11 @@ func normalizeStorageConfig(cfg *storageConfig) {
 	}
 	if cfg.QueueCapacity == 0 {
 		cfg.QueueCapacity = DefaultQueueCapacity
+	}
+	// 查重窗口 0（旧配置缺省或手改）按默认窗口生效，与 WorkerCount/QueueCapacity
+	// 的零值回填一致；显式非法值（负值/超上限）由 validate 拒绝。
+	if cfg.DedupWindowMinutes == 0 {
+		cfg.DedupWindowMinutes = DefaultDedupWindowMinutes
 	}
 	if len(cfg.Scanners) == 0 {
 		cfg.Scanners = append([]string(nil), AllScannerIDs...)
@@ -399,6 +424,9 @@ func validateStorageConfig(cfg storageConfig) error {
 	}
 	if err := validateAuditRoles(cfg.AuditRoles); err != nil {
 		return err
+	}
+	if cfg.DedupWindowMinutes < MinDedupWindowMinutes || cfg.DedupWindowMinutes > MaxDedupWindowMinutes {
+		return infraerrors.BadRequest("prompt_audit_invalid_dedup_window", "提示词审计查重窗口超出允许范围（1-1440 分钟）")
 	}
 	seen := make(map[string]struct{}, len(cfg.Endpoints))
 	enabled := 0
@@ -510,6 +538,11 @@ func validateUpdateConfigRequest(req UpdateConfigRequest) error {
 	if err := validateUserGuardConfig(req.UserGuard); err != nil {
 		return err
 	}
+	if req.DedupWindowMinutes != nil {
+		if *req.DedupWindowMinutes < MinDedupWindowMinutes || *req.DedupWindowMinutes > MaxDedupWindowMinutes {
+			return infraerrors.BadRequest("prompt_audit_invalid_dedup_window", "提示词审计查重窗口超出允许范围（1-1440 分钟）")
+		}
+	}
 	return nil
 }
 
@@ -583,6 +616,7 @@ func PublicFromStorage(cfg storageConfig, riskControlEnabled bool, invalidTokenE
 	active := ActiveConfig{RiskControlEnabled: riskControlEnabled, Enabled: cfg.Enabled, BlockingEnabled: cfg.BlockingEnabled}
 	return PublicConfig{
 		Enabled: cfg.Enabled, BlockingEnabled: cfg.BlockingEnabled, BlockingLatestTurnOnly: cfg.BlockingLatestTurnOnly, AsyncLatestTurnOnly: cfg.AsyncLatestTurnOnly, StorePassEvents: cfg.StorePassEvents,
+		DedupEnabled: cfg.DedupEnabled, DedupWindowMinutes: cfg.DedupWindowMinutes,
 		EffectiveMode: active.EffectiveMode(), Strategy: cfg.Strategy, WorkerCount: cfg.WorkerCount,
 		QueueCapacity: cfg.QueueCapacity, Scanners: scanners, AuditRoles: append([]string(nil), cfg.AuditRoles...), AllGroups: cfg.AllGroups,
 		GroupIDs: groupIDs, Endpoints: endpoints, UserGuard: cfg.UserGuard, ConfigVersion: cfg.ConfigVersion,
@@ -595,7 +629,9 @@ func ActiveFromStorage(cfg storageConfig, riskControlEnabled bool, encryptor Sec
 		RiskControlEnabled: riskControlEnabled, Enabled: cfg.Enabled, BlockingEnabled: cfg.BlockingEnabled,
 		BlockingLatestTurnOnly: cfg.BlockingLatestTurnOnly,
 		AsyncLatestTurnOnly:    cfg.AsyncLatestTurnOnly,
-		StorePassEvents:        cfg.StorePassEvents, Strategy: cfg.Strategy, WorkerCount: cfg.WorkerCount,
+		StorePassEvents:        cfg.StorePassEvents,
+		DedupEnabled:           cfg.DedupEnabled, DedupWindowMinutes: cfg.DedupWindowMinutes,
+		Strategy: cfg.Strategy, WorkerCount: cfg.WorkerCount,
 		QueueCapacity: cfg.QueueCapacity, Scanners: append([]string(nil), cfg.Scanners...),
 		AuditRoles: append([]string(nil), cfg.AuditRoles...), AllGroups: cfg.AllGroups,
 		GroupIDs: append([]int64(nil), cfg.GroupIDs...), UserGuard: cfg.UserGuard, ConfigVersion: cfg.ConfigVersion,
@@ -638,12 +674,14 @@ func changeSummary(cfg storageConfig) string {
 		BlockingLatestTurnOnly bool   `json:"blocking_latest_turn_only"`
 		AsyncLatestTurnOnly    bool   `json:"async_latest_turn_only"`
 		StorePassEvents        bool   `json:"store_pass_events"`
+		DedupEnabled           bool   `json:"dedup_enabled"`
+		DedupWindowMinutes     int    `json:"dedup_window_minutes"`
 		EndpointCount          int    `json:"endpoint_count"`
 		ScannerCount           int    `json:"scanner_count"`
 		AllGroups              bool   `json:"all_groups"`
 		GroupCount             int    `json:"group_count"`
 		GroupHash              string `json:"group_hash"`
-	}{cfg.Enabled, cfg.BlockingEnabled, cfg.BlockingLatestTurnOnly, cfg.AsyncLatestTurnOnly, cfg.StorePassEvents, len(cfg.Endpoints), len(cfg.Scanners), cfg.AllGroups, len(cfg.GroupIDs), ""}
+	}{cfg.Enabled, cfg.BlockingEnabled, cfg.BlockingLatestTurnOnly, cfg.AsyncLatestTurnOnly, cfg.StorePassEvents, cfg.DedupEnabled, cfg.DedupWindowMinutes, len(cfg.Endpoints), len(cfg.Scanners), cfg.AllGroups, len(cfg.GroupIDs), ""}
 	rawGroups, _ := json.Marshal(cfg.GroupIDs)
 	digest := sha256.Sum256(rawGroups)
 	summary.GroupHash = hex.EncodeToString(digest[:])

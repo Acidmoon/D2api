@@ -18,9 +18,17 @@ import (
 type fakeConfigStore struct {
 	cfg    securityaudit.ActiveConfig
 	active bool
+
+	dedupDecision string
+	dedupFound    bool
+	dedupErr      error
 }
 
 func (f *fakeConfigStore) Active() (securityaudit.ActiveConfig, bool) { return f.cfg, f.active }
+
+func (f *fakeConfigStore) FindRecentDecisionByPromptHash(_ context.Context, _ int64, _ string, _ time.Time, _ int64) (string, bool, error) {
+	return f.dedupDecision, f.dedupFound, f.dedupErr
+}
 
 type fakeEvaluator struct {
 	decision *securityaudit.PromptDecision
@@ -494,4 +502,95 @@ func TestCheck_DedupRedisErrorStillCounts(t *testing.T) {
 		require.True(t, decision.Blocked)
 	}
 	require.Equal(t, 2, counter.incremented, "Redis 出错时宁多勿漏，照常计数")
+}
+
+func TestCheck_PromptDedupPassReusesAllowWithoutEvaluation(t *testing.T) {
+	evaluator := &fakeEvaluator{decision: blockDecision()}
+	counter := &fakeCounter{}
+	cfg := guardTestConfig(true, 1, 10, 60)
+	cfg.DedupEnabled = true
+	cfg.DedupWindowMinutes = 10
+	store := &fakeConfigStore{cfg: cfg, active: true, dedupDecision: string(securityaudit.EventPass), dedupFound: true}
+	svc := NewGuardService(store, evaluator, &fakeSettings{}, newFakeEmailSender(), counter)
+
+	decision, err := svc.Check(context.Background(), guardTestInput())
+	require.NoError(t, err)
+	require.Nil(t, decision)
+	require.Zero(t, evaluator.calls, "pass 复用后不再调用审核模型")
+	require.Zero(t, counter.incremented, "pass 复用不计数")
+}
+
+func TestCheck_PromptDedupBlockReusesBlockWithoutEvaluation(t *testing.T) {
+	evaluator := &fakeEvaluator{decision: blockDecision()}
+	counter := &fakeCounter{}
+	cfg := guardTestConfig(true, 2, 10, 60)
+	cfg.DedupEnabled = true
+	cfg.DedupWindowMinutes = 10
+	store := &fakeConfigStore{cfg: cfg, active: true, dedupDecision: string(securityaudit.EventCritical), dedupFound: true}
+	svc := NewGuardService(store, evaluator, &fakeSettings{}, newFakeEmailSender(), counter)
+
+	decision, err := svc.Check(context.Background(), guardTestInput())
+	require.NoError(t, err)
+	require.NotNil(t, decision)
+	require.True(t, decision.Blocked, "block 复用直接拦截")
+	require.Zero(t, evaluator.calls, "block 复用后不再调用审核模型")
+	// 拦截仍走共享计数流程（封禁累计语义保持不变），同一内容窗口内去重只计一次。
+	require.Equal(t, 1, counter.incremented)
+}
+
+func TestCheck_PromptDedupMissFlagAndErrorFallThroughToEvaluation(t *testing.T) {
+	t.Run("miss evaluates normally", func(t *testing.T) {
+		evaluator := &fakeEvaluator{decision: blockDecision()}
+		cfg := guardTestConfig(true, 1, 10, 60)
+		cfg.DedupEnabled = true
+		cfg.DedupWindowMinutes = 10
+		store := &fakeConfigStore{cfg: cfg, active: true, dedupFound: false}
+		svc := NewGuardService(store, evaluator, &fakeSettings{}, newFakeEmailSender(), &fakeCounter{})
+
+		decision, err := svc.Check(context.Background(), guardTestInput())
+		require.NoError(t, err)
+		require.True(t, decision.Blocked)
+		require.Equal(t, 1, evaluator.calls)
+	})
+
+	t.Run("flag decision is not reusable", func(t *testing.T) {
+		evaluator := &fakeEvaluator{decision: blockDecision()}
+		cfg := guardTestConfig(true, 1, 10, 60)
+		cfg.DedupEnabled = true
+		cfg.DedupWindowMinutes = 10
+		store := &fakeConfigStore{cfg: cfg, active: true, dedupDecision: string(securityaudit.EventFlag), dedupFound: true}
+		svc := NewGuardService(store, evaluator, &fakeSettings{}, newFakeEmailSender(), &fakeCounter{})
+
+		decision, err := svc.Check(context.Background(), guardTestInput())
+		require.NoError(t, err)
+		require.True(t, decision.Blocked)
+		require.Equal(t, 1, evaluator.calls)
+	})
+
+	t.Run("lookup error fails open", func(t *testing.T) {
+		evaluator := &fakeEvaluator{decision: blockDecision()}
+		cfg := guardTestConfig(true, 1, 10, 60)
+		cfg.DedupEnabled = true
+		cfg.DedupWindowMinutes = 10
+		store := &fakeConfigStore{cfg: cfg, active: true, dedupErr: errors.New("database down")}
+		svc := NewGuardService(store, evaluator, &fakeSettings{}, newFakeEmailSender(), &fakeCounter{})
+
+		decision, err := svc.Check(context.Background(), guardTestInput())
+		require.NoError(t, err)
+		require.True(t, decision.Blocked)
+		require.Equal(t, 1, evaluator.calls)
+	})
+
+	t.Run("dedup disabled evaluates normally", func(t *testing.T) {
+		evaluator := &fakeEvaluator{decision: blockDecision()}
+		cfg := guardTestConfig(true, 1, 10, 60)
+		cfg.DedupEnabled = false
+		store := &fakeConfigStore{cfg: cfg, active: true, dedupDecision: string(securityaudit.EventPass), dedupFound: true}
+		svc := NewGuardService(store, evaluator, &fakeSettings{}, newFakeEmailSender(), &fakeCounter{})
+
+		decision, err := svc.Check(context.Background(), guardTestInput())
+		require.NoError(t, err)
+		require.True(t, decision.Blocked)
+		require.Equal(t, 1, evaluator.calls)
+	})
 }

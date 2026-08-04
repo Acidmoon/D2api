@@ -21,6 +21,7 @@ func TestAtomicMetricsExposeCountsLatencyDistributionAndAsyncDelivery(t *testing
 	metrics.IncRecordFailed()
 	metrics.IncEnqueued()
 	metrics.IncDropped()
+	metrics.IncDedupHit()
 
 	snapshot := metrics.Snapshot()
 	require.Equal(t, int64(5), snapshot.Total)
@@ -30,6 +31,7 @@ func TestAtomicMetricsExposeCountsLatencyDistributionAndAsyncDelivery(t *testing
 	require.Equal(t, int64(40), snapshot.LatencyP95MS)
 	require.Equal(t, int64(40), snapshot.LatencyP99MS)
 	require.Equal(t, int64(100), snapshot.LatencyMaxMS)
+	require.Equal(t, int64(1), snapshot.DedupHits)
 	require.Equal(t, AuditMetricsSnapshot{Enqueued: 1, Dropped: 1}, metrics.AuditSnapshot())
 }
 

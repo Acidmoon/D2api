@@ -202,6 +202,7 @@ type GuardMetricsSnapshot struct {
 	Blocked      int64 `json:"blocked"`
 	Unavailable  int64 `json:"unavailable"`
 	Invalid      int64 `json:"invalid"`
+	DedupHits    int64 `json:"dedup_hits"`
 	Timeouts     int64 `json:"timeouts"`
 	Failovers    int64 `json:"failovers"`
 	BulkheadFull int64 `json:"bulkhead_full"`
@@ -272,6 +273,7 @@ type Metrics interface {
 	IncFailover()
 	IncBulkheadFull()
 	IncRecordFailed()
+	IncDedupHit()
 }
 
 type PromptScanner interface {
