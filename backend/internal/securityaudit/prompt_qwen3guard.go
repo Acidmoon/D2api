@@ -237,8 +237,11 @@ func (s *OpenAICompatibleScanner) Scan(ctx context.Context, endpoint ActiveEndpo
 		"model":       endpoint.Model,
 		"messages":    messages,
 		"temperature": 0,
-		"max_tokens":  64,
-		"seed":        42,
+		// 128 token：64 token 下通用模型的 preamble/解释/Refusal 行会把结尾的
+		// Safety:/Categories: 行挤出窗口导致格式漂移；128 提供约两倍余量，且
+		// max_tokens 只是上限，合规输出通常远小于此，延迟/成本上升可忽略。
+		"max_tokens": 128,
+		"seed":       42,
 	}
 	body, err := json.Marshal(payload)
 	if err != nil {

@@ -447,6 +447,74 @@ func TestWorkerRetryBackoffTerminalFailureAndFailover(t *testing.T) {
 	require.Equal(t, int64(1), metrics.Snapshot().Failovers)
 }
 
+func TestWorkerInvalidResponseSameEndpointRetryAndFailover(t *testing.T) {
+	t.Run("failover to backup endpoint after invalid retry", func(t *testing.T) {
+		repo := &fakeJobRepository{}
+		payload := &fakePayloadStore{values: map[int64]string{51: "abc"}}
+		metrics := NewAtomicMetrics()
+		var calls []string
+		scanner := PromptScannerFunc(func(_ context.Context, endpoint ActiveEndpoint, _ string, _ []string) (*NormalizedResult, error) {
+			calls = append(calls, endpoint.ID)
+			if endpoint.ID == "invalid" {
+				return nil, &GuardError{Code: ErrorCodeInvalidResponse}
+			}
+			return integrationResult(EventPass), nil
+		})
+		cfg := asyncConfig()
+		cfg.Endpoints = []ActiveEndpoint{{ID: "invalid", Enabled: true, InputLimit: 10}, {ID: "backup", Enabled: true, InputLimit: 10}}
+		runner := NewRunner(&fakeConfigStore{cfg: cfg, active: true}, repo, payload, scanner, metrics)
+		require.NoError(t, runner.processJob(context.Background(), 0, cfg, workerJob(1, 3)))
+		require.Equal(t, []string{"invalid", "invalid", "backup"}, calls, "invalid retried once on same endpoint then failover")
+		require.Equal(t, int64(1), metrics.Snapshot().Failovers)
+		require.Zero(t, repo.failed)
+		require.NotNil(t, repo.completedResult)
+	})
+
+	t.Run("single invalid endpoint fails job after exactly one same-endpoint retry", func(t *testing.T) {
+		repo := &fakeJobRepository{}
+		payload := &fakePayloadStore{values: map[int64]string{51: "abc"}}
+		metrics := NewAtomicMetrics()
+		calls := 0
+		scanner := PromptScannerFunc(func(context.Context, ActiveEndpoint, string, []string) (*NormalizedResult, error) {
+			calls++
+			return nil, &GuardError{Code: ErrorCodeInvalidResponse}
+		})
+		runner := NewRunner(&fakeConfigStore{cfg: asyncConfig(), active: true}, repo, payload, scanner, metrics)
+		err := runner.processJob(context.Background(), 0, asyncConfig(), workerJob(1, 3))
+		require.Error(t, err)
+		require.Equal(t, 2, calls, "invalid must be retried exactly once on the same endpoint, never unbounded")
+		require.Equal(t, 1, repo.failed)
+		require.Equal(t, ErrorCodeInvalidResponse, repo.failedCode)
+		require.Equal(t, int64(1), metrics.Snapshot().Invalid)
+		require.Zero(t, metrics.Snapshot().Failovers)
+	})
+
+	t.Run("transient invalid then valid on same endpoint succeeds without failover", func(t *testing.T) {
+		repo := &fakeJobRepository{}
+		payload := &fakePayloadStore{values: map[int64]string{51: "abc"}}
+		metrics := NewAtomicMetrics()
+		calls := 0
+		scanner := PromptScannerFunc(func(_ context.Context, _ ActiveEndpoint, _ string, _ []string) (*NormalizedResult, error) {
+			calls++
+			if calls == 1 {
+				return nil, &GuardError{Code: ErrorCodeInvalidResponse}
+			}
+			return integrationResult(EventPass), nil
+		})
+		runner := NewRunner(&fakeConfigStore{cfg: asyncConfig(), active: true}, repo, payload, scanner, metrics)
+		require.NoError(t, runner.processJob(context.Background(), 0, asyncConfig(), workerJob(1, 3)))
+		require.Equal(t, 2, calls, "transient invalid must be retried exactly once on the same endpoint")
+		require.Zero(t, repo.failed)
+		require.NotNil(t, repo.completedResult)
+		require.Equal(t, EventPass, repo.completedResult.Decision)
+		snapshot := metrics.Snapshot()
+		require.Equal(t, int64(0), snapshot.Failovers, "successful same-endpoint retry must not trigger failover")
+		require.Equal(t, int64(1), snapshot.Total)
+		require.Equal(t, int64(1), snapshot.Allowed)
+		require.Zero(t, snapshot.Invalid, "absorbed transient invalid must not be counted as invalid")
+	})
+}
+
 func TestWorkerPanicLeaseLossAndLifecycleAreContained(t *testing.T) {
 	t.Run("panic", func(t *testing.T) {
 		repo := &fakeJobRepository{}

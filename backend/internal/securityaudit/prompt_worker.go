@@ -306,10 +306,31 @@ func (r *Runner) setLastError(code, _ string) {
 	r.runtime.lastErrorMu.Unlock()
 }
 
+// scanWithInvalidRetry 对同一端点最多调用两次 scan：第一次结果为 invalid
+// response（nil 结果或 ErrorCodeInvalidResponse）时重试一次，吸收上游偶发
+// 的格式漂移。每个端点的调用次数上限为 2，不会无限放大对劣化上游的调用。
+func scanWithInvalidRetry(ctx context.Context, scan func() (*NormalizedResult, error)) (*NormalizedResult, error) {
+	result, err := scan()
+	if !isInvalidScanResult(err, result) {
+		return result, err
+	}
+	return scan()
+}
+
+func isInvalidScanResult(err error, result *NormalizedResult) bool {
+	if err == nil {
+		return result == nil
+	}
+	var guardErr *GuardError
+	return errors.As(err, &guardErr) && guardErr.Code == ErrorCodeInvalidResponse
+}
+
 func scanWithFailover(ctx context.Context, scanner PromptScanner, scanners []string, endpoints []ActiveEndpoint, chunk string, metrics Metrics) (*NormalizedResult, error) {
 	var lastErr error
 	for index, endpoint := range endpoints {
-		result, err := scanner.Scan(ctx, endpoint, chunk, scanners)
+		result, err := scanWithInvalidRetry(ctx, func() (*NormalizedResult, error) {
+			return scanner.Scan(ctx, endpoint, chunk, scanners)
+		})
 		if err == nil && result != nil {
 			return result, nil
 		}
@@ -318,6 +339,14 @@ func scanWithFailover(ctx context.Context, scanner PromptScanner, scanners []str
 		}
 		lastErr = err
 		var guardErr *GuardError
+		if errors.As(err, &guardErr) && guardErr.Code == ErrorCodeInvalidResponse {
+			// 同端点重试一次后仍 invalid：failover 到下一个备用端点；全部端点
+			// 耗尽时返回最后的 invalid 错误，保持既有 fail-closed/fail 语义。
+			if index < len(endpoints)-1 && metrics != nil {
+				metrics.IncFailover()
+			}
+			continue
+		}
 		if !errors.As(err, &guardErr) || !guardErr.Retryable {
 			return nil, err
 		}

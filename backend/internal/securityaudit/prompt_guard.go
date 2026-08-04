@@ -205,7 +205,9 @@ func (g *GuardEvaluator) scanChunk(ctx context.Context, cfg ActiveConfig, endpoi
 			}
 			continue
 		}
-		result, err := callPromptScanner(ctx, g.scanner, endpoint, chunk, cfg.Scanners)
+		result, err := scanWithInvalidRetry(ctx, func() (*NormalizedResult, error) {
+			return callPromptScanner(ctx, g.scanner, endpoint, chunk, cfg.Scanners)
+		})
 		<-semaphore
 		if err == nil && result != nil {
 			return result, nil
@@ -215,6 +217,14 @@ func (g *GuardEvaluator) scanChunk(ctx context.Context, cfg ActiveConfig, endpoi
 		}
 		lastErr = err
 		var guardErr *GuardError
+		if errors.As(err, &guardErr) && guardErr.Code == ErrorCodeInvalidResponse {
+			// 同端点重试一次后仍 invalid：failover 到下一个备用端点；全部端点
+			// 耗尽时返回最后的 invalid 错误，blocking 路径维持既有 503 行为。
+			if index < len(endpoints)-1 && g.metrics != nil {
+				g.metrics.IncFailover()
+			}
+			continue
+		}
 		if !errors.As(err, &guardErr) || !guardErr.Retryable {
 			return nil, err
 		}

@@ -48,7 +48,7 @@ func guardConfig(endpoints ...ActiveEndpoint) ActiveConfig {
 	return ActiveConfig{RiskControlEnabled: true, Enabled: true, BlockingEnabled: true, ConfigVersion: 2, Scanners: AllScannerIDs, Endpoints: endpoints}
 }
 
-func TestGuardEvaluatorOrderedFailoverAndInvalidTerminal(t *testing.T) {
+func TestGuardEvaluatorOrderedFailoverAndInvalidResponseRecovery(t *testing.T) {
 	scanner := &scriptedScanner{}
 	metrics := NewAtomicMetrics()
 	evaluator := newGuardEvaluator(scanner, nil, metrics, 4, 2)
@@ -60,17 +60,30 @@ func TestGuardEvaluatorOrderedFailoverAndInvalidTerminal(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, DecisionAllow, decision.Kind)
 	require.Equal(t, int64(1), metrics.Snapshot().Failovers)
-	_, err = evaluator.Evaluate(context.Background(), guardConfig(
+
+	// invalid 上游在同端点重试一次后仍失效：failover 到备用端点并成功。
+	firstCalls := len(scanner.calls)
+	decision, err = evaluator.Evaluate(context.Background(), guardConfig(
 		ActiveEndpoint{ID: "invalid", Enabled: true, TimeoutMS: 1000, InputLimit: 100},
 		ActiveEndpoint{ID: "good", Enabled: true, TimeoutMS: 1000, InputLimit: 100},
+	), snapshot)
+	require.NoError(t, err)
+	require.Equal(t, DecisionAllow, decision.Kind)
+	require.Equal(t, []string{"invalid", "invalid", "good"}, scanner.calls[firstCalls:])
+	require.Equal(t, int64(2), metrics.Snapshot().Failovers)
+
+	// 全部端点都 invalid（含同端点重试）时仍 fail-closed：维持既有 503 语义。
+	_, err = evaluator.Evaluate(context.Background(), guardConfig(
+		ActiveEndpoint{ID: "invalid", Enabled: true, TimeoutMS: 1000, InputLimit: 100},
 	), snapshot)
 	var guardErr *GuardError
 	require.ErrorAs(t, err, &guardErr)
 	require.Equal(t, ErrorCodeInvalidResponse, guardErr.Code)
 	snapshotMetrics := metrics.Snapshot()
-	require.Equal(t, int64(2), snapshotMetrics.Total)
-	require.Equal(t, int64(1), snapshotMetrics.Allowed)
+	require.Equal(t, int64(3), snapshotMetrics.Total)
+	require.Equal(t, int64(2), snapshotMetrics.Allowed)
 	require.Equal(t, int64(1), snapshotMetrics.Invalid)
+	require.Equal(t, int64(2), snapshotMetrics.Failovers, "single all-invalid endpoint must not trigger failover")
 }
 
 func TestGuardEvaluatorGlobalBulkheadIsNonBlocking(t *testing.T) {
