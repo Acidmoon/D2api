@@ -39,7 +39,7 @@
               :class="[
                 'whitespace-nowrap py-2.5 px-1 border-b-2 font-medium text-sm transition-colors',
                 activeClientTab === tab.id
-                  ? 'border-primary text-primary'
+                  ? 'border-brand text-brand'
                   : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
               ]"
             >
@@ -77,7 +77,7 @@
               :class="[
                 'rounded-md px-3 py-2 text-sm font-medium transition-colors',
                 codexAuthMode === 'legacy'
-                  ? 'bg-background text-primary shadow-sm'
+                  ? 'bg-background text-brand shadow-sm'
                   : 'text-muted-foreground hover:text-foreground'
               ]"
               @click="codexAuthMode = 'legacy'"
@@ -92,7 +92,7 @@
               :class="[
                 'rounded-md px-3 py-2 text-sm font-medium transition-colors',
                 codexAuthMode === 'api-key'
-                  ? 'bg-background text-primary shadow-sm'
+                  ? 'bg-background text-brand shadow-sm'
                   : 'text-muted-foreground hover:text-foreground'
               ]"
               @click="codexAuthMode = 'api-key'"
@@ -121,7 +121,7 @@
               :class="[
                 'whitespace-nowrap py-2.5 px-1 border-b-2 font-medium text-sm transition-colors',
                 activeTab === tab.id
-                  ? 'border-primary-500 text-primary-600 dark:text-primary-400'
+                  ? 'border-brand text-brand'
                   : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
               ]"
             >

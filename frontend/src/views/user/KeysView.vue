@@ -64,7 +64,7 @@
                 <span>{{ col.label }}</span>
                 <Check
                   v-if="isColumnVisible(col.key)"
-                  class="h-4 w-4 text-primary"
+                  class="h-4 w-4 text-brand"
                 />
               </button>
             </div>
@@ -305,7 +305,7 @@
               <button
                 v-if="row.usage_5h > 0 || row.usage_1d > 0 || row.usage_7d > 0"
                 @click.stop="confirmResetRateLimitFromTable(row)"
-                class="mt-0.5 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-primary"
+                class="mt-0.5 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-brand"
                 :title="t('keys.resetRateLimitUsage')"
               >
                 <Icon name="refresh" size="xs" />
@@ -811,7 +811,7 @@
                 :class="[
                   'rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
                   formData.expiration_preset === days
-                    ? 'bg-primary text-primary-foreground'
+                    ? 'bg-brand text-brand-foreground'
                     : 'bg-muted text-muted-foreground hover:bg-secondary'
                 ]"
               >
@@ -823,7 +823,7 @@
                 :class="[
                   'rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
                   formData.expiration_preset === 'custom'
-                    ? 'bg-primary text-primary-foreground'
+                    ? 'bg-brand text-brand-foreground'
                     : 'bg-muted text-muted-foreground hover:bg-secondary'
                 ]"
               >
@@ -935,7 +935,7 @@
         <div class="grid grid-cols-2 gap-3">
           <button
             @click="handleCcsClientSelect('claude')"
-            class="flex flex-col items-center gap-2 rounded-xl border-2 border-border p-4 transition-all hover:border-primary hover:bg-primary/5"
+            class="flex flex-col items-center gap-2 rounded-xl border-2 border-border p-4 transition-colors hover:border-brand hover:bg-brand/5"
           >
             <Terminal class="h-6 w-6 text-muted-foreground" />
             <span class="font-medium text-foreground">{{
@@ -947,7 +947,7 @@
           </button>
           <button
             @click="handleCcsClientSelect('gemini')"
-            class="flex flex-col items-center gap-2 rounded-xl border-2 border-border p-4 transition-all hover:border-primary hover:bg-primary/5"
+            class="flex flex-col items-center gap-2 rounded-xl border-2 border-border p-4 transition-colors hover:border-brand hover:bg-brand/5"
           >
             <Sparkles class="h-6 w-6 text-muted-foreground" />
             <span class="font-medium text-foreground">{{
@@ -1007,7 +1007,7 @@
               'border-b border-border/60 last:border-0',
               selectedGroupIdForDropdown === option.value ||
               (selectedGroupIdForDropdown === null && option.value === null)
-                ? 'bg-primary/10'
+                ? 'bg-brand/10'
                 : 'hover:bg-muted'
             ]"
             :title="option.description || undefined"

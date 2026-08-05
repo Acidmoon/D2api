@@ -55,7 +55,7 @@
             :title="t('subscriptionProgress.walletTitle')"
             @click="toggleWalletPanel"
           >
-            <Icon name="dollar" size="sm" class="text-primary" />
+            <Icon name="dollar" size="sm" class="text-brand" />
             <span class="text-sm font-semibold text-foreground">
               {{ formatHeaderMoney(availableBalance) }}
             </span>
@@ -206,7 +206,7 @@
                 <div class="text-xs text-muted-foreground">
                   {{ t('common.balance') }}
                 </div>
-                <div class="text-sm font-semibold text-primary">
+                <div class="text-sm font-semibold text-brand">
                   {{ formatHeaderMoney(availableBalance) }}
                 </div>
                 <div v-if="frozenBalance > 0" class="mt-1 text-xs text-amber-600 dark:text-amber-400">

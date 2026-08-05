@@ -1051,7 +1051,7 @@ tbody tr.dt-row-selected .sticky-col {
 }
 
 .dt-checkbox {
-  accent-color: hsl(var(--primary));
+  accent-color: hsl(var(--brand));
 }
 
 .dt-sortable-header:hover {

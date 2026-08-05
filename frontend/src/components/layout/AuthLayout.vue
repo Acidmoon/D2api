@@ -68,7 +68,7 @@ onMounted(() => {
 }
 
 .auth-title {
-  color: hsl(var(--primary));
+  color: hsl(var(--brand));
 }
 
 .auth-subtitle {

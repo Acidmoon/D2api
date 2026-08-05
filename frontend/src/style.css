@@ -113,7 +113,7 @@
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
     font-family:
-      'Helvetica Neue', Arial, 'PingFang SC', 'Hiragino Sans GB',
+      'Inter', 'Helvetica Neue', Arial, 'PingFang SC', 'Hiragino Sans GB',
       'Microsoft YaHei', sans-serif;
     letter-spacing: 0;
   }
@@ -204,8 +204,10 @@
     --card-foreground: 0 0% 7%;
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 7%;
-    --primary: 175 84% 26%; /* --nm-accent #0f766e */
-    --primary-foreground: 0 0% 100%; /* --nm-on-accent */
+    --primary: 0 0% 9%; /* neutral (shadcn classic) — was teal #0f766e */
+    --primary-foreground: 0 0% 100%;
+    --brand: 175 84% 26%; /* teal brand accent #0f766e */
+    --brand-foreground: 0 0% 100%;
     --secondary: 0 0% 93%; /* --nm-surface-soft #f0f0ec */
     --secondary-foreground: 0 0% 7%;
     --muted: 0 0% 93%;
@@ -231,8 +233,10 @@
     --card-foreground: 0 0% 95%;
     --popover: 0 0% 9%;
     --popover-foreground: 0 0% 95%;
-    --primary: 173 51% 52%; /* --nm-accent #45c3b5 */
-    --primary-foreground: 170 5% 5%; /* --nm-on-accent #071311 */
+    --primary: 0 0% 95%; /* neutral (shadcn classic) — was teal #45c3b5 */
+    --primary-foreground: 0 0% 7%;
+    --brand: 173 51% 52%; /* teal brand accent #45c3b5 */
+    --brand-foreground: 170 5% 5%;
     --secondary: 0 0% 12%; /* --nm-surface-soft #20201e */
     --secondary-foreground: 0 0% 95%;
     --muted: 0 0% 12%;
@@ -651,9 +655,9 @@
   }
 
   .badge-primary {
-    background-color: hsl(var(--primary) / 0.12);
+    background-color: hsl(var(--brand) / 0.12);
     border-color: transparent;
-    color: hsl(var(--primary));
+    color: hsl(var(--brand));
   }
 
   .badge-success {
@@ -893,6 +897,7 @@
     @apply text-sm font-medium;
     @apply transition-colors duration-200;
     border-radius: calc(var(--radius) - 2px);
+    border-left: 2px solid transparent;
     color: hsl(var(--muted-foreground));
     min-height: 2.25rem;
     padding-left: 0.75rem;
@@ -906,15 +911,16 @@
   }
 
   .sidebar-link-active {
-    background-color: hsl(var(--primary) / 0.12);
+    background-color: hsl(var(--muted));
+    border-left-color: hsl(var(--brand));
     box-shadow: none;
-    color: hsl(var(--primary));
+    color: hsl(var(--foreground));
     font-weight: 600;
   }
 
   .sidebar-link-active:hover {
-    background-color: hsl(var(--primary) / 0.16);
-    color: hsl(var(--primary));
+    background-color: hsl(var(--muted));
+    color: hsl(var(--foreground));
   }
 
   .sidebar-link-active svg {
