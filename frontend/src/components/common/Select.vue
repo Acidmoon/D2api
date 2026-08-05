@@ -478,29 +478,30 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
-  min-height: 2.75rem;
-  padding: 0.625rem 1rem;
-  border: 1px solid var(--nm-border);
-  border-radius: var(--nm-radius);
-  background: var(--nm-surface);
-  color: var(--nm-ink);
+  min-height: 2.5rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid hsl(var(--input));
+  border-radius: var(--radius);
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
   font-size: 0.875rem;
-  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease;
+  box-shadow: 0 1px 2px hsl(var(--foreground) / 0.04);
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease, box-shadow 160ms ease;
 }
 
 .select-trigger-open {
-  border-color: var(--nm-accent);
-  background: var(--nm-accent-soft);
+  border-color: hsl(var(--ring));
+  background: hsl(var(--background));
+  box-shadow: 0 0 0 2px hsl(var(--ring) / 0.2);
 }
 
 .select-trigger-error {
-  border-color: var(--nm-danger);
+  border-color: hsl(var(--destructive));
 }
 
 .select-trigger-disabled {
   cursor: not-allowed;
-  background: var(--nm-surface-soft);
-  opacity: 0.6;
+  opacity: 0.5;
 }
 
 .select-value {
@@ -513,7 +514,7 @@ onUnmounted(() => {
 
 .select-icon {
   flex-shrink: 0;
-  color: var(--nm-ink-faint);
+  color: hsl(var(--muted-foreground));
 }
 
 .select-clear {
@@ -522,13 +523,15 @@ onUnmounted(() => {
   cursor: pointer;
   align-items: center;
   justify-content: center;
-  color: var(--nm-ink-faint);
-  border-radius: var(--nm-radius-sm);
-  transition: color 160ms ease;
+  color: hsl(var(--muted-foreground));
+  border-radius: 9999px;
+  padding: 0.125rem;
+  transition: color 160ms ease, background-color 160ms ease;
 }
 
 .select-clear:hover {
-  color: var(--nm-ink);
+  color: hsl(var(--foreground));
+  background: hsl(var(--muted));
 }
 </style>
 
@@ -537,9 +540,12 @@ onUnmounted(() => {
   width: max-content;
   min-width: 200px;
   overflow: hidden;
-  background: var(--nm-surface);
-  border: 1px solid var(--nm-border);
-  border-radius: var(--nm-radius-lg);
+  background: hsl(var(--popover));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  box-shadow: 0 10px 38px -10px rgb(22 23 24 / 0.35), 0 10px 20px -15px rgb(22 23 24 / 0.2);
+  padding: 0.25rem;
+  color: hsl(var(--popover-foreground));
   pointer-events: auto !important;
 }
 
@@ -547,25 +553,28 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.5rem 0.75rem;
-  border-bottom: 1px solid var(--nm-border-light);
+  padding: 0.375rem 0.5rem;
+  border-bottom: 1px solid hsl(var(--border));
 }
 
-.select-dropdown-portal .select-search-icon,
+.select-dropdown-portal .select-search-icon {
+  color: hsl(var(--muted-foreground));
+}
+
 .select-option-check {
-  color: var(--nm-accent-text);
+  color: hsl(var(--brand));
 }
 
 .select-dropdown-portal .select-search-input {
   flex: 1 1 0%;
   background: transparent;
-  color: var(--nm-ink);
+  color: hsl(var(--popover-foreground));
   font-size: 0.875rem;
   outline: none;
 }
 
 .select-dropdown-portal .select-search-input::placeholder {
-  color: var(--nm-ink-faint);
+  color: hsl(var(--muted-foreground));
 }
 
 .select-dropdown-portal .select-options {
@@ -581,46 +590,49 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
-  padding: 0.625rem 1rem;
-  color: var(--nm-ink-muted);
+  padding: 0.375rem 0.5rem;
+  border-radius: calc(var(--radius) - 2px);
+  color: hsl(var(--popover-foreground));
   font-size: 0.875rem;
   transition: background-color 150ms ease, color 150ms ease;
   pointer-events: auto !important;
 }
 
 .select-dropdown-portal .select-option:hover {
-  background: var(--nm-surface-soft);
-  color: var(--nm-ink);
+  background: hsl(var(--accent));
+  color: hsl(var(--accent-foreground));
 }
 
 .select-dropdown-portal .select-option-selected {
-  background: var(--nm-accent-soft);
-  color: var(--nm-accent-text);
+  background: hsl(var(--brand) / 0.08);
+  color: hsl(var(--brand));
+  font-weight: 500;
 }
 
 .select-dropdown-portal .select-option-focused {
-  background: var(--nm-surface-soft);
-  color: var(--nm-ink);
+  background: hsl(var(--accent));
+  color: hsl(var(--accent-foreground));
 }
 
 .select-dropdown-portal .select-option-disabled {
   cursor: not-allowed;
-  opacity: 0.4;
+  opacity: 0.5;
 }
 
 .select-dropdown-portal .select-option-group {
   cursor: default;
   user-select: none;
-  background: var(--nm-surface-soft);
-  color: var(--nm-ink-muted);
-  font-size: 11px;
-  font-weight: 700;
+  background: transparent;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.75rem;
+  font-weight: 600;
   letter-spacing: 0;
-  text-transform: uppercase;
+  padding: 0.375rem 0.5rem;
+  text-transform: none;
 }
 
 .select-dropdown-portal .select-option-group:hover {
-  background: var(--nm-surface-soft);
+  background: transparent;
 }
 
 .select-dropdown-portal .select-option-label {
@@ -633,13 +645,13 @@ onUnmounted(() => {
 }
 
 .select-dropdown-portal .select-option-creatable {
-  color: var(--nm-ink-muted);
+  color: hsl(var(--muted-foreground));
   font-style: italic;
 }
 
 .select-dropdown-portal .select-empty {
   padding: 2rem 1rem;
-  color: var(--nm-ink-muted);
+  color: hsl(var(--muted-foreground));
   text-align: center;
   font-size: 0.875rem;
 }

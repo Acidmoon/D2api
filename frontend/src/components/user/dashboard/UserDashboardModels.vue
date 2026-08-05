@@ -1,6 +1,6 @@
 <template>
   <div class="card model-rank-card flex flex-col p-4">
-    <h3 class="mb-3 border-b pb-2 text-xs font-bold uppercase" style="color: var(--nm-ink); border-color: var(--nm-border); letter-spacing: 0">
+    <h3 class="mb-3 border-b border-border pb-2 text-sm font-semibold text-foreground">
       {{ t('dashboard.modelRankingTop3') }}
     </h3>
 
@@ -8,7 +8,7 @@
       <LoadingSpinner size="md" />
     </div>
 
-    <div v-else-if="ranked.length === 0" class="flex flex-1 items-center justify-center py-8 text-sm" style="color: var(--nm-ink-faint)">
+    <div v-else-if="ranked.length === 0" class="flex flex-1 items-center justify-center py-8 text-sm text-muted-foreground">
       {{ t('dashboard.noDataAvailable') }}
     </div>
 
@@ -17,14 +17,14 @@
         <span class="rank-no" :class="`rank-${i + 1}`">{{ i + 1 }}</span>
         <div class="min-w-0 flex-1">
           <div class="flex items-baseline justify-between gap-2">
-            <span class="truncate text-sm font-medium" style="color: var(--nm-ink)" :title="m.model">{{ m.model }}</span>
+            <span class="truncate text-sm font-medium text-foreground" :title="m.model">{{ m.model }}</span>
             <span class="flex-shrink-0 font-mono text-xs" style="color: var(--nm-success-text)">${{ formatCost(m.actual_cost) }}</span>
           </div>
           <div class="mt-1 flex items-center gap-2">
             <div class="rank-bar-track">
               <div class="rank-bar-fill" :style="{ width: pct(m.total_tokens) + '%' }" />
             </div>
-            <span class="flex-shrink-0 text-[11px]" style="color: var(--nm-ink-faint)">{{ formatTokens(m.total_tokens) }}</span>
+            <span class="flex-shrink-0 text-[11px] text-muted-foreground">{{ formatTokens(m.total_tokens) }}</span>
           </div>
         </div>
       </li>
@@ -64,8 +64,8 @@ const pct = (v: number) => Math.max(2, Math.round((v / maxTokens.value) * 100))
   gap: 0.75rem;
   min-width: 0;
   border-radius: var(--nm-radius-sm);
-  border: 1px solid var(--nm-border);
-  background: var(--nm-surface-soft);
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--muted));
   padding: 0.75rem;
 }
 
@@ -83,23 +83,23 @@ const pct = (v: number) => Math.max(2, Math.round((v / maxTokens.value) * 100))
   align-items: center;
   justify-content: center;
   border-radius: var(--nm-radius-sm);
-  background: var(--nm-surface-soft);
-  border: 1px solid var(--nm-border);
+  background: hsl(var(--muted));
+  border: 1px solid hsl(var(--border));
   box-shadow: none;
   font-size: 0.75rem;
   font-weight: 600;
-  color: var(--nm-ink-muted);
+  color: hsl(var(--muted-foreground));
 }
 
-.rank-1 { color: #fff; background: var(--nm-accent); }
+.rank-1 { color: #fff; background: hsl(var(--brand)); }
 .rank-2,
-.rank-3 { color: var(--nm-accent-text); }
+.rank-3 { color: hsl(var(--brand)); }
 
 .rank-bar-track {
   flex: 1;
   height: 4px;
   border-radius: var(--nm-radius-sm);
-  background: var(--nm-surface-soft);
+  background: hsl(var(--muted));
   box-shadow: none;
   overflow: hidden;
 }
@@ -107,7 +107,7 @@ const pct = (v: number) => Math.max(2, Math.round((v / maxTokens.value) * 100))
 .rank-bar-fill {
   height: 100%;
   border-radius: var(--nm-radius-sm);
-  background: var(--nm-accent);
+  background: hsl(var(--brand));
   transition: width 300ms ease;
 }
 

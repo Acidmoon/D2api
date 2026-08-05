@@ -38,10 +38,10 @@
           <div
             class="flex h-5 w-5 items-center justify-center rounded-full border-2 transition-all"
             :class="selectedGroupId === group.id
-              ? 'border-primary-500 bg-primary-500'
+              ? 'border-primary bg-primary'
               : 'border-gray-300 dark:border-dark-500'"
           >
-            <div v-if="selectedGroupId === group.id" class="h-2 w-2 rounded-full bg-white"></div>
+            <div v-if="selectedGroupId === group.id" class="h-2 w-2 rounded-full bg-primary-foreground"></div>
           </div>
           <div class="flex-1">
             <span class="font-medium text-gray-900 dark:text-white">{{ group.name }}</span>

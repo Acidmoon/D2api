@@ -214,7 +214,7 @@ const SaveToggle = defineComponent({
         disabled: props.disabled,
         class: [
           'relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2',
-          props.modelValue ? 'bg-primary-600' : 'bg-gray-300 dark:bg-dark-600',
+          props.modelValue ? 'bg-primary' : 'bg-gray-300 dark:bg-dark-600',
           props.disabled ? 'cursor-not-allowed' : 'cursor-pointer',
         ],
         onClick: (event: MouseEvent) => {
@@ -224,7 +224,7 @@ const SaveToggle = defineComponent({
       }, [
         h('span', {
           class: [
-            'pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transition-transform duration-200 ease-in-out',
+            'pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transition-transform duration-200 ease-in-out dark:bg-background',
             props.modelValue ? 'translate-x-5' : 'translate-x-0',
           ],
         }),

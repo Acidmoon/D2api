@@ -6,14 +6,14 @@
     <div class="card mb-4 p-4">
       <div class="flex flex-wrap items-center gap-3">
         <div class="flex items-center gap-2">
-          <span class="text-sm font-medium" style="color: var(--nm-ink-muted)">{{ t('dashboard.timeRange') }}:</span>
+          <span class="text-sm font-medium text-muted-foreground">{{ t('dashboard.timeRange') }}:</span>
           <DateRangePicker :start-date="startDate" :end-date="endDate" @update:startDate="$emit('update:startDate', $event)" @update:endDate="$emit('update:endDate', $event)" @change="$emit('dateRangeChange', $event)" />
         </div>
         <button @click="$emit('refresh')" :disabled="loading" class="btn btn-secondary">
           {{ t('common.refresh') }}
         </button>
         <div class="ml-auto flex items-center gap-2">
-          <span class="text-sm font-medium" style="color: var(--nm-ink-muted)">{{ t('dashboard.granularity') }}:</span>
+          <span class="text-sm font-medium text-muted-foreground">{{ t('dashboard.granularity') }}:</span>
           <div class="w-28">
             <Select :model-value="granularity" :options="[{value:'day', label:t('dashboard.day')}, {value:'hour', label:t('dashboard.hour')}]" @update:model-value="$emit('update:granularity', $event)" @change="$emit('granularityChange')" />
           </div>
@@ -86,10 +86,10 @@ const { t } = useI18n()
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0;
-  color: var(--nm-ink);
+  color: hsl(var(--foreground));
   margin-bottom: 0.75rem;
   padding-bottom: 0.5rem;
-  border-bottom: 1px solid var(--nm-border);
+  border-bottom: 1px solid hsl(var(--border));
 }
 
 .usage-detail-panel {
@@ -109,7 +109,7 @@ const { t } = useI18n()
 }
 
 .heatmap-pane {
-  border-left: 1px solid var(--nm-border);
+  border-left: 1px solid hsl(var(--border));
   padding-left: 1.25rem;
 }
 
@@ -120,7 +120,7 @@ const { t } = useI18n()
 
   .heatmap-pane {
     border-left: 0;
-    border-top: 1px solid var(--nm-border);
+    border-top: 1px solid hsl(var(--border));
     padding-left: 0;
     padding-top: 1.25rem;
   }

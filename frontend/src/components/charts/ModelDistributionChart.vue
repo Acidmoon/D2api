@@ -1,7 +1,7 @@
 <template>
   <div class="card p-4">
-    <div class="mb-4 flex items-center justify-between gap-3 border-b pb-2" style="border-color: var(--nm-border)">
-      <h3 class="text-xs font-bold uppercase" style="color: var(--nm-ink); letter-spacing: 0">
+    <div class="mb-4 flex items-center justify-between gap-3 border-b border-border pb-2">
+      <h3 class="text-sm font-semibold text-foreground">
         {{ !enableRankingView || activeView === 'model_distribution'
           ? t('admin.dashboard.modelDistribution')
           : t('admin.dashboard.spendingRankingTitle') }}
@@ -9,14 +9,13 @@
       <div class="flex flex-wrap items-center justify-end gap-2">
         <div
           v-if="showSourceToggle"
-          class="inline-flex border p-0.5"
-          style="border-color: var(--nm-border); border-radius: var(--nm-radius); background: var(--nm-surface)"
+          class="inline-flex rounded-lg border border-border bg-muted p-0.5"
         >
           <button
             type="button"
             class="rounded-md px-2.5 py-1 text-xs font-medium transition-colors"
             :class="source === 'requested'
-              ? 'bg-accent-950 text-white dark:bg-dark-50 dark:text-dark-950'
+              ? 'bg-primary text-primary-foreground'
               : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'"
             @click="emit('update:source', 'requested')"
           >
@@ -26,7 +25,7 @@
             type="button"
             class="rounded-md px-2.5 py-1 text-xs font-medium transition-colors"
             :class="source === 'upstream'
-              ? 'bg-accent-950 text-white dark:bg-dark-50 dark:text-dark-950'
+              ? 'bg-primary text-primary-foreground'
               : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'"
             @click="emit('update:source', 'upstream')"
           >
@@ -36,7 +35,7 @@
             type="button"
             class="rounded-md px-2.5 py-1 text-xs font-medium transition-colors"
             :class="source === 'mapping'
-              ? 'bg-accent-950 text-white dark:bg-dark-50 dark:text-dark-950'
+              ? 'bg-primary text-primary-foreground'
               : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'"
             @click="emit('update:source', 'mapping')"
           >
@@ -45,14 +44,13 @@
         </div>
         <div
           v-if="showMetricToggle"
-          class="inline-flex border p-0.5"
-          style="border-color: var(--nm-border); border-radius: var(--nm-radius); background: var(--nm-surface)"
+          class="inline-flex rounded-lg border border-border bg-muted p-0.5"
         >
           <button
             type="button"
             class="rounded-md px-2.5 py-1 text-xs font-medium transition-colors"
             :class="metric === 'tokens'
-              ? 'bg-accent-950 text-white dark:bg-dark-50 dark:text-dark-950'
+              ? 'bg-primary text-primary-foreground'
               : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'"
             @click="emit('update:metric', 'tokens')"
           >
@@ -62,20 +60,20 @@
             type="button"
             class="rounded-md px-2.5 py-1 text-xs font-medium transition-colors"
             :class="metric === 'actual_cost'
-              ? 'bg-accent-950 text-white dark:bg-dark-50 dark:text-dark-950'
+              ? 'bg-primary text-primary-foreground'
               : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'"
             @click="emit('update:metric', 'actual_cost')"
           >
             {{ t('admin.dashboard.metricActualCost') }}
           </button>
         </div>
-        <div v-if="enableRankingView" class="inline-flex border p-0.5" style="border-color: var(--nm-border); border-radius: var(--nm-radius); background: var(--nm-surface)">
+        <div v-if="enableRankingView" class="inline-flex rounded-lg border border-border bg-muted p-0.5">
           <button
             type="button"
             class="rounded-md px-2.5 py-1 text-xs font-medium transition-colors"
             :class="
               activeView === 'model_distribution'
-                ? 'bg-accent-950 text-white dark:bg-dark-50 dark:text-dark-950'
+                ? 'bg-primary text-primary-foreground'
                 : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
             "
             @click="activeView = 'model_distribution'"
@@ -87,7 +85,7 @@
             class="rounded-md px-2.5 py-1 text-xs font-medium transition-colors"
             :class="
               activeView === 'spending_ranking'
-                ? 'bg-accent-950 text-white dark:bg-dark-50 dark:text-dark-950'
+                ? 'bg-primary text-primary-foreground'
                 : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
             "
             @click="activeView = 'spending_ranking'"

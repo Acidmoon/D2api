@@ -1,6 +1,6 @@
 <template>
   <div :class="['token-usage-trend', embedded ? 'token-usage-trend--embedded' : 'card p-4']">
-    <h3 class="mb-4 border-b pb-2 text-xs font-bold uppercase" style="color: var(--nm-ink); border-color: var(--nm-border); letter-spacing: 0">
+    <h3 class="mb-4 border-b border-border pb-2 text-sm font-semibold text-foreground">
       {{ t('admin.dashboard.tokenUsageTrend') }}
     </h3>
     <div v-if="loading" :class="['flex items-center justify-center', chartHeightClass]">

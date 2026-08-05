@@ -1,7 +1,7 @@
 <template>
   <div
     class="flex items-center justify-between border-t px-4 py-3 sm:px-6"
-    style="border-color: var(--nm-border-light); background: var(--nm-surface)"
+    style="border-color: hsl(var(--border)); background: hsl(var(--card))"
   >
     <div class="flex flex-1 items-center justify-between sm:hidden">
       <!-- Mobile pagination -->
@@ -12,7 +12,7 @@
       >
         {{ t('pagination.previous') }}
       </button>
-      <span class="text-sm" style="color: var(--nm-ink-muted)">
+      <span class="text-sm" style="color: hsl(var(--muted-foreground))">
         {{ t('pagination.pageOf', { page, total: totalPages }) }}
       </span>
       <button
@@ -27,7 +27,7 @@
     <div class="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
       <!-- Desktop pagination info -->
       <div class="flex items-center space-x-4">
-        <p class="text-sm" style="color: var(--nm-ink-muted)">
+        <p class="text-sm" style="color: hsl(var(--muted-foreground))">
           {{ t('pagination.showing') }}
           <span class="font-medium">{{ fromItem }}</span>
           {{ t('pagination.to') }}
@@ -39,7 +39,7 @@
 
         <!-- Page size selector -->
         <div v-if="showPageSizeSelector" class="flex items-center space-x-2">
-          <span class="text-sm" style="color: var(--nm-ink-muted)"
+          <span class="text-sm" style="color: hsl(var(--muted-foreground))"
             >{{ t('pagination.perPage') }}:</span
           >
           <div class="page-size-select w-20">
@@ -52,7 +52,7 @@
         </div>
 
         <div v-if="showJump" class="flex items-center space-x-2">
-          <span class="text-sm" style="color: var(--nm-ink-muted)">{{ t('pagination.jumpTo') }}</span>
+          <span class="text-sm" style="color: hsl(var(--muted-foreground))">{{ t('pagination.jumpTo') }}</span>
           <input
             v-model="jumpPage"
             type="number"
@@ -245,19 +245,19 @@ const submitJump = () => {
 }
 
 .pagination-button {
-  border: 1px solid var(--nm-border);
-  background: var(--nm-surface);
-  color: var(--nm-ink-muted);
+  border: 1px solid hsl(var(--input));
+  background: hsl(var(--background));
+  color: hsl(var(--muted-foreground));
 }
 
-.pagination-button:hover:not(:disabled) {
-  background: var(--nm-surface-soft);
-  color: var(--nm-ink);
+.pagination-button:hover:not(:disabled):not(.pagination-button-active) {
+  background: hsl(var(--accent));
+  color: hsl(var(--accent-foreground));
 }
 
 .pagination-button-active {
-  border-color: var(--nm-accent);
-  background: var(--nm-accent-soft);
-  color: var(--nm-accent-text);
+  border-color: hsl(var(--primary));
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
 }
 </style>

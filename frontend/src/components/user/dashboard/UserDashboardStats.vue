@@ -324,10 +324,10 @@ const formatTokens = (t: number) => {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0;
-  color: var(--nm-ink);
+  color: hsl(var(--foreground));
   margin-bottom: 0.75rem;
   padding-bottom: 0.5rem;
-  border-bottom: 1px solid var(--nm-border);
+  border-bottom: 1px solid hsl(var(--border));
 }
 
 .kpi-cell {
@@ -343,7 +343,7 @@ const formatTokens = (t: number) => {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0;
-  color: var(--nm-ink-muted);
+  color: hsl(var(--muted-foreground));
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -353,7 +353,7 @@ const formatTokens = (t: number) => {
   margin-top: 0.5rem;
   font-size: 1.5rem;
   font-weight: 600;
-  color: var(--nm-ink);
+  color: hsl(var(--foreground));
   font-variant-numeric: tabular-nums;
   line-height: 1.1;
 }
@@ -361,7 +361,7 @@ const formatTokens = (t: number) => {
 .kpi-sub {
   margin-top: 0.5rem;
   font-size: 0.6875rem;
-  color: var(--nm-ink-faint);
+  color: hsl(var(--muted-foreground));
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -370,7 +370,7 @@ const formatTokens = (t: number) => {
 .platform-ledger {
   margin-top: 1.5rem;
   padding-top: 1rem;
-  border-top: 1px solid var(--nm-border);
+  border-top: 1px solid hsl(var(--border));
 }
 
 .platform-ledger__header {
@@ -386,20 +386,20 @@ const formatTokens = (t: number) => {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.12em;
-  color: var(--nm-accent-text);
+  color: hsl(var(--brand));
 }
 
 .platform-ledger__title {
   margin-top: 0.125rem;
   font-size: 1rem;
   font-weight: 700;
-  color: var(--nm-ink);
+  color: hsl(var(--foreground));
 }
 
 .platform-ledger__count {
   flex: none;
   font-size: 0.6875rem;
-  color: var(--nm-ink-faint);
+  color: hsl(var(--muted-foreground));
 }
 
 .platform-grid {
@@ -412,7 +412,7 @@ const formatTokens = (t: number) => {
   position: relative;
   overflow: hidden;
   padding: 1rem;
-  border-top: 3px solid var(--nm-accent);
+  border-top: 3px solid hsl(var(--brand));
 }
 
 .platform-card::after {
@@ -422,12 +422,12 @@ const formatTokens = (t: number) => {
   width: 3.5rem;
   height: 3.5rem;
   content: '';
-  background: linear-gradient(135deg, transparent 49%, var(--nm-surface-soft) 50%);
+  background: linear-gradient(135deg, transparent 49%, hsl(var(--muted)) 50%);
   pointer-events: none;
 }
 
 .platform-card--other {
-  border-top-color: var(--nm-ink-faint);
+  border-top-color: hsl(var(--border));
   border-style: dashed;
 }
 
@@ -452,9 +452,9 @@ const formatTokens = (t: number) => {
   flex: none;
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--nm-ink);
-  background: var(--nm-ink);
-  color: var(--nm-surface);
+  border: 1px solid hsl(var(--foreground));
+  background: hsl(var(--foreground));
+  color: hsl(var(--background));
   font-size: 0.625rem;
   font-weight: 800;
   letter-spacing: 0.08em;
@@ -462,7 +462,7 @@ const formatTokens = (t: number) => {
 
 .platform-name {
   overflow: hidden;
-  color: var(--nm-ink);
+  color: hsl(var(--foreground));
   font-size: 0.875rem;
   font-weight: 700;
   text-overflow: ellipsis;
@@ -480,12 +480,12 @@ const formatTokens = (t: number) => {
   font-size: 0.5625rem;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  color: var(--nm-ink-faint);
+  color: hsl(var(--muted-foreground));
 }
 
 .platform-total strong {
   display: block;
-  color: var(--nm-accent-text);
+  color: hsl(var(--brand));
   font-size: 0.9375rem;
   font-variant-numeric: tabular-nums;
 }
@@ -495,7 +495,7 @@ const formatTokens = (t: number) => {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0;
   margin-top: 1rem;
-  border: 1px solid var(--nm-border-light);
+  border: 1px solid hsl(var(--border));
 }
 
 .platform-metrics > div {
@@ -504,7 +504,7 @@ const formatTokens = (t: number) => {
 }
 
 .platform-metrics > div + div {
-  border-left: 1px solid var(--nm-border-light);
+  border-left: 1px solid hsl(var(--border));
 }
 
 .platform-metrics dt {
@@ -512,7 +512,7 @@ const formatTokens = (t: number) => {
   font-size: 0.5625rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: var(--nm-ink-faint);
+  color: hsl(var(--muted-foreground));
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -520,7 +520,7 @@ const formatTokens = (t: number) => {
 .platform-metrics dd {
   margin-top: 0.25rem;
   overflow: hidden;
-  color: var(--nm-ink);
+  color: hsl(var(--foreground));
   font-size: 0.75rem;
   font-weight: 650;
   font-variant-numeric: tabular-nums;
@@ -531,7 +531,7 @@ const formatTokens = (t: number) => {
 .quota-panel {
   margin-top: 0.875rem;
   padding-top: 0.75rem;
-  border-top: 1px solid var(--nm-border-light);
+  border-top: 1px solid hsl(var(--border));
 }
 
 .quota-panel__title {
@@ -540,7 +540,7 @@ const formatTokens = (t: number) => {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  color: var(--nm-ink-faint);
+  color: hsl(var(--muted-foreground));
 }
 
 .quota-row + .quota-row {
@@ -550,25 +550,25 @@ const formatTokens = (t: number) => {
 .quota-row__summary {
   align-items: baseline;
   font-size: 0.6875rem;
-  color: var(--nm-ink-muted);
+  color: hsl(var(--muted-foreground));
 }
 
 .quota-row__value {
-  color: var(--nm-ink);
+  color: hsl(var(--foreground));
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
 .quota-row__value--disabled {
-  color: var(--nm-danger-text);
+  color: hsl(var(--destructive));
 }
 
 .quota-track {
   height: 0.3125rem;
   margin-top: 0.3125rem;
   overflow: hidden;
-  background: var(--nm-surface-alt);
+  background: hsl(var(--muted));
 }
 
 .quota-fill {
@@ -591,7 +591,7 @@ const formatTokens = (t: number) => {
 .quota-reset {
   margin-top: 0.25rem;
   font-size: 0.5625rem;
-  color: var(--nm-ink-faint);
+  color: hsl(var(--muted-foreground));
   text-align: right;
 }
 

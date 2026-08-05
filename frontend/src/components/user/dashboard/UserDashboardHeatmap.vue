@@ -1,7 +1,7 @@
 <template>
   <div :class="['heatmap-card', embedded ? 'heatmap-card--embedded' : 'card p-4']">
-    <div class="mb-4 flex items-center justify-between gap-3 border-b pb-2" style="border-color: var(--nm-border)">
-      <h3 class="text-xs font-bold uppercase" style="color: var(--nm-ink); letter-spacing: 0">
+    <div class="mb-4 flex items-center justify-between gap-3 border-b border-border pb-2">
+      <h3 class="text-sm font-semibold text-foreground">
         {{ t('dashboard.activityHeatmap') }}
       </h3>
       <div class="month-switcher">
