@@ -1,16 +1,13 @@
 <template>
-  <div
-    :class="[
-      'skeleton animate-pulse',
-      variant === 'circle' ? 'skeleton-circle' : 'skeleton-rect',
-      customClass
-    ]"
+  <Skeleton
+    :class="[variantClass, customClass]"
     :style="style"
-  ></div>
+  />
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { Skeleton } from '@/components/ui/skeleton'
 
 interface Props {
   variant?: 'rect' | 'circle' | 'text'
@@ -26,13 +23,18 @@ const props = withDefaults(defineProps<Props>(), {
 
 const customClass = computed(() => props.class || '')
 
+const variantClass = computed(() => {
+  if (props.variant === 'circle') return 'rounded-full'
+  return ''
+})
+
 const style = computed(() => {
   const s: Record<string, string> = {}
-  
+
   if (props.width) {
     s.width = typeof props.width === 'number' ? `${props.width}px` : props.width
   }
-  
+
   if (props.height) {
     s.height = typeof props.height === 'number' ? `${props.height}px` : props.height
   } else if (props.variant === 'text') {
@@ -40,21 +42,7 @@ const style = computed(() => {
     s.marginTop = '0.25em'
     s.marginBottom = '0.25em'
   }
-  
+
   return s
 })
 </script>
-
-<style scoped>
-.skeleton {
-  background: var(--nm-surface-soft);
-}
-
-.skeleton-circle {
-  border-radius: 999px;
-}
-
-.skeleton-rect {
-  border-radius: var(--nm-radius);
-}
-</style>

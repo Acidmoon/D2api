@@ -24,12 +24,12 @@
       <!-- Platform-specific content -->
       <template v-else>
         <!-- Description -->
-        <p class="text-sm text-gray-600 dark:text-gray-400">
+        <p class="text-sm text-muted-foreground">
           {{ platformDescription }}
         </p>
 
         <!-- Client Tabs -->
-        <div v-if="clientTabs.length" class="overflow-x-auto border-b border-gray-200 dark:border-dark-700">
+        <div v-if="clientTabs.length" class="overflow-x-auto border-b border-border">
           <nav class="-mb-px flex min-w-max gap-4 sm:gap-6" aria-label="Client">
             <button
               v-for="tab in clientTabs"
@@ -39,8 +39,8 @@
               :class="[
                 'whitespace-nowrap py-2.5 px-1 border-b-2 font-medium text-sm transition-colors',
                 activeClientTab === tab.id
-                  ? 'border-primary-500 text-primary-600 dark:text-primary-400'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
               ]"
             >
               <span class="flex items-center gap-2">
@@ -54,18 +54,18 @@
         <!-- Codex Authentication Mode -->
         <div
           v-if="showCodexAuthMode"
-          class="rounded-lg border border-gray-200 p-3 dark:border-dark-700"
+          class="rounded-lg border border-border p-3"
         >
           <div class="mb-2">
-            <p class="text-sm font-medium text-gray-900 dark:text-white">
+            <p class="text-sm font-medium text-foreground">
               {{ t('keys.useKeyModal.openai.authModeTitle') }}
             </p>
-            <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+            <p class="mt-0.5 text-xs text-muted-foreground">
               {{ t('keys.useKeyModal.openai.authModeDescription') }}
             </p>
           </div>
           <div
-            class="grid grid-cols-2 gap-1 rounded-lg bg-gray-100 p-1 dark:bg-dark-700"
+            class="grid grid-cols-2 gap-1 rounded-lg bg-muted p-1"
             role="radiogroup"
             :aria-label="t('keys.useKeyModal.openai.authModeTitle')"
           >
@@ -77,8 +77,8 @@
               :class="[
                 'rounded-md px-3 py-2 text-sm font-medium transition-colors',
                 codexAuthMode === 'legacy'
-                  ? 'bg-white text-primary-700 shadow-sm dark:bg-dark-800 dark:text-primary-300'
-                  : 'text-gray-600 hover:text-gray-900 dark:text-dark-300 dark:hover:text-white'
+                  ? 'bg-background text-primary shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
               ]"
               @click="codexAuthMode = 'legacy'"
             >
@@ -92,8 +92,8 @@
               :class="[
                 'rounded-md px-3 py-2 text-sm font-medium transition-colors',
                 codexAuthMode === 'api-key'
-                  ? 'bg-white text-primary-700 shadow-sm dark:bg-dark-800 dark:text-primary-300'
-                  : 'text-gray-600 hover:text-gray-900 dark:text-dark-300 dark:hover:text-white'
+                  ? 'bg-background text-primary shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
               ]"
               @click="codexAuthMode = 'api-key'"
             >
@@ -111,7 +111,7 @@
         </div>
 
         <!-- OS/Shell Tabs -->
-        <div v-if="showShellTabs" class="overflow-x-auto border-b border-gray-200 dark:border-dark-700">
+        <div v-if="showShellTabs" class="overflow-x-auto border-b border-border">
           <nav class="-mb-px flex min-w-max gap-4" aria-label="Tabs">
             <button
               v-for="tab in currentTabs"
@@ -122,7 +122,7 @@
                 'whitespace-nowrap py-2.5 px-1 border-b-2 font-medium text-sm transition-colors',
                 activeTab === tab.id
                   ? 'border-primary-500 text-primary-600 dark:text-primary-400'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+                  : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
               ]"
             >
               <span class="flex items-center gap-2">
@@ -145,17 +145,17 @@
               <Icon name="exclamationCircle" size="sm" class="flex-shrink-0" />
               {{ file.hint }}
             </p>
-            <div class="overflow-hidden border border-[color:var(--nm-border)] bg-gray-900 dark:bg-dark-900" style="border-radius: var(--nm-radius-lg)">
+            <div class="overflow-hidden rounded-lg border border-border bg-muted">
               <!-- Code Header -->
-              <div class="flex items-center justify-between px-4 py-2 bg-gray-800 dark:bg-dark-800 border-b border-gray-700 dark:border-dark-700">
-                <span class="min-w-0 truncate text-xs text-gray-400 font-mono">{{ file.path }}</span>
+              <div class="flex items-center justify-between border-b border-border bg-secondary/70 px-4 py-2">
+                <span class="min-w-0 truncate font-mono text-xs text-muted-foreground">{{ file.path }}</span>
                 <button
                   type="button"
                   @click="copyContent(file.content, index)"
-                  class="flex flex-shrink-0 items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-lg transition-colors"
+                  class="flex flex-shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors"
                   :class="copiedIndex === index
                     ? 'bg-[color:var(--nm-success-soft)] text-semantic-success'
-                    : 'bg-gray-700 hover:bg-gray-600 text-gray-300 hover:text-white'"
+                    : 'bg-background text-muted-foreground hover:bg-secondary hover:text-foreground'"
                 >
                   <svg v-if="copiedIndex === index" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
@@ -167,7 +167,7 @@
                 </button>
               </div>
               <!-- Code Content -->
-              <pre class="p-4 text-sm font-mono text-gray-100 overflow-x-auto"><code v-if="file.highlighted" v-html="file.highlighted"></code><code v-else v-text="file.content"></code></pre>
+              <pre class="overflow-x-auto p-4 font-mono text-sm text-foreground"><code v-if="file.highlighted" v-html="file.highlighted"></code><code v-else v-text="file.content"></code></pre>
             </div>
           </div>
         </div>
@@ -184,12 +184,12 @@
 
     <template #footer>
       <div class="flex justify-end">
-        <button
+        <Button
           @click="emit('close')"
-          class="btn btn-secondary"
+          variant="secondary"
         >
           {{ t('common.close') }}
-        </button>
+        </Button>
       </div>
     </template>
   </BaseDialog>
@@ -200,6 +200,7 @@ import { ref, computed, h, watch, type Component } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import Icon from '@/components/icons/Icon.vue'
+import { Button } from '@/components/ui/button'
 import { useClipboard } from '@/composables/useClipboard'
 import type { GroupPlatform } from '@/types'
 
@@ -474,9 +475,9 @@ const wrapToken = (className: string, value: string) =>
 
 const keyword = (value: string) => wrapToken('text-semantic-success', value)
 const variable = (value: string) => wrapToken('text-semantic-info', value)
-const operator = (value: string) => wrapToken('text-slate-400', value)
+const operator = (value: string) => wrapToken('text-slate-500 dark:text-slate-300', value)
 const string = (value: string) => wrapToken('text-semantic-warning', value)
-const comment = (value: string) => wrapToken('text-slate-500', value)
+const comment = (value: string) => wrapToken('text-slate-500 dark:text-slate-400', value)
 
 // Syntax highlighting helpers
 // Generate file configs based on platform and active tab

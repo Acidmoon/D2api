@@ -1,14 +1,18 @@
 <template>
   <div class="w-full">
-    <label v-if="label" :for="id" class="input-label mb-1.5 block">
+    <label
+      v-if="label"
+      :for="id"
+      class="mb-1.5 block text-sm font-medium leading-none text-foreground"
+    >
       {{ label }}
-      <span v-if="required" class="input-required">*</span>
+      <span v-if="required" class="text-destructive">*</span>
     </label>
     <div class="relative">
       <!-- Prefix Icon Slot -->
       <div
         v-if="$slots.prefix"
-        class="input-affix pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5"
+        class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5"
       >
         <slot name="prefix"></slot>
       </div>
@@ -24,11 +28,11 @@
         :autocomplete="autocomplete"
         :readonly="readonly"
         :class="[
-          'input w-full transition-all duration-200',
+          'flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50',
           $slots.prefix ? 'pl-11' : '',
           $slots.suffix ? 'pr-11' : '',
-          error ? 'input-error' : '',
-          disabled ? 'input-disabled cursor-not-allowed opacity-60' : ''
+          error ? 'border-destructive focus-visible:ring-destructive' : '',
+          disabled ? 'cursor-not-allowed opacity-60' : ''
         ]"
         @input="onInput"
         @change="$emit('change', ($event.target as HTMLInputElement).value)"
@@ -40,16 +44,16 @@
       <!-- Suffix Slot (e.g. Password Toggle or Clear Button) -->
       <div
         v-if="$slots.suffix"
-        class="input-affix absolute inset-y-0 right-0 flex items-center pr-3"
+        class="absolute inset-y-0 right-0 flex items-center pr-3"
       >
         <slot name="suffix"></slot>
       </div>
     </div>
     <!-- Hint / Error Text -->
-    <p v-if="error" class="input-error-text mt-1.5">
+    <p v-if="error" class="mt-1.5 text-sm text-destructive">
       {{ error }}
     </p>
-    <p v-else-if="hint" class="input-hint mt-1.5">
+    <p v-else-if="hint" class="mt-1.5 text-sm text-muted-foreground">
       {{ hint }}
     </p>
   </div>
@@ -101,17 +105,3 @@ defineExpose({
   select: () => inputRef.value?.select()
 })
 </script>
-
-<style scoped>
-.input-required {
-  color: var(--nm-danger-text);
-}
-
-.input-affix {
-  color: var(--nm-ink-faint);
-}
-
-.input-disabled {
-  background: var(--nm-surface-soft);
-}
-</style>

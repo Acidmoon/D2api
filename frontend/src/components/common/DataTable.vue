@@ -966,22 +966,22 @@ defineExpose({
   flex: 1;
   min-height: 0;
   isolation: isolate;
-  color: var(--nm-ink);
-  background: var(--nm-surface);
+  color: hsl(var(--foreground));
+  background: hsl(var(--card));
 }
 
 .dt-mobile-card,
 .dt-empty-card {
-  border: 1px solid var(--nm-border);
-  border-radius: var(--nm-radius);
-  background: var(--nm-surface);
-  color: var(--nm-ink);
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  background: hsl(var(--card));
+  color: hsl(var(--foreground));
 }
 
 .dt-mobile-label,
 .dt-empty-cell,
 .dt-empty-icon {
-  color: var(--nm-ink-faint);
+  color: hsl(var(--muted-foreground));
 }
 
 .dt-mobile-label,
@@ -992,16 +992,16 @@ defineExpose({
 .dt-mobile-value,
 .dt-empty-title,
 .table-body td {
-  color: var(--nm-ink);
+  color: hsl(var(--foreground));
 }
 
 .dt-mobile-actions {
-  border-top: 1px solid var(--nm-border-light);
+  border-top: 1px solid hsl(var(--border));
 }
 
 .dt-skeleton {
-  border-radius: var(--nm-radius-sm);
-  background: var(--nm-surface-alt);
+  border-radius: var(--radius);
+  background: hsl(var(--muted));
 }
 
 .dt-table {
@@ -1011,7 +1011,7 @@ defineExpose({
 
 .dt-table th,
 .dt-table td {
-  border-bottom: 1px solid var(--nm-border-light);
+  border-bottom: 1px solid hsl(var(--border));
 }
 
 .dt-cell-content {
@@ -1037,25 +1037,25 @@ defineExpose({
 }
 
 .dt-sort-icon {
-  color: var(--nm-ink-faint);
+  color: hsl(var(--muted-foreground));
 }
 
 /* 行选择:选中态高亮(桌面行 / 移动卡片共用)与 checkbox 配色 */
 .dt-row-selected,
 tbody tr.dt-row-selected .sticky-col {
-  background: var(--nm-surface-soft);
+  background: hsl(var(--muted));
 }
 
 .dt-mobile-card.dt-row-selected {
-  border-color: var(--nm-ink-faint);
+  border-color: hsl(var(--border));
 }
 
 .dt-checkbox {
-  accent-color: var(--nm-ink);
+  accent-color: hsl(var(--primary));
 }
 
 .dt-sortable-header:hover {
-  background: var(--nm-surface-alt);
+  background: hsl(var(--muted));
 }
 
 /* 表头容器，确保在滚动时覆盖表体内容 */
@@ -1063,11 +1063,11 @@ tbody tr.dt-row-selected .sticky-col {
   position: sticky;
   top: 0;
   z-index: 200;
-  background: var(--nm-surface-soft);
+  background: hsl(var(--muted));
 }
 
 .dark .table-wrapper .table-header {
-  background: var(--nm-surface-soft);
+  background: hsl(var(--muted));
 }
 
 /* 表体保持在表头下方 */
@@ -1081,12 +1081,12 @@ tbody tr.dt-row-selected .sticky-col {
   position: sticky;
   top: 0;
   z-index: 210; /* 必须高于所有表体内容 */
-  background: var(--nm-surface-soft);
-  color: var(--nm-ink-muted);
+  background: hsl(var(--muted));
+  color: hsl(var(--muted-foreground));
 }
 
 .dark .sticky-header-cell {
-  background: var(--nm-surface-soft);
+  background: hsl(var(--muted));
 }
 
 /* Sticky 列基础样式 */
@@ -1122,21 +1122,21 @@ tbody tr.dt-row-selected .sticky-col {
 
 /* 表体 sticky 列背景 */
 tbody .sticky-col {
-  background: var(--nm-surface);
+  background: hsl(var(--card));
 }
 
 .dark tbody .sticky-col {
-  background: var(--nm-surface);
+  background: hsl(var(--card));
 }
 
 /* hover 状态保持 */
 tbody tr.dt-row:hover,
 tbody tr:hover .sticky-col {
-  background: var(--nm-surface-soft);
+  background: hsl(var(--muted));
 }
 
 .dark tbody tr:hover .sticky-col {
-  background: var(--nm-surface-soft);
+  background: hsl(var(--muted));
 }
 
 /* Sticky scroll affordance: hard Swiss rule instead of soft fades. */
@@ -1147,7 +1147,7 @@ tbody tr:hover .sticky-col {
   right: 0;
   bottom: 0;
   width: 1px;
-  background: var(--nm-border);
+  background: hsl(var(--border));
   pointer-events: none;
 }
 
@@ -1158,7 +1158,7 @@ tbody tr:hover .sticky-col {
   right: 0;
   bottom: 0;
   width: 1px;
-  background: var(--nm-border);
+  background: hsl(var(--border));
   pointer-events: none;
 }
 
@@ -1169,7 +1169,7 @@ tbody tr:hover .sticky-col {
   left: 0;
   bottom: 0;
   width: 1px;
-  background: var(--nm-border);
+  background: hsl(var(--border));
   pointer-events: none;
 }
 </style>
@@ -1177,7 +1177,7 @@ tbody tr:hover .sticky-col {
 <style>
 .table-wrapper {
   scrollbar-width: auto !important;
-  scrollbar-color: var(--nm-ink-faint) var(--nm-surface-soft) !important;
+  scrollbar-color: hsl(var(--muted-foreground)) hsl(var(--muted)) !important;
 }
 
 .table-wrapper::-webkit-scrollbar {
@@ -1188,39 +1188,39 @@ tbody tr:hover .sticky-col {
 }
 
 .table-wrapper::-webkit-scrollbar-track {
-  background-color: var(--nm-surface-soft) !important;
-  border-radius: var(--nm-radius) !important;
+  background-color: hsl(var(--muted)) !important;
+  border-radius: var(--radius) !important;
   margin: 0 4px !important;
 }
 .dark .table-wrapper::-webkit-scrollbar-track {
-  background-color: var(--nm-surface-soft) !important;
+  background-color: hsl(var(--muted)) !important;
 }
 
 .table-wrapper::-webkit-scrollbar-thumb {
-  background-color: var(--nm-ink-faint) !important;
-  border-radius: var(--nm-radius) !important;
+  background-color: hsl(var(--muted-foreground)) !important;
+  border-radius: var(--radius) !important;
   border: 2px solid transparent !important;
   background-clip: padding-box !important;
   -webkit-appearance: none !important;
 }
 .table-wrapper::-webkit-scrollbar-thumb:hover {
-  background-color: var(--nm-ink-muted) !important;
+  background-color: hsl(var(--muted-foreground)) !important;
 }
 
 .dark .table-wrapper::-webkit-scrollbar-thumb {
-  background-color: var(--nm-ink-faint) !important;
+  background-color: hsl(var(--muted-foreground)) !important;
 }
 .dark .table-wrapper::-webkit-scrollbar-thumb:hover {
-  background-color: var(--nm-ink-muted) !important;
+  background-color: hsl(var(--muted-foreground)) !important;
 }
 
 @supports (-moz-appearance:none) {
   .table-wrapper {
     scrollbar-width: thin !important;
-    scrollbar-color: var(--nm-ink-faint) var(--nm-surface-soft) !important;
+    scrollbar-color: hsl(var(--muted-foreground)) hsl(var(--muted)) !important;
   }
   .dark .table-wrapper {
-    scrollbar-color: var(--nm-ink-faint) var(--nm-surface-soft) !important;
+    scrollbar-color: hsl(var(--muted-foreground)) hsl(var(--muted)) !important;
   }
 }
 </style>

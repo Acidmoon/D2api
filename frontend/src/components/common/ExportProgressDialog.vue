@@ -1,37 +1,30 @@
 <template>
   <BaseDialog :show="show" :title="t('usage.exporting')" width="narrow" @close="handleCancel">
     <div class="space-y-4">
-      <div class="text-sm" style="color: var(--nm-ink-muted)">
+      <div class="text-sm text-muted-foreground">
         {{ t('usage.exportingProgress') }}
       </div>
-      <div class="flex items-center justify-between text-sm" style="color: var(--nm-ink-muted)">
+      <div class="flex items-center justify-between text-sm text-muted-foreground">
         <span>{{ t('usage.exportedCount', { current, total }) }}</span>
-        <span class="font-medium" style="color: var(--nm-ink)">{{ normalizedProgress }}%</span>
+        <span class="font-medium text-foreground">{{ normalizedProgress }}%</span>
       </div>
-      <div class="metric-progress h-2 w-full">
-        <div
-          role="progressbar"
-          :aria-valuenow="normalizedProgress"
-          aria-valuemin="0"
-          aria-valuemax="100"
-          :aria-label="`${t('usage.exportingProgress')}: ${normalizedProgress}%`"
-          class="metric-progress-bar h-full transition-all"
-          :style="{ width: `${normalizedProgress}%` }"
-        ></div>
-      </div>
-      <div v-if="estimatedTime" class="text-xs" style="color: var(--nm-ink-muted)" aria-live="polite" aria-atomic="true">
+      <Progress
+        :model-value="normalizedProgress"
+        :aria-label="`${t('usage.exportingProgress')}: ${normalizedProgress}%`"
+        class="h-2 w-full"
+      />
+      <div v-if="estimatedTime" class="text-xs text-muted-foreground" aria-live="polite" aria-atomic="true">
         {{ t('usage.estimatedTime', { time: estimatedTime }) }}
       </div>
     </div>
 
     <template #footer>
-      <button
+      <Button
+        variant="outline"
         @click="handleCancel"
-        type="button"
-        class="btn btn-secondary"
       >
         {{ t('usage.cancelExport') }}
-      </button>
+      </Button>
     </template>
   </BaseDialog>
 </template>
@@ -40,6 +33,8 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseDialog from './BaseDialog.vue'
+import { Progress } from '@/components/ui/progress'
+import { Button } from '@/components/ui/button'
 
 interface Props {
   show: boolean

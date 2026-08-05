@@ -1,12 +1,12 @@
 <template>
   <div class="relative w-full">
     <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-      <Icon name="search" size="md" class="text-gray-400" />
+      <Search class="h-4 w-4 text-muted-foreground" />
     </div>
     <input
       :value="modelValue"
       type="text"
-      class="input pl-10"
+      class="flex h-9 w-full rounded-md border border-input bg-transparent py-1 pl-9 pr-3 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
       :placeholder="placeholder"
       @input="handleInput"
     />
@@ -15,7 +15,7 @@
 
 <script setup lang="ts">
 import { useDebounceFn } from '@vueuse/core'
-import Icon from '@/components/icons/Icon.vue'
+import { Search } from 'lucide-vue-next'
 
 const props = withDefaults(defineProps<{
   modelValue: string

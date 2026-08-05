@@ -1,35 +1,39 @@
 <template>
-  <BaseDialog :show="show" :title="title" width="narrow" @close="handleCancel">
-    <div class="space-y-4">
-      <p class="text-sm" style="color: var(--nm-ink-muted)">{{ message }}</p>
-      <slot></slot>
-    </div>
-
-    <template #footer>
-      <div class="flex justify-end space-x-3">
-        <button
-          @click="handleCancel"
-          type="button"
-          class="btn btn-secondary"
-        >
-          {{ cancelText }}
-        </button>
-        <button
-          @click="handleConfirm"
-          type="button"
-          :class="['btn', danger ? 'btn-danger' : '']"
-        >
-          {{ confirmText }}
-        </button>
+  <AlertDialog :open="show" @update:open="onOpenChange">
+    <AlertDialogContent
+      class="max-w-md"
+    >
+      <AlertDialogHeader>
+        <AlertDialogTitle>{{ title }}</AlertDialogTitle>
+        <AlertDialogDescription>{{ message }}</AlertDialogDescription>
+      </AlertDialogHeader>
+      <div>
+        <slot></slot>
       </div>
-    </template>
-  </BaseDialog>
+      <AlertDialogFooter>
+        <Button variant="outline" @click="handleCancel">
+          {{ cancelText }}
+        </Button>
+        <Button :variant="danger ? 'destructive' : 'default'" @click="handleConfirm">
+          {{ confirmText }}
+        </Button>
+      </AlertDialogFooter>
+    </AlertDialogContent>
+  </AlertDialog>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import BaseDialog from './BaseDialog.vue'
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { Button } from '@/components/ui/button'
 
 const { t } = useI18n()
 
@@ -62,5 +66,13 @@ const handleConfirm = () => {
 
 const handleCancel = () => {
   emit('cancel')
+}
+
+// Esc / outside dismiss collapses to cancel (matches previous BaseDialog behavior:
+// closeOnEscape=true, closeOnClickOutside=false).
+const onOpenChange = (open: boolean) => {
+  if (!open) {
+    emit('cancel')
+  }
 }
 </script>

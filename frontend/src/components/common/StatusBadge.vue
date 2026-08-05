@@ -1,61 +1,43 @@
 <template>
-  <div class="flex items-center gap-1.5">
+  <span
+    :class="cn(badgeVariants({ variant: 'outline' }), 'inline-flex items-center gap-1.5')"
+  >
     <span
       :class="[
-        'status-dot inline-block h-2 w-2',
-        variantClass
+        'inline-block h-2 w-2 rounded-full',
+        dotColorClass
       ]"
     ></span>
-    <span class="text-sm" style="color: var(--nm-ink-muted)">
+    <span class="text-sm text-muted-foreground">
       {{ label }}
     </span>
-  </div>
+  </span>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { badgeVariants } from '@/components/ui/badge'
+import { cn } from '@/lib/utils'
 
 const props = defineProps<{
   status: string
   label: string
 }>()
 
-const variantClass = computed(() => {
+const dotColorClass = computed(() => {
   switch (props.status) {
     case 'active':
     case 'success':
-      return 'status-dot-success'
+      return 'bg-[var(--nm-success)]'
     case 'disabled':
     case 'inactive':
     case 'warning':
-      return 'status-dot-warning'
+      return 'bg-[var(--nm-warning)]'
     case 'error':
     case 'danger':
-      return 'status-dot-danger'
+      return 'bg-destructive'
     default:
-      return 'status-dot-muted'
+      return 'bg-[var(--nm-border)]'
   }
 })
 </script>
-
-<style scoped>
-.status-dot {
-  border-radius: 999px;
-}
-
-.status-dot-success {
-  background: var(--nm-success);
-}
-
-.status-dot-warning {
-  background: var(--nm-warning);
-}
-
-.status-dot-danger {
-  background: var(--nm-danger);
-}
-
-.status-dot-muted {
-  background: var(--nm-border);
-}
-</style>

@@ -76,7 +76,7 @@ onUnmounted(() => {
 }
 
 .table-scroll-container :deep(thead) {
-  background-color: var(--nm-surface-soft);
+  background-color: hsl(var(--muted));
 }
 
 .table-scroll-container :deep(tbody) {
@@ -85,15 +85,15 @@ onUnmounted(() => {
 
 .table-scroll-container :deep(th) {
   @apply px-4 py-3 text-left text-xs font-semibold uppercase;
-  color: var(--nm-ink-muted);
-  border-bottom: 1px solid var(--nm-border);
+  color: hsl(var(--muted-foreground));
+  border-bottom: 1px solid hsl(var(--border));
   letter-spacing: 0;
 }
 
 .table-scroll-container :deep(td) {
   @apply px-4 py-3 text-sm;
-  color: var(--nm-ink);
-  border-bottom: 1px solid var(--nm-border-light);
+  color: hsl(var(--foreground));
+  border-bottom: 1px solid hsl(var(--border));
 }
 
 /* 移动端：恢复正常滚动 */

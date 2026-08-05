@@ -1,16 +1,16 @@
 <template>
-  <div
-    :class="['spinner', sizeClasses, colorClass]"
+  <Loader2
     role="status"
     :aria-label="t('common.loading')"
-  >
-    <span class="sr-only">{{ t('common.loading') }}</span>
-  </div>
+    :class="[sizeClasses, colorClass, 'animate-spin']"
+  />
+  <span class="sr-only">{{ t('common.loading') }}</span>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { Loader2 } from 'lucide-vue-next'
 
 const { t } = useI18n()
 
@@ -29,54 +29,21 @@ const props = withDefaults(defineProps<Props>(), {
 
 const sizeClasses = computed(() => {
   const sizes: Record<SpinnerSize, string> = {
-    sm: 'w-4 h-4 border-2',
-    md: 'w-8 h-8 border-2',
-    lg: 'w-12 h-12 border-[3px]',
-    xl: 'w-16 h-16 border-4'
+    sm: 'h-4 w-4',
+    md: 'h-8 w-8',
+    lg: 'h-12 w-12',
+    xl: 'h-16 w-16'
   }
   return sizes[props.size]
 })
 
 const colorClass = computed(() => {
   const colors: Record<SpinnerColor, string> = {
-    primary: 'spinner-primary',
-    secondary: 'spinner-secondary',
-    white: 'spinner-inverse',
-    gray: 'spinner-muted'
+    primary: 'text-primary',
+    secondary: 'text-muted-foreground',
+    white: 'text-background',
+    gray: 'text-muted-foreground'
   }
   return colors[props.color]
 })
 </script>
-
-<style scoped>
-.spinner {
-  display: inline-block;
-  border-style: solid;
-  border-color: currentColor;
-  border-right-color: transparent;
-  border-radius: 999px;
-  animation: spin 0.75s linear infinite;
-}
-
-.spinner-primary {
-  color: var(--nm-accent);
-}
-
-.spinner-secondary,
-.spinner-muted {
-  color: var(--nm-ink-faint);
-}
-
-.spinner-inverse {
-  color: var(--nm-bg);
-}
-
-@keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-</style>

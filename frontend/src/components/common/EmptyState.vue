@@ -1,14 +1,14 @@
 <template>
-  <div class="empty-state">
+  <div class="flex flex-col items-center justify-center px-4 py-12 text-center">
     <!-- Icon -->
     <div
-      class="empty-state-icon-box mb-5 flex h-20 w-20 items-center justify-center"
+      class="mb-5 flex h-20 w-20 items-center justify-center rounded-xl border border-border bg-muted"
     >
       <slot name="icon">
-        <component v-if="icon" :is="icon" class="empty-state-icon h-10 w-10" aria-hidden="true" />
+        <component v-if="icon" :is="icon" class="h-10 w-10 text-muted-foreground" aria-hidden="true" />
         <svg
           v-else
-          class="empty-state-icon h-10 w-10"
+          class="h-10 w-10 text-muted-foreground"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -24,28 +24,27 @@
     </div>
 
     <!-- Title -->
-    <h3 class="empty-state-title">
+    <h3 class="text-lg font-medium text-foreground">
       {{ displayTitle }}
     </h3>
 
     <!-- Description -->
-    <p class="empty-state-description">
+    <p v-if="description" class="mt-1 max-w-sm text-sm text-muted-foreground">
       {{ description }}
     </p>
 
     <!-- Action -->
     <div v-if="actionText || $slots.action" class="mt-6">
       <slot name="action">
-        <component
-          :is="actionTo ? 'RouterLink' : 'button'"
+        <Button
           v-if="actionText"
+          :as="actionTo ? RouterLink : 'button'"
           :to="actionTo"
           @click="!actionTo && $emit('action')"
-          class="btn btn-primary"
         >
-          <Icon v-if="actionIcon" name="plus" size="md" class="mr-2" />
+          <Plus v-if="actionIcon" class="mr-2 h-4 w-4" />
           {{ actionText }}
-        </component>
+        </Button>
       </slot>
     </div>
   </div>
@@ -54,8 +53,10 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { RouterLink } from 'vue-router'
 import type { Component } from 'vue'
-import Icon from '@/components/icons/Icon.vue'
+import { Plus } from 'lucide-vue-next'
+import { Button } from '@/components/ui/button'
 
 const { t } = useI18n()
 
@@ -78,11 +79,3 @@ const displayTitle = computed(() => props.title || t('common.noData'))
 
 defineEmits(['action'])
 </script>
-
-<style scoped>
-.empty-state-icon-box {
-  background: var(--nm-surface-soft);
-  border: 1px solid var(--nm-border-light);
-  border-radius: var(--nm-radius);
-}
-</style>

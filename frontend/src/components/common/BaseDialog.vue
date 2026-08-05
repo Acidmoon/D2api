@@ -1,58 +1,60 @@
 <template>
-  <Teleport to="body">
-    <Transition name="modal">
-      <div
-        v-if="show"
-        class="modal-overlay"
+  <Dialog :open="show" :modal="true" @update:open="onOpenChange">
+    <DialogPortal>
+      <DialogOverlay
+        class="fixed inset-0 z-50 bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
         :style="zIndexStyle"
-        :aria-labelledby="dialogId"
-        role="dialog"
-        aria-modal="true"
-        @click.self="handleClose"
+      />
+      <DialogContent
+        :class="cn(
+          'fixed left-1/2 top-1/2 z-50 grid w-[calc(100%-1rem)] sm:w-full max-h-[95vh] sm:max-h-[90vh] -translate-x-1/2 -translate-y-1/2 gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg',
+          widthClasses
+        )"
+        :style="zIndexStyle"
+        @interact-outside="onInteractOutside"
+        @escape-key-down="onEscapeKeyDown"
       >
-        <!-- Modal panel -->
-        <div ref="dialogRef" :class="['modal-content', widthClasses]" @click.stop>
-          <!-- Header -->
-          <div class="modal-header">
-            <h3 :id="dialogId" class="modal-title">
-              {{ title }}
-            </h3>
-            <button
-              v-if="showCloseButton"
-              @click="emit('close')"
-              class="dialog-close-button -mr-2 p-2"
-              aria-label="Close modal"
-            >
-              <Icon name="x" size="md" />
-            </button>
-          </div>
-
-          <!-- Body -->
-          <div class="modal-body">
-            <slot></slot>
-          </div>
-
-          <!-- Footer -->
-          <div v-if="$slots.footer" class="modal-footer">
-            <slot name="footer"></slot>
-          </div>
+        <div class="flex items-start justify-between gap-4">
+          <DialogTitle class="text-lg font-semibold">
+            {{ title }}
+          </DialogTitle>
+          <DialogClose
+            v-if="showCloseButton"
+            class="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none"
+            aria-label="Close modal"
+          >
+            <X class="h-4 w-4" />
+            <span class="sr-only">Close</span>
+          </DialogClose>
         </div>
-      </div>
-    </Transition>
-  </Teleport>
+
+        <!-- Body -->
+        <div class="min-h-0 overflow-y-auto">
+          <slot></slot>
+        </div>
+
+        <!-- Footer -->
+        <DialogFooter v-if="$slots.footer">
+          <slot name="footer"></slot>
+        </DialogFooter>
+      </DialogContent>
+    </DialogPortal>
+  </Dialog>
 </template>
 
 <script setup lang="ts">
-import { computed, watch, onMounted, onUnmounted, ref, nextTick } from 'vue'
-import Icon from '@/components/icons/Icon.vue'
-
-// 生成唯一ID以避免多个对话框时ID冲突
-let dialogIdCounter = 0
-const dialogId = `modal-title-${++dialogIdCounter}`
-
-// 焦点管理
-const dialogRef = ref<HTMLElement | null>(null)
-let previousActiveElement: HTMLElement | null = null
+import { computed } from 'vue'
+import {
+  DialogContent,
+  DialogOverlay,
+  DialogPortal,
+  DialogTitle,
+  DialogClose,
+} from 'reka-ui'
+import { X } from 'lucide-vue-next'
+import Dialog from '@/components/ui/dialog/Dialog.vue'
+import DialogFooter from '@/components/ui/dialog/DialogFooter.vue'
+import { cn } from '@/lib/utils'
 
 type DialogWidth = 'narrow' | 'normal' | 'wide' | 'extra-wide' | 'full'
 
@@ -92,77 +94,28 @@ const widthClasses = computed(() => {
   const widths: Record<DialogWidth, string> = {
     narrow: 'max-w-md',
     normal: 'max-w-lg',
-    wide: 'w-full sm:max-w-2xl md:max-w-3xl lg:max-w-4xl',
-    'extra-wide': 'w-full sm:max-w-3xl md:max-w-4xl lg:max-w-5xl xl:max-w-6xl',
-    full: 'w-full sm:max-w-4xl md:max-w-5xl lg:max-w-6xl xl:max-w-7xl'
+    wide: 'sm:max-w-2xl md:max-w-3xl lg:max-w-4xl',
+    'extra-wide': 'sm:max-w-3xl md:max-w-4xl lg:max-w-5xl xl:max-w-6xl',
+    full: 'sm:max-w-4xl md:max-w-5xl lg:max-w-6xl xl:max-w-7xl'
   }
   return widths[props.width]
 })
 
-const handleClose = () => {
-  if (props.closeOnClickOutside) {
+const onOpenChange = (open: boolean) => {
+  if (!open) {
     emit('close')
   }
 }
 
-const handleEscape = (event: KeyboardEvent) => {
-  if (props.show && props.closeOnEscape && event.key === 'Escape') {
-    emit('close')
+const onInteractOutside = (event: Event) => {
+  if (!props.closeOnClickOutside) {
+    event.preventDefault()
   }
 }
 
-// Prevent body scroll when modal is open and manage focus
-watch(
-  () => props.show,
-  async (isOpen) => {
-    if (isOpen) {
-      // 保存当前焦点元素
-      previousActiveElement = document.activeElement as HTMLElement
-      // 使用CSS类而不是直接操作style,更易于管理多个对话框
-      document.body.classList.add('modal-open')
-
-      // 等待DOM更新后设置焦点到对话框
-      await nextTick()
-      if (dialogRef.value) {
-        const firstFocusable = dialogRef.value.querySelector<HTMLElement>(
-          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-        )
-        firstFocusable?.focus()
-      }
-    } else {
-      document.body.classList.remove('modal-open')
-      // 恢复之前的焦点
-      if (previousActiveElement && typeof previousActiveElement.focus === 'function') {
-        previousActiveElement.focus()
-      }
-      previousActiveElement = null
-    }
-  },
-  { immediate: true }
-)
-
-onMounted(() => {
-  document.addEventListener('keydown', handleEscape)
-})
-
-onUnmounted(() => {
-  document.removeEventListener('keydown', handleEscape)
-  // 确保组件卸载时移除滚动锁定
-  document.body.classList.remove('modal-open')
-})
+const onEscapeKeyDown = (event: Event) => {
+  if (!props.closeOnEscape) {
+    event.preventDefault()
+  }
+}
 </script>
-
-<style scoped>
-.dialog-close-button {
-  color: var(--nm-ink-faint);
-  border: 1px solid transparent;
-  border-radius: var(--nm-radius);
-  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease;
-}
-
-.dialog-close-button:hover {
-  color: var(--nm-ink);
-  background: var(--nm-surface-soft);
-  border-color: var(--nm-border-light);
-}
-</style>

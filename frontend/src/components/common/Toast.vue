@@ -1,7 +1,7 @@
 <template>
   <Teleport to="body">
     <div
-      class="pointer-events-none fixed right-4 top-4 z-[9999] space-y-3"
+      class="pointer-events-none fixed right-4 top-4 z-[9999] flex flex-col gap-3"
       aria-live="polite"
       aria-atomic="true"
     >
@@ -17,53 +17,47 @@
           v-for="toast in toasts"
           :key="toast.id"
           :class="[
-            'toast-card pointer-events-auto min-w-[320px] max-w-md overflow-hidden',
+            'toast-card pointer-events-auto relative flex w-full min-w-[320px] max-w-md items-start gap-3 overflow-hidden rounded-lg border border-border border-l-4 bg-popover p-4 text-popover-foreground shadow-lg',
             getToastToneClass(toast.type)
           ]"
+          :style="{ '--toast-tone': getToastToneVar(toast.type) }"
         >
-          <div class="p-4">
-            <div class="flex items-start gap-3">
-              <!-- Icon -->
-              <div class="mt-0.5 flex-shrink-0">
-                <Icon
-                  :name="getToastIconName(toast.type)"
-                  size="md"
-                  class="toast-icon"
-                  aria-hidden="true"
-                />
-              </div>
-
-              <!-- Content -->
-              <div class="min-w-0 flex-1">
-                <p v-if="toast.title" class="text-sm font-semibold" style="color: var(--nm-ink)">
-                  {{ toast.title }}
-                </p>
-                <p
-                  :class="[
-                    'text-sm leading-relaxed',
-                    toast.title ? 'mt-1' : ''
-                  ]"
-                  style="color: var(--nm-ink-muted)"
-                >
-                  {{ toast.message }}
-                </p>
-              </div>
-
-              <!-- Close button -->
-              <button
-                @click="removeToast(toast.id)"
-                class="toast-close -m-1 flex-shrink-0 p-1"
-                aria-label="Close notification"
-              >
-                <Icon name="x" size="sm" />
-              </button>
-            </div>
+          <div class="mt-0.5 flex-shrink-0">
+            <component
+              :is="getToastIcon(toast.type)"
+              class="toast-icon h-5 w-5"
+              aria-hidden="true"
+            />
           </div>
 
+          <!-- Content -->
+          <div class="min-w-0 flex-1">
+            <p v-if="toast.title" class="text-sm font-semibold text-foreground">
+              {{ toast.title }}
+            </p>
+            <p
+              :class="[
+                'text-sm leading-relaxed text-muted-foreground',
+                toast.title ? 'mt-1' : ''
+              ]"
+            >
+              {{ toast.message }}
+            </p>
+          </div>
+
+          <!-- Close button -->
+          <button
+            @click="removeToast(toast.id)"
+            class="-m-1 flex-shrink-0 rounded-sm p-1 text-muted-foreground transition-colors hover:text-foreground"
+            aria-label="Close notification"
+          >
+            <X class="h-4 w-4" />
+          </button>
+
           <!-- Progress bar -->
-          <div v-if="toast.duration" class="toast-progress-track h-1">
+          <div v-if="toast.duration" class="toast-progress-track absolute bottom-0 left-0 h-1 w-full">
             <div
-              class="h-full toast-progress"
+              class="toast-progress h-full"
               :style="{ animationDuration: `${toast.duration}ms` }"
             ></div>
           </div>
@@ -75,25 +69,35 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import Icon from '@/components/icons/Icon.vue'
+import { CircleCheck, CircleX, Info, TriangleAlert, X } from 'lucide-vue-next'
 import { useAppStore } from '@/stores/app'
 
 const appStore = useAppStore()
 
 const toasts = computed(() => appStore.toasts)
 
-const getToastIconName = (type: string): 'checkCircle' | 'xCircle' | 'exclamationTriangle' | 'infoCircle' => {
+const getToastIcon = (type: string) => {
   switch (type) {
     case 'success':
-      return 'checkCircle'
+      return CircleCheck
     case 'error':
-      return 'xCircle'
+      return CircleX
     case 'warning':
-      return 'exclamationTriangle'
+      return TriangleAlert
     case 'info':
     default:
-      return 'infoCircle'
+      return Info
   }
+}
+
+const getToastToneVar = (type: string): string => {
+  const tones: Record<string, string> = {
+    success: 'var(--nm-success)',
+    error: 'var(--nm-danger)',
+    warning: 'var(--nm-warning)',
+    info: 'var(--nm-info)'
+  }
+  return tones[type] || tones.info
 }
 
 const getToastToneClass = (type: string): string => {
@@ -112,30 +116,19 @@ const removeToast = (id: string) => {
 </script>
 
 <style scoped>
-.toast-card {
-  background: var(--nm-surface);
-  border: 1px solid var(--nm-border);
-  border-left-width: 4px;
-  border-radius: var(--nm-radius-lg);
-}
-
 .toast-success {
-  --toast-tone: var(--nm-success);
+  border-left-color: var(--toast-tone);
 }
 
 .toast-error {
-  --toast-tone: var(--nm-danger);
+  border-left-color: var(--toast-tone);
 }
 
 .toast-warning {
-  --toast-tone: var(--nm-warning);
+  border-left-color: var(--toast-tone);
 }
 
 .toast-info {
-  --toast-tone: var(--nm-info);
-}
-
-.toast-card {
   border-left-color: var(--toast-tone);
 }
 
@@ -143,19 +136,8 @@ const removeToast = (id: string) => {
   color: var(--toast-tone);
 }
 
-.toast-close {
-  color: var(--nm-ink-faint);
-  border-radius: var(--nm-radius-sm);
-  transition: background-color 160ms ease, color 160ms ease;
-}
-
-.toast-close:hover {
-  color: var(--nm-ink);
-  background: var(--nm-surface-soft);
-}
-
 .toast-progress-track {
-  background: var(--nm-surface-soft);
+  background: hsl(var(--muted));
 }
 
 .toast-progress {

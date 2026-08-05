@@ -192,6 +192,64 @@
       transition-duration: 1ms !important;
     }
   }
+  /* ------------------------------------------------------------------
+     shadcn-vue v1 semantic tokens, mapped onto the existing Swiss
+     --nm-* palette so shadcn components stay brand-consistent.
+     Tailwind reads these as hsl(var(--...)) triplets.
+     ------------------------------------------------------------------ */
+  :root {
+    --background: 0 0% 96%; /* --nm-bg #f7f7f4 */
+    --foreground: 0 0% 7%; /* --nm-ink #111111 */
+    --card: 0 0% 100%; /* --nm-surface */
+    --card-foreground: 0 0% 7%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 7%;
+    --primary: 175 84% 26%; /* --nm-accent #0f766e */
+    --primary-foreground: 0 0% 100%; /* --nm-on-accent */
+    --secondary: 0 0% 93%; /* --nm-surface-soft #f0f0ec */
+    --secondary-foreground: 0 0% 7%;
+    --muted: 0 0% 93%;
+    --muted-foreground: 60 5% 28%; /* --nm-ink-muted #4b4b45 */
+    --accent: 0 0% 93%;
+    --accent-foreground: 0 0% 7%;
+    --destructive: 357 67% 42%; /* --nm-danger #b4232a */
+    --destructive-foreground: 0 0% 100%;
+    --border: 60 7% 80%; /* --nm-border #cfcfc8 */
+    --input: 60 7% 80%;
+    --ring: 175 84% 26%;
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+    --radius: 0.5rem;
+  }
+  .dark {
+    --background: 0 0% 7%; /* --nm-bg #111111 */
+    --foreground: 0 0% 95%; /* --nm-ink #f4f4ef */
+    --card: 0 0% 9%; /* --nm-surface #171717 */
+    --card-foreground: 0 0% 95%;
+    --popover: 0 0% 9%;
+    --popover-foreground: 0 0% 95%;
+    --primary: 173 51% 52%; /* --nm-accent #45c3b5 */
+    --primary-foreground: 170 5% 5%; /* --nm-on-accent #071311 */
+    --secondary: 0 0% 12%; /* --nm-surface-soft #20201e */
+    --secondary-foreground: 0 0% 95%;
+    --muted: 0 0% 12%;
+    --muted-foreground: 60 4% 50%; /* --nm-ink-faint #85857b */
+    --accent: 0 0% 12%;
+    --accent-foreground: 0 0% 95%;
+    --destructive: 0 100% 78%; /* --nm-danger #ff8f90 */
+    --destructive-foreground: 0 0% 7%;
+    --border: 60 3% 19%; /* --nm-border #34342f */
+    --input: 60 3% 19%;
+    --ring: 173 51% 52%;
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
+  }
 }
 
 @layer components {
@@ -1141,5 +1199,10 @@
 
   .safe-bottom {
     padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+@layer base {
+  * {
+    @apply border-border;
   }
 }

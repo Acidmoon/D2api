@@ -100,7 +100,7 @@ onBeforeUnmount(() => {
     <!-- Trigger Icon -->
     <slot name="trigger">
       <svg
-        class="tooltip-trigger-icon h-4 w-4 cursor-help"
+        class="h-4 w-4 cursor-help text-muted-foreground transition-colors hover:text-[var(--nm-accent-text)]"
         fill="none"
         viewBox="0 0 24 24"
         stroke="currentColor"
@@ -121,7 +121,7 @@ onBeforeUnmount(() => {
         v-show="show"
         role="tooltip"
         :class="[
-          'tooltip-panel fixed z-[99999] -translate-x-1/2 -translate-y-full p-3 text-xs leading-relaxed',
+          'tooltip-panel fixed z-[99999] -translate-x-1/2 -translate-y-full rounded-md border border-border bg-popover px-3 py-2 text-xs leading-relaxed text-popover-foreground shadow-md',
           props.widthClass,
         ]"
         :style="{ top: `calc(${tooltipStyle.top} - 8px)`, left: tooltipStyle.left }"
@@ -129,7 +129,7 @@ onBeforeUnmount(() => {
         <button
           v-if="props.trigger === 'click'"
           type="button"
-          class="tooltip-close absolute right-1.5 top-1.5 p-1"
+          class="tooltip-close absolute right-1.5 top-1.5 rounded-sm p-1 text-muted-foreground transition-colors hover:text-foreground"
           aria-label="Close"
           @click.stop="closeTooltip"
         >
@@ -145,36 +145,9 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-.tooltip-trigger-icon {
-  color: var(--nm-ink-faint);
-  transition: color 160ms ease;
-}
-
-.tooltip-trigger-icon:hover {
-  color: var(--nm-accent-text);
-}
-
-.tooltip-panel {
-  color: var(--nm-ink);
-  background: var(--nm-surface);
-  border: 1px solid var(--nm-border);
-  border-radius: var(--nm-radius);
-}
-
-.tooltip-close {
-  color: var(--nm-ink-muted);
-  border-radius: var(--nm-radius-sm);
-  transition: background-color 160ms ease, color 160ms ease;
-}
-
-.tooltip-close:hover {
-  color: var(--nm-ink);
-  background: var(--nm-surface-soft);
-}
-
 .tooltip-arrow {
-  background: var(--nm-surface);
-  border-bottom: 1px solid var(--nm-border);
-  border-right: 1px solid var(--nm-border);
+  background: hsl(var(--popover));
+  border-bottom: 1px solid hsl(var(--border));
+  border-right: 1px solid hsl(var(--border));
 }
 </style>
