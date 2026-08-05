@@ -110,8 +110,8 @@
 
   body {
     @apply min-h-screen;
-    background-color: var(--nm-bg);
-    color: var(--nm-ink);
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
     font-family:
       'Helvetica Neue', Arial, 'PingFang SC', 'Hiragino Sans GB',
       'Microsoft YaHei', sans-serif;
@@ -133,7 +133,7 @@
   input:focus-visible,
   select:focus-visible,
   textarea:focus-visible {
-    outline: 3px solid var(--nm-accent);
+    outline: 2px solid hsl(var(--ring));
     outline-offset: 2px;
   }
 
@@ -253,100 +253,111 @@
 }
 
 @layer components {
-  /* ============ Buttons — neumorphic raised / pressed ============ */
+  /* ============ Buttons — shadcn-style (outline look for bare .btn) ============ */
   .btn {
-    @apply inline-flex items-center justify-center gap-2;
-    @apply px-4 py-2.5 text-sm font-semibold;
-    @apply focus:outline-none;
-    @apply disabled:cursor-not-allowed disabled:opacity-50;
-    min-height: 2.75rem;
-    border: 1px solid var(--nm-ink);
-    border-radius: var(--nm-radius);
-    background: transparent;
-    color: var(--nm-ink);
+    @apply inline-flex items-center justify-center gap-2 whitespace-nowrap;
+    @apply rounded-md px-4 py-2 text-sm font-medium;
+    @apply transition-colors;
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background;
+    @apply disabled:pointer-events-none disabled:opacity-50;
+    min-height: 2.5rem;
+    border: 1px solid hsl(var(--input));
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
     box-shadow: none;
     letter-spacing: 0;
-    transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease, transform 160ms ease;
   }
 
-  .btn:hover {
-    background: var(--nm-ink);
-    color: var(--nm-bg);
-    box-shadow: none;
-    transform: none;
+  .btn:hover:not(.btn-success):not(.btn-warning):not(.btn-stripe):not(.btn-airwallex):not(.btn-alipay):not(.btn-wxpay) {
+    background-color: hsl(var(--accent));
+    border-color: hsl(var(--border));
+    color: hsl(var(--accent-foreground));
   }
 
-  .btn:active {
-    background: var(--nm-accent);
-    border-color: var(--nm-accent);
-    color: var(--nm-on-accent);
-    transform: translateY(0);
-  }
-
-  .btn:focus-visible {
-    outline: 3px solid var(--nm-accent);
-    outline-offset: 2px;
+  .btn:active:not(.btn-success):not(.btn-warning):not(.btn-stripe):not(.btn-airwallex):not(.btn-alipay):not(.btn-wxpay) {
+    background-color: hsl(var(--accent));
+    color: hsl(var(--accent-foreground));
   }
 
   .btn:disabled,
   .btn[disabled] {
-    border-color: var(--nm-border);
-    background: transparent;
-    color: var(--nm-ink-faint);
+    border-color: hsl(var(--border));
+    background-color: transparent;
+    color: hsl(var(--muted-foreground));
     box-shadow: none;
-    transform: none;
   }
 
   /* Filled variants keep brand identity; text colors meet AA on each fill. */
   .btn-primary {
-    background: var(--nm-accent);
-    border-color: var(--nm-accent);
-    color: var(--nm-on-accent);
+    background-color: hsl(var(--primary));
+    border-color: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
   }
 
   .btn-primary:hover {
-    background: var(--nm-accent-strong);
-    border-color: var(--nm-accent-strong);
-    color: var(--nm-on-accent);
+    background-color: hsl(var(--primary) / 0.9);
+    border-color: hsl(var(--primary) / 0.9);
+    color: hsl(var(--primary-foreground));
   }
 
   .btn-primary:active {
-    background: var(--nm-accent-strong);
+    background-color: hsl(var(--primary) / 0.85);
   }
 
-  .btn-secondary,
+  .btn-secondary {
+    background-color: hsl(var(--secondary));
+    border-color: transparent;
+    color: hsl(var(--secondary-foreground));
+  }
+
+  .btn-secondary:hover {
+    background-color: hsl(var(--secondary) / 0.8);
+    color: hsl(var(--secondary-foreground));
+  }
+
   .btn-ghost {
     background: transparent;
-    color: var(--nm-ink);
-  }
-
-  .btn-ghost {
     border-color: transparent;
+    color: hsl(var(--foreground));
     box-shadow: none;
   }
 
   .btn-ghost:hover {
-    background: var(--nm-surface-soft);
-    color: var(--nm-ink);
-    box-shadow: none;
+    background-color: hsl(var(--accent));
+    color: hsl(var(--accent-foreground));
   }
 
   .btn-danger {
-    background: var(--nm-danger);
-    border-color: var(--nm-danger);
-    color: #fff;
+    background-color: hsl(var(--destructive));
+    border-color: hsl(var(--destructive));
+    color: hsl(var(--destructive-foreground));
+  }
+
+  .btn-danger:hover {
+    background-color: hsl(var(--destructive) / 0.9);
+    border-color: hsl(var(--destructive) / 0.9);
+    color: hsl(var(--destructive-foreground));
   }
 
   .btn-success {
-    background: var(--nm-success);
+    background-color: var(--nm-success);
     border-color: var(--nm-success);
     color: #fff;
   }
 
+  .btn-success:hover {
+    filter: brightness(0.94);
+  }
+
   .btn-warning {
-    background: var(--nm-warning);
+    background-color: var(--nm-warning);
     border-color: var(--nm-warning);
     color: #fff;
+  }
+
+  .btn-warning:hover {
+    filter: brightness(0.94);
   }
 
   /* Payment buttons keep their brand fill (set inline); just nm depth here. */
@@ -377,8 +388,8 @@
 
   .btn-sm {
     @apply px-3 py-1.5 text-xs;
-    min-height: 2.25rem;
-    border-radius: var(--nm-radius-sm);
+    min-height: 2rem;
+    border-radius: calc(var(--radius) - 2px);
   }
 
   .btn-md {
@@ -387,7 +398,7 @@
 
   .btn-lg {
     @apply px-6 py-3 text-base;
-    border-radius: var(--nm-radius-lg);
+    border-radius: var(--radius);
   }
 
   .btn-icon {
@@ -396,28 +407,23 @@
 
   /* ============ Inputs — neumorphic sunken ============ */
   .input {
-    @apply w-full px-4 py-2.5 text-sm;
-    min-height: 2.75rem;
-    border: 1px solid var(--nm-border);
-    border-radius: var(--nm-radius);
-    background-color: var(--nm-surface);
-    color: var(--nm-ink);
+    @apply w-full rounded-md border border-input bg-background px-3 py-2 text-sm;
+    @apply transition-colors;
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background;
+    @apply disabled:cursor-not-allowed disabled:opacity-50;
+    min-height: 2.5rem;
+    color: hsl(var(--foreground));
     box-shadow: none;
-    transition: border-color 160ms ease, background-color 160ms ease;
   }
 
   .input::placeholder {
-    color: var(--nm-ink-faint);
+    color: hsl(var(--muted-foreground));
   }
 
   .input:focus {
     outline: none;
-    border-color: var(--nm-accent);
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--nm-accent) 22%, transparent);
-  }
-
-  .input:disabled {
-    @apply cursor-not-allowed opacity-60;
+    border-color: hsl(var(--ring));
+    box-shadow: 0 0 0 2px hsl(var(--ring) / 0.25);
   }
 
   .dark .input[type='date'],
@@ -434,18 +440,18 @@
   }
 
   .input-label {
-    @apply mb-1.5 block text-sm font-semibold;
-    color: var(--nm-ink);
+    @apply mb-1.5 block text-sm font-medium;
+    color: hsl(var(--foreground));
   }
 
   .input-hint {
     @apply mt-1 text-xs;
-    color: var(--nm-ink-muted);
+    color: hsl(var(--muted-foreground));
   }
 
   .input-error-text {
     @apply mt-1 text-xs;
-    color: var(--nm-danger);
+    color: hsl(var(--destructive));
   }
 
   /* Hide number input spinners for a cleaner look */
@@ -461,64 +467,64 @@
 
   /* ============ Cards & surfaces — neumorphic raised ============ */
   .card {
-    background-color: var(--nm-surface);
-    border: 1px solid var(--nm-border);
-    border-radius: var(--nm-radius-lg);
-    box-shadow: none;
+    background-color: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--radius);
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
     transition: border-color 180ms ease, background-color 180ms ease;
   }
 
   .card-hover:hover {
-    border-color: var(--nm-ink);
-    box-shadow: none;
+    border-color: hsl(var(--ring));
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
     transform: none;
   }
 
   .swiss-panel {
-    background-color: var(--nm-surface);
-    border: 1px solid var(--nm-border);
-    border-radius: var(--nm-radius-lg);
+    background-color: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--radius);
     box-shadow: none;
   }
 
   .swiss-stat-card {
     @apply p-4;
-    background-color: var(--nm-surface);
-    border: 1px solid var(--nm-border);
-    border-radius: var(--nm-radius-lg);
-    box-shadow: none;
+    background-color: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--radius);
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
   }
 
   .swiss-stat-icon {
     @apply flex h-9 w-9 shrink-0 items-center justify-center;
-    background-color: var(--nm-surface-soft);
-    border: 1px solid var(--nm-border-light);
-    border-radius: var(--nm-radius);
-    color: var(--nm-ink-muted);
+    background-color: hsl(var(--muted));
+    border: 1px solid hsl(var(--border));
+    border-radius: calc(var(--radius) - 2px);
+    color: hsl(var(--muted-foreground));
   }
 
   .swiss-action {
     @apply inline-flex items-center justify-center gap-1.5 px-2 py-1 text-xs font-medium;
     min-height: 2rem;
-    color: var(--nm-ink-muted);
+    color: hsl(var(--muted-foreground));
     border: 1px solid transparent;
-    border-radius: var(--nm-radius);
+    border-radius: calc(var(--radius) - 2px);
     transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease;
   }
 
   .swiss-action:hover {
-    background-color: var(--nm-surface-soft);
-    border-color: var(--nm-border);
-    color: var(--nm-ink);
+    background-color: hsl(var(--accent));
+    border-color: hsl(var(--border));
+    color: hsl(var(--accent-foreground));
   }
 
-  /* Glass variants degrade to flat neumorphic surfaces (no backdrop blur). */
+  /* Glass variants degrade to flat surfaces (no heavy backdrop blur). */
   .glass,
   .glass-card,
   .card-glass {
-    background-color: color-mix(in srgb, var(--nm-bg) 92%, transparent);
-    border: 1px solid var(--nm-border-light);
-    border-radius: var(--nm-radius-lg);
+    background-color: color-mix(in srgb, hsl(var(--background)) 92%, transparent);
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--radius);
     box-shadow: none;
     backdrop-filter: blur(12px);
     transition: border-color 180ms ease, background-color 180ms ease;
@@ -526,7 +532,7 @@
 
   .card-header {
     @apply px-6 py-4;
-    border-bottom: 1px solid var(--nm-border-light);
+    border-bottom: 1px solid hsl(var(--border));
   }
 
   .card-body {
@@ -535,23 +541,23 @@
 
   .card-footer {
     @apply px-6 py-4;
-    border-top: 1px solid var(--nm-border-light);
+    border-top: 1px solid hsl(var(--border));
   }
 
   /* ============ Stat cards ============ */
   .stat-card {
     @apply flex items-start gap-4 p-4;
-    background-color: var(--nm-surface);
-    border: 1px solid var(--nm-border);
-    border-radius: var(--nm-radius-lg);
-    box-shadow: none;
+    background-color: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--radius);
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
     transition: border-color 180ms ease;
   }
 
   .stat-icon {
     @apply flex h-10 w-10 items-center justify-center text-xl;
-    border-radius: var(--nm-radius);
-    background: var(--nm-surface-soft);
+    border-radius: calc(var(--radius) - 2px);
+    background: hsl(var(--muted));
     box-shadow: none;
   }
 
@@ -573,13 +579,13 @@
 
   .stat-value {
     @apply truncate text-2xl font-semibold;
-    color: var(--nm-ink);
+    color: hsl(var(--foreground));
     font-variant-numeric: tabular-nums;
   }
 
   .stat-label {
     @apply text-sm;
-    color: var(--nm-ink-muted);
+    color: hsl(var(--muted-foreground));
   }
 
   .stat-trend {
@@ -597,10 +603,10 @@
   /* ============ Tables ============ */
   .table-container {
     @apply overflow-x-auto;
-    border: 1px solid var(--nm-border);
-    border-radius: var(--nm-radius-lg);
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--radius);
     box-shadow: none;
-    background: var(--nm-surface);
+    background: hsl(var(--card));
   }
 
   .table {
@@ -610,17 +616,17 @@
   }
 
   .table th {
-    @apply px-4 py-3 text-left text-xs font-semibold uppercase;
-    color: var(--nm-ink-muted);
-    background-color: var(--nm-surface-soft);
-    border-bottom: 1px solid var(--nm-border);
+    @apply px-4 py-3 text-left text-xs font-medium;
+    color: hsl(var(--muted-foreground));
+    background-color: hsl(var(--muted) / 0.5);
+    border-bottom: 1px solid hsl(var(--border));
     letter-spacing: 0;
   }
 
   .table td {
     @apply px-4 py-3;
-    color: var(--nm-ink);
-    border-bottom: 1px solid var(--nm-border-light);
+    color: hsl(var(--foreground));
+    border-bottom: 1px solid hsl(var(--border));
   }
 
   .table tr:last-child td {
@@ -632,23 +638,22 @@
   }
 
   .table tbody tr:hover {
-    background-color: var(--nm-surface-soft);
+    background-color: hsl(var(--muted) / 0.5);
   }
 
   /* ============ Badges ============ */
   .badge {
-    @apply inline-flex items-center gap-1 text-xs font-medium;
-    border-radius: var(--nm-radius-sm);
-    padding: 2px 8px;
-    background-color: var(--nm-surface);
-    border: 1px solid var(--nm-border);
-    color: var(--nm-ink-muted);
+    @apply inline-flex items-center gap-1 rounded-md border px-2.5 py-0.5 text-xs font-medium;
+    background-color: hsl(var(--secondary));
+    border-color: hsl(var(--border));
+    color: hsl(var(--secondary-foreground));
     box-shadow: none;
   }
 
   .badge-primary {
-    background-color: var(--nm-accent-soft);
-    color: var(--nm-accent-text);
+    background-color: hsl(var(--primary) / 0.12);
+    border-color: transparent;
+    color: hsl(var(--primary));
   }
 
   .badge-success {
@@ -695,23 +700,22 @@
   /* ============ Dropdown menu ============ */
   .dropdown {
     @apply absolute z-50 origin-top-right animate-scale-in;
-    background-color: var(--nm-surface);
-    border: 1px solid var(--nm-border);
-    border-radius: var(--nm-radius-lg);
-    box-shadow: var(--nm-shadow-raised-lg);
+    background-color: hsl(var(--popover));
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--radius);
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
     padding: 4px;
   }
 
   .dropdown-item {
-    @apply flex cursor-pointer items-center gap-2 px-4 py-2 text-sm transition-colors;
-    color: var(--nm-ink-muted);
-    border-radius: var(--nm-radius-sm);
-    min-height: 2.5rem;
+    @apply flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors;
+    color: hsl(var(--foreground));
+    min-height: 2.25rem;
   }
 
   .dropdown-item:hover {
-    background-color: var(--nm-surface-soft);
-    color: var(--nm-ink);
+    background-color: hsl(var(--accent));
+    color: hsl(var(--accent-foreground));
     box-shadow: none;
   }
 
@@ -724,21 +728,21 @@
   .modal-content {
     @apply flex w-full flex-col;
     @apply max-h-[95vh] sm:max-h-[90vh];
-    background-color: var(--nm-surface);
-    border: 1px solid var(--nm-border);
-    border-radius: var(--nm-radius-lg);
-    box-shadow: var(--nm-shadow-raised-lg);
+    background-color: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--radius);
+    box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
   }
 
   .modal-header {
     @apply flex flex-shrink-0 items-center justify-between;
     @apply px-4 py-3 sm:px-6 sm:py-4;
-    border-bottom: 1px solid var(--nm-border-light);
+    border-bottom: 1px solid hsl(var(--border));
   }
 
   .modal-title {
     @apply text-lg font-semibold;
-    color: var(--nm-ink);
+    color: hsl(var(--foreground));
   }
 
   .modal-body {
@@ -748,7 +752,7 @@
   .modal-footer {
     @apply flex flex-shrink-0 items-center justify-end gap-3;
     @apply px-4 py-3 sm:px-6 sm:py-4;
-    border-top: 1px solid var(--nm-border-light);
+    border-top: 1px solid hsl(var(--border));
   }
 
   body.modal-open {
@@ -812,15 +816,15 @@
   .dialog-container {
     @apply flex w-full flex-col;
     @apply max-h-[90vh];
-    background-color: var(--nm-surface);
-    border: 1px solid var(--nm-border);
-    border-radius: var(--nm-radius-lg);
-    box-shadow: var(--nm-shadow-raised-lg);
+    background-color: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--radius);
+    box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
   }
 
   .dialog-header {
     @apply flex items-center justify-between px-6 py-4;
-    border-bottom: 1px solid var(--nm-border-light);
+    border-bottom: 1px solid hsl(var(--border));
   }
 
   .dialog-body {
@@ -829,7 +833,7 @@
 
   .dialog-footer {
     @apply flex items-center justify-end gap-3 px-6 py-4;
-    border-top: 1px solid var(--nm-border-light);
+    border-top: 1px solid hsl(var(--border));
   }
 
   /* ============ Toast ============ */
@@ -837,11 +841,11 @@
     @apply fixed right-4 top-4 z-[100] animate-slide-in-right p-4;
     min-width: 320px;
     max-width: 420px;
-    background-color: var(--nm-surface);
-    border: 1px solid var(--nm-border);
+    background-color: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
     border-left: 4px solid transparent;
-    border-radius: var(--nm-radius-lg);
-    box-shadow: var(--nm-shadow-raised-lg);
+    border-radius: var(--radius);
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
   }
 
   .toast-success {
@@ -860,12 +864,12 @@
     border-left-color: var(--nm-accent);
   }
 
-  /* ============ Sidebar ============ */
+  /* ============ Sidebar — shadcn style ============ */
   .sidebar {
     @apply fixed inset-y-0 left-0 z-40 flex w-64 flex-col;
     @apply transition-transform duration-300;
-    background-color: var(--nm-surface);
-    border-right: 1px solid var(--nm-border);
+    background-color: hsl(var(--background));
+    border-right: 1px solid hsl(var(--border));
     box-shadow: none;
     transition-property: width, transform;
   }
@@ -876,7 +880,7 @@
 
   .sidebar-header {
     @apply flex h-16 items-center gap-3 px-5;
-    border-bottom: 1px solid var(--nm-border-light);
+    border-bottom: 1px solid hsl(var(--border));
     transition: padding 0.2s ease, gap 0.2s ease;
   }
 
@@ -885,35 +889,36 @@
   }
 
   .sidebar-link {
-    @apply flex items-center gap-3 overflow-hidden py-2.5;
+    @apply flex items-center gap-3 overflow-hidden;
     @apply text-sm font-medium;
     @apply transition-colors duration-200;
-    border-radius: var(--nm-radius);
-    color: var(--nm-ink-muted);
-    min-height: 2.75rem;
-    padding-left: 0.875rem;
+    border-radius: calc(var(--radius) - 2px);
+    color: hsl(var(--muted-foreground));
+    min-height: 2.25rem;
+    padding-left: 0.75rem;
     padding-right: 0.75rem;
   }
 
   .sidebar-link:hover {
-    background-color: var(--nm-surface-soft);
+    background-color: hsl(var(--muted));
     box-shadow: none;
-    color: var(--nm-ink);
+    color: hsl(var(--foreground));
   }
 
   .sidebar-link-active {
-    background-color: var(--nm-ink);
+    background-color: hsl(var(--primary) / 0.12);
     box-shadow: none;
-    color: var(--nm-bg);
+    color: hsl(var(--primary));
+    font-weight: 600;
   }
 
   .sidebar-link-active:hover {
-    background-color: var(--nm-ink);
-    color: var(--nm-bg);
+    background-color: hsl(var(--primary) / 0.16);
+    color: hsl(var(--primary));
   }
 
   .sidebar-link-active svg {
-    color: var(--nm-bg);
+    color: inherit;
   }
 
   .sidebar-section {
@@ -923,24 +928,24 @@
   .sidebar-section-title {
     @apply mb-2 px-3;
     @apply text-xs font-semibold uppercase;
-    color: var(--nm-ink-faint);
+    color: hsl(var(--muted-foreground));
     letter-spacing: 0;
   }
 
   /* ============ Page header ============ */
   .page-header {
     @apply mb-6 border-b pb-4;
-    border-color: var(--nm-border-light);
+    border-color: hsl(var(--border));
   }
 
   .page-title {
-    @apply text-2xl font-semibold;
-    color: var(--nm-ink);
+    @apply text-2xl font-semibold tracking-tight;
+    color: hsl(var(--foreground));
   }
 
   .page-description {
     @apply mt-1 text-sm;
-    color: var(--nm-ink-muted);
+    color: hsl(var(--muted-foreground));
   }
 
   /* ============ Empty state ============ */
@@ -956,12 +961,12 @@
 
   .empty-state-title {
     @apply mb-1 text-lg font-medium;
-    color: var(--nm-ink);
+    color: hsl(var(--foreground));
   }
 
   .empty-state-description {
     @apply max-w-sm text-sm;
-    color: var(--nm-ink-muted);
+    color: hsl(var(--muted-foreground));
   }
 
   /* ============ Loading ============ */
@@ -971,8 +976,8 @@
 
   .skeleton {
     @apply animate-pulse;
-    border-radius: var(--nm-radius-sm);
-    background: var(--nm-surface-soft);
+    border-radius: calc(var(--radius) - 4px);
+    background: hsl(var(--muted));
     box-shadow: none;
   }
 
@@ -980,61 +985,61 @@
   .divider {
     @apply my-4;
     height: 1px;
-    background: var(--nm-border-light);
+    background: hsl(var(--border));
   }
 
   /* ============ Tabs ============ */
   .tabs {
-    @apply flex gap-1 p-1;
-    border-radius: var(--nm-radius-lg);
-    background: var(--nm-surface);
-    border: 1px solid var(--nm-border);
+    @apply flex gap-1 rounded-lg bg-muted p-1 text-muted-foreground;
+    border: 1px solid hsl(var(--border));
     box-shadow: none;
-    padding: 4px;
   }
 
   .tab {
-    @apply px-4 py-2 text-sm font-medium transition-all duration-200;
-    border-radius: var(--nm-radius);
-    color: var(--nm-ink-muted);
+    @apply rounded-md px-3 py-1.5 text-sm font-medium transition-all duration-200;
+    color: hsl(var(--muted-foreground));
     background: transparent;
   }
 
   .tab:hover {
-    color: var(--nm-ink);
+    color: hsl(var(--foreground));
   }
 
   .tab-active {
-    background: var(--nm-ink);
-    color: var(--nm-bg);
-    box-shadow: none;
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  }
+
+  .dark .tab-active {
+    box-shadow: inset 0 0 0 1px hsl(var(--border)), 0 1px 2px 0 rgb(0 0 0 / 0.05);
   }
 
   /* ============ Progress ============ */
   .progress {
     @apply h-2 overflow-hidden;
-    border-radius: var(--nm-radius-sm);
-    background-color: var(--nm-surface-soft);
+    border-radius: 9999px;
+    background-color: hsl(var(--muted));
     box-shadow: none;
   }
 
   .progress-bar {
     @apply h-full transition-all duration-300;
-    background: var(--nm-accent);
-    border-radius: var(--nm-radius-sm);
+    background: hsl(var(--primary));
+    border-radius: 9999px;
   }
 
   .metric-progress {
     @apply h-1.5 w-full overflow-hidden;
-    background-color: var(--nm-surface-soft);
-    border: 1px solid var(--nm-border-light);
-    border-radius: var(--nm-radius-sm);
+    background-color: hsl(var(--muted));
+    border: 1px solid hsl(var(--border));
+    border-radius: 9999px;
   }
 
   .metric-progress-bar {
     @apply h-full transition-all duration-300;
-    background-color: var(--nm-accent);
-    border-radius: 0;
+    background-color: hsl(var(--primary));
+    border-radius: 9999px;
   }
 
   .metric-progress-bar-success {
@@ -1052,23 +1057,23 @@
   /* ============ Switch ============ */
   .switch {
     @apply relative h-6 w-11 cursor-pointer;
-    border-radius: var(--nm-radius);
-    background: var(--nm-surface-soft);
-    border: 1px solid var(--nm-border);
+    border-radius: 9999px;
+    background: hsl(var(--muted));
+    border: 1px solid hsl(var(--border));
     box-shadow: none;
     transition: background-color 200ms ease, box-shadow 200ms ease;
   }
 
   .switch-active {
-    background: var(--nm-accent);
-    border-color: var(--nm-accent);
+    background: hsl(var(--primary));
+    border-color: hsl(var(--primary));
     box-shadow: none;
   }
 
   .switch-thumb {
     @apply absolute left-0.5 top-0.5 h-5 w-5;
-    border-radius: var(--nm-radius-sm);
-    background: var(--nm-surface);
+    border-radius: 9999px;
+    background: hsl(var(--card));
     box-shadow: none;
     transition: transform 200ms ease;
   }
@@ -1082,18 +1087,18 @@
   .code {
     @apply font-mono text-sm;
     padding: 2px 6px;
-    border-radius: var(--nm-radius-sm);
-    background: var(--nm-bg);
-    box-shadow: var(--nm-shadow-inset);
-    color: var(--nm-accent-text);
+    border-radius: calc(var(--radius) - 4px);
+    background: hsl(var(--muted));
+    box-shadow: none;
+    color: hsl(var(--primary));
   }
 
   .code-block {
     @apply overflow-x-auto p-4 font-mono text-sm;
-    border-radius: var(--nm-radius-lg);
-    background-color: var(--nm-surface-alt);
-    box-shadow: var(--nm-shadow-inset);
-    color: var(--nm-ink);
+    border-radius: var(--radius);
+    background-color: hsl(var(--muted) / 0.5);
+    box-shadow: none;
+    color: hsl(var(--foreground));
   }
 
   /* ============ Onboarding tour ============ */
@@ -1153,13 +1158,6 @@
 }
 
 @layer utilities {
-  .swiss-grid {
-    background-image:
-      linear-gradient(to right, color-mix(in srgb, var(--nm-border-light) 54%, transparent) 1px, transparent 1px),
-      linear-gradient(to bottom, color-mix(in srgb, var(--nm-border-light) 54%, transparent) 1px, transparent 1px);
-    background-size: 24px 24px;
-  }
-
   .skip-link {
     position: fixed;
     left: 1rem;

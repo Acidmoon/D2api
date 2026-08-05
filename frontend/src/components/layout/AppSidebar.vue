@@ -11,8 +11,7 @@
       <!-- Custom Logo or Default Logo -->
       <router-link
         :to="homePath"
-        class="sidebar-logo flex h-9 w-9 items-center justify-center overflow-hidden border transition-opacity hover:opacity-80"
-        style="border-color: var(--nm-border); border-radius: var(--nm-radius); background: var(--nm-surface)"
+        class="sidebar-logo flex h-9 w-9 items-center justify-center overflow-hidden border border-border bg-card transition-opacity hover:opacity-80 rounded-md"
         @click="handleMenuItemClick(homePath)"
       >
         <img v-if="settingsLoaded" :src="siteLogo || '/logo.svg'" alt="Logo" class="h-full w-full object-contain" />
@@ -20,8 +19,7 @@
       <div class="sidebar-brand" :class="{ 'sidebar-brand-collapsed': sidebarCollapsed }" :aria-hidden="sidebarCollapsed ? 'true' : 'false'">
         <router-link
           :to="homePath"
-          class="sidebar-brand-title text-lg font-semibold transition-opacity hover:opacity-80"
-          style="color: var(--nm-ink)"
+          class="sidebar-brand-title text-lg font-semibold text-foreground transition-opacity hover:opacity-80"
           @click="handleMenuItemClick(homePath)"
         >
           {{ siteName }}
@@ -64,7 +62,7 @@
                 </span>
               </button>
               <!-- Children -->
-              <div v-if="!sidebarCollapsed && isGroupExpanded(item)" class="mb-1 ml-4 border-l pl-2" style="border-color: var(--nm-border)">
+              <div v-if="!sidebarCollapsed && isGroupExpanded(item)" class="mb-1 ml-4 border-l border-border pl-2">
                 <router-link
                   v-for="child in item.children"
                   :key="child.path"
@@ -150,7 +148,7 @@
     </nav>
 
     <!-- Bottom Section -->
-    <div class="mt-auto border-t p-3" style="border-color: var(--nm-border)">
+    <div class="mt-auto border-t border-border p-3">
       <!-- Theme Toggle -->
       <button
         @click="toggleTheme"
@@ -158,7 +156,7 @@
         :class="{ 'sidebar-link-collapsed': sidebarCollapsed }"
         :title="sidebarCollapsed ? (isDark ? t('nav.lightMode') : t('nav.darkMode')) : undefined"
       >
-        <SunIcon v-if="isDark" class="h-5 w-5 flex-shrink-0" style="color: var(--nm-warning)" />
+        <SunIcon v-if="isDark" class="h-5 w-5 flex-shrink-0 text-amber-500 dark:text-amber-400" />
         <MoonIcon v-else class="h-5 w-5 flex-shrink-0" />
         <span class="sidebar-label" :class="{ 'sidebar-label-collapsed': sidebarCollapsed }" :aria-hidden="sidebarCollapsed ? 'true' : 'false'">{{
           isDark ? t('nav.lightMode') : t('nav.darkMode')
@@ -1043,14 +1041,14 @@ onBeforeUnmount(() => {
   right: 0.75rem;
   top: 50%;
   height: 1px;
-  background: var(--nm-border);
+  background: hsl(var(--border));
   opacity: 0;
   transform: translateY(-50%);
   transition: opacity 0.18s ease;
 }
 
 .dark .sidebar-section-title::after {
-  background: var(--nm-border);
+  background: hsl(var(--border));
 }
 
 .sidebar-section-title-text-collapsed {

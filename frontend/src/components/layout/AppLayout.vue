@@ -1,19 +1,19 @@
 <template>
-  <div class="min-h-screen swiss-grid">
+  <div class="min-h-screen bg-background">
     <a href="#main-content" class="skip-link">{{ $t('common.skipToContent') }}</a>
     <!-- Sidebar -->
     <AppSidebar />
 
     <!-- Main Content Area -->
     <div
-      class="relative min-h-screen transition-all duration-300"
+      class="relative min-h-screen bg-background transition-all duration-300"
       :class="[sidebarCollapsed ? 'lg:ml-[72px]' : 'lg:ml-64']"
     >
       <!-- Header -->
       <AppHeader />
 
       <!-- Main Content -->
-      <main id="main-content" class="p-4 md:p-6 lg:p-8" tabindex="-1">
+      <main id="main-content" class="p-4 md:p-6" tabindex="-1">
         <slot />
       </main>
     </div>

@@ -19,7 +19,7 @@
       </div>
 
       <!-- Card Container -->
-      <div class="card p-8">
+      <div class="card rounded-xl bg-card p-8 shadow-sm">
         <slot />
       </div>
 
@@ -57,24 +57,25 @@ onMounted(() => {
 
 <style scoped>
 .auth-layout {
-  background-color: var(--nm-bg);
+  background-color: hsl(var(--background));
 }
 
 .auth-logo {
-  border-radius: var(--nm-radius-lg);
-  background: var(--nm-bg);
-  box-shadow: var(--nm-shadow-raised);
+  border-radius: var(--radius);
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
 }
 
 .auth-title {
-  color: var(--nm-accent-text);
+  color: hsl(var(--primary));
 }
 
 .auth-subtitle {
-  color: var(--nm-ink-muted);
+  color: hsl(var(--muted-foreground));
 }
 
 .auth-copyright {
-  color: var(--nm-ink-faint);
+  color: hsl(var(--muted-foreground));
 }
 </style>

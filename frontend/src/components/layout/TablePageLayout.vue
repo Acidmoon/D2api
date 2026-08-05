@@ -76,7 +76,7 @@ onUnmounted(() => {
 }
 
 .table-scroll-container :deep(thead) {
-  background-color: hsl(var(--muted));
+  background-color: hsl(var(--muted) / 0.5);
 }
 
 .table-scroll-container :deep(tbody) {
@@ -84,7 +84,7 @@ onUnmounted(() => {
 }
 
 .table-scroll-container :deep(th) {
-  @apply px-4 py-3 text-left text-xs font-semibold uppercase;
+  @apply px-4 py-3 text-left text-xs font-medium;
   color: hsl(var(--muted-foreground));
   border-bottom: 1px solid hsl(var(--border));
   letter-spacing: 0;

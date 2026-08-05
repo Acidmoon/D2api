@@ -1,8 +1,5 @@
 <template>
-  <header
-    class="sticky top-0 z-30 border-b"
-    style="background: var(--nm-bg); border-color: var(--nm-border-light)"
-  >
+  <header class="sticky top-0 z-30 border-b border-border bg-background">
     <div class="flex h-16 items-center justify-between gap-2 px-2 sm:px-4 md:px-6">
       <!-- Left: Mobile Menu Toggle + Page Title -->
       <div class="flex shrink-0 items-center gap-2 sm:gap-4">
@@ -15,10 +12,10 @@
         </button>
 
         <div class="hidden lg:block">
-          <h1 class="text-lg font-semibold" style="color: var(--nm-ink)">
+          <h1 class="text-lg font-semibold text-foreground">
             {{ pageTitle }}
           </h1>
-          <p v-if="pageDescription" class="text-xs" style="color: var(--nm-ink-muted)">
+          <p v-if="pageDescription" class="text-xs text-muted-foreground">
             {{ pageDescription }}
           </p>
         </div>
@@ -54,19 +51,17 @@
           class="relative hidden sm:block"
         >
           <button
-            class="flex min-h-11 items-center gap-2 border px-3 py-1.5 transition-colors"
-            style="border-color: var(--nm-border); border-radius: var(--nm-radius); background: var(--nm-surface)"
+            class="flex min-h-11 items-center gap-2 rounded-md border border-border bg-card px-3 py-1.5 transition-colors"
             :title="t('subscriptionProgress.walletTitle')"
             @click="toggleWalletPanel"
           >
-            <Icon name="dollar" size="sm" style="color: var(--nm-accent-text)" />
-            <span class="text-sm font-semibold" style="color: var(--nm-ink)">
+            <Icon name="dollar" size="sm" class="text-primary" />
+            <span class="text-sm font-semibold text-foreground">
               {{ formatHeaderMoney(availableBalance) }}
             </span>
             <span
               v-if="frozenBalance > 0"
-              class="rounded-full px-1.5 py-0.5 text-[10px] font-semibold"
-              style="background: var(--nm-warning-soft); color: var(--nm-warning-text)"
+              class="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800 dark:bg-amber-900/40 dark:text-amber-300"
             >
               {{ t('common.frozenBalance') }} {{ formatHeaderMoney(frozenBalance) }}
             </span>
@@ -74,13 +69,13 @@
 
           <transition name="dropdown">
             <div v-if="walletOpen" class="dropdown right-0 mt-2 w-[360px] overflow-hidden">
-              <div class="border-b p-4" style="border-color: var(--nm-border-light)">
+              <div class="border-b border-border p-4">
                 <div class="flex items-center justify-between gap-3">
                   <div>
-                    <h3 class="text-sm font-semibold" style="color: var(--nm-ink)">
+                    <h3 class="text-sm font-semibold text-foreground">
                       {{ t('subscriptionProgress.walletTitle') }}
                     </h3>
-                    <p class="mt-1 text-xs leading-5" style="color: var(--nm-ink-muted)">
+                    <p class="mt-1 text-xs leading-5 text-muted-foreground">
                       {{ t('subscriptionProgress.walletHint') }}
                     </p>
                   </div>
@@ -110,25 +105,23 @@
                 </div>
               </div>
 
-              <div class="max-h-64 overflow-y-auto border-t" style="border-color: var(--nm-border-light)">
+              <div class="max-h-64 overflow-y-auto border-t border-border">
                 <div
                   v-if="activeSubscriptions.length === 0"
-                  class="px-4 py-5 text-center text-sm"
-                  style="color: var(--nm-ink-muted)"
+                  class="px-4 py-5 text-center text-sm text-muted-foreground"
                 >
                   {{ t('subscriptionProgress.noActiveWallets') }}
                 </div>
                 <div
                   v-for="subscription in activeSubscriptions.slice(0, 5)"
                   :key="subscription.id"
-                  class="border-b px-4 py-3 last:border-b-0"
-                  style="border-color: var(--nm-border-light)"
+                  class="border-b border-border px-4 py-3 last:border-b-0"
                 >
                   <div class="flex items-center justify-between gap-3">
-                    <span class="truncate text-sm font-medium" style="color: var(--nm-ink)">
+                    <span class="truncate text-sm font-medium text-foreground">
                       {{ subscription.plan_name || subscription.group?.name || `Subscription #${subscription.id}` }}
                     </span>
-                    <span class="shrink-0 text-xs" style="color: var(--nm-ink-muted)">
+                    <span class="shrink-0 text-xs text-muted-foreground">
                       {{ formatSubscriptionExpiry(subscription.expires_at) }}
                     </span>
                   </div>
@@ -136,8 +129,7 @@
                     <div
                       v-for="period in walletPeriods(subscription)"
                       :key="period.label"
-                      class="flex items-center gap-2 text-xs"
-                      style="color: var(--nm-ink-muted)"
+                      class="flex items-center gap-2 text-xs text-muted-foreground"
                     >
                       <span class="w-10 shrink-0">{{ period.label }}</span>
                       <div class="metric-progress h-1.5 min-w-0 flex-1">
@@ -151,8 +143,7 @@
                     </div>
                     <div
                       v-if="walletPeriods(subscription).length === 0"
-                      class="text-xs font-medium"
-                      style="color: var(--nm-success-text)"
+                      class="text-xs font-medium text-emerald-600 dark:text-emerald-400"
                     >
                       {{ t('subscriptionProgress.quotaUnlimited') }}
                     </div>
@@ -160,7 +151,7 @@
                 </div>
               </div>
 
-              <div class="grid grid-cols-2 gap-2 border-t p-2" style="border-color: var(--nm-border-light)">
+              <div class="grid grid-cols-2 gap-2 border-t border-border p-2">
                 <router-link to="/subscriptions" class="subscription-link py-1.5 text-center text-xs" @click="closeWalletPanel">
                   {{ t('subscriptionProgress.viewAll') }}
                 </router-link>
@@ -176,11 +167,10 @@
         <div v-if="user" class="relative" ref="dropdownRef">
           <button
             @click="toggleDropdown"
-            class="user-menu-trigger flex min-h-11 items-center gap-2 p-1.5 transition-colors"
-            style="border-radius: var(--nm-radius)"
+            class="user-menu-trigger flex min-h-11 items-center gap-2 rounded-md p-1.5 transition-colors"
             :aria-label="t('common.userMenu')"
           >
-            <div class="flex h-8 w-8 items-center justify-center overflow-hidden text-sm font-semibold" style="background: var(--nm-ink); color: var(--nm-bg); border-radius: var(--nm-radius)">
+            <div class="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-primary text-sm font-semibold text-primary-foreground">
               <img
                 v-if="avatarUrl"
                 :src="avatarUrl"
@@ -190,36 +180,36 @@
               <span v-else>{{ userInitials }}</span>
             </div>
             <div class="hidden text-left md:block">
-              <div class="text-sm font-medium" style="color: var(--nm-ink)">
+              <div class="text-sm font-medium text-foreground">
                 {{ displayName }}
               </div>
-              <div class="text-xs capitalize" style="color: var(--nm-ink-muted)">
+              <div class="text-xs capitalize text-muted-foreground">
                 {{ user.role }}
               </div>
             </div>
-            <Icon name="chevronDown" size="sm" class="hidden md:block" style="color: var(--nm-ink-muted)" />
+            <Icon name="chevronDown" size="sm" class="hidden text-muted-foreground md:block" />
           </button>
 
           <!-- Dropdown Menu -->
           <transition name="dropdown">
             <div v-if="dropdownOpen" class="dropdown right-0 mt-2 w-56">
               <!-- User Info -->
-              <div class="border-b px-4 py-3" style="border-color: var(--nm-border-light)">
-                <div class="text-sm font-medium" style="color: var(--nm-ink)">
+              <div class="border-b border-border px-4 py-3">
+                <div class="text-sm font-medium text-foreground">
                   {{ displayName }}
                 </div>
-                <div class="text-xs" style="color: var(--nm-ink-muted)">{{ user.email }}</div>
+                <div class="text-xs text-muted-foreground">{{ user.email }}</div>
               </div>
 
               <!-- Balance (mobile only) -->
-              <button class="block w-full border-b px-4 py-2 text-left sm:hidden" style="border-color: var(--nm-border-light)" @click="openWalletFromUserMenu">
-                <div class="text-xs" style="color: var(--nm-ink-muted)">
+              <button class="block w-full border-b border-border px-4 py-2 text-left sm:hidden" @click="openWalletFromUserMenu">
+                <div class="text-xs text-muted-foreground">
                   {{ t('common.balance') }}
                 </div>
-                <div class="text-sm font-semibold" style="color: var(--nm-accent-text)">
+                <div class="text-sm font-semibold text-primary">
                   {{ formatHeaderMoney(availableBalance) }}
                 </div>
-                <div v-if="frozenBalance > 0" class="mt-1 text-xs" style="color: var(--nm-warning-text)">
+                <div v-if="frozenBalance > 0" class="mt-1 text-xs text-amber-600 dark:text-amber-400">
                   {{ t('common.frozenBalance') }} {{ formatHeaderMoney(frozenBalance) }}
                 </div>
               </button>
@@ -258,10 +248,9 @@
               <!-- Contact Support (only show if configured) -->
               <div
                 v-if="contactInfo"
-                class="border-t px-4 py-2.5"
-                style="border-color: var(--nm-border-light)"
+                class="border-t border-border px-4 py-2.5"
               >
-                <div class="flex items-center gap-2 text-xs" style="color: var(--nm-ink-muted)">
+                <div class="flex items-center gap-2 text-xs text-muted-foreground">
                   <svg
                     class="h-3.5 w-3.5 flex-shrink-0"
                     fill="none"
@@ -276,13 +265,13 @@
                     />
                   </svg>
                   <span>{{ t('common.contactSupport') }}:</span>
-                  <span class="font-medium" style="color: var(--nm-ink)">{{
+                  <span class="font-medium text-foreground">{{
                     contactInfo
                   }}</span>
                 </div>
               </div>
 
-              <div v-if="showOnboardingButton" class="border-t py-1" style="border-color: var(--nm-border-light)">
+              <div v-if="showOnboardingButton" class="border-t border-border py-1">
                 <button @click="handleReplayGuide" class="dropdown-item w-full">
                   <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
                     <path
@@ -293,7 +282,7 @@
                 </button>
               </div>
 
-              <div class="border-t py-1" style="border-color: var(--nm-border-light)">
+              <div class="border-t border-border py-1">
                 <button
                   @click="handleLogout"
                   class="dropdown-item logout-item w-full text-semantic-danger"
@@ -548,30 +537,30 @@ onBeforeUnmount(() => {
 }
 
 .user-menu-trigger:hover {
-  background: var(--nm-surface-soft);
+  background: hsl(var(--accent));
 }
 
 .logout-item:hover {
-  background: var(--nm-danger-soft);
+  background: hsl(var(--destructive) / 0.1);
 }
 
 .wallet-metric {
-  border: 1px solid var(--nm-border-light);
-  border-radius: var(--nm-radius);
-  background: var(--nm-surface-soft);
+  border: 1px solid hsl(var(--border));
+  border-radius: calc(var(--radius) - 2px);
+  background: hsl(var(--muted));
   padding: 0.75rem;
 }
 
 .wallet-metric span {
   display: block;
   font-size: 0.75rem;
-  color: var(--nm-ink-muted);
+  color: hsl(var(--muted-foreground));
 }
 
 .wallet-metric strong {
   display: block;
   margin-top: 0.25rem;
-  color: var(--nm-ink);
+  color: hsl(var(--foreground));
   font-size: 1rem;
 }
 </style>
