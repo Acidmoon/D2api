@@ -3,14 +3,14 @@
     <AlertDialogContent
       class="max-w-md"
     >
-      <AlertDialogHeader>
+      <AlertDialogHeader class="flex-shrink-0">
         <AlertDialogTitle>{{ title }}</AlertDialogTitle>
         <AlertDialogDescription>{{ message }}</AlertDialogDescription>
       </AlertDialogHeader>
-      <div>
+      <div class="min-h-0 flex-1 overflow-y-auto">
         <slot></slot>
       </div>
-      <AlertDialogFooter>
+      <AlertDialogFooter class="flex-shrink-0">
         <Button variant="outline" @click="handleCancel">
           {{ cancelText }}
         </Button>

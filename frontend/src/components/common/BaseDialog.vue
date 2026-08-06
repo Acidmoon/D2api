@@ -7,14 +7,14 @@
       />
       <DialogContent
         :class="cn(
-          'fixed left-1/2 top-1/2 z-50 grid w-[calc(100%-1rem)] sm:w-full max-h-[95vh] sm:max-h-[90vh] -translate-x-1/2 -translate-y-1/2 gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg',
+          'fixed left-1/2 top-1/2 z-50 flex w-[calc(100%-1rem)] max-h-[95vh] flex-col sm:w-full sm:max-h-[90vh] -translate-x-1/2 -translate-y-1/2 gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg',
           widthClasses
         )"
         :style="zIndexStyle"
         @interact-outside="onInteractOutside"
         @escape-key-down="onEscapeKeyDown"
       >
-        <div class="flex items-start justify-between gap-4">
+        <div class="flex flex-shrink-0 items-start justify-between gap-4">
           <DialogTitle class="text-lg font-semibold">
             {{ title }}
           </DialogTitle>
@@ -29,12 +29,12 @@
         </div>
 
         <!-- Body -->
-        <div class="min-h-0 overflow-y-auto">
+        <div class="min-h-0 flex-1 overflow-y-auto">
           <slot></slot>
         </div>
 
         <!-- Footer -->
-        <DialogFooter v-if="$slots.footer">
+        <DialogFooter v-if="$slots.footer" class="flex-shrink-0">
           <slot name="footer"></slot>
         </DialogFooter>
       </DialogContent>
