@@ -2,7 +2,8 @@
   <button
     type="button"
     class="group text-left p-5 rounded-2xl min-h-[280px] w-full hover:-translate-y-1 transition-all duration-300 ease-out flex flex-col"
-    style="background: var(--nm-bg); box-shadow: var(--nm-shadow-raised-sm); border-radius: var(--nm-radius-lg)"
+    :class="cardBgClass(item.primary_status)"
+    style="box-shadow: var(--nm-shadow-raised-sm); border-radius: var(--nm-radius-lg)"
     @click="emit('click')"
   >
     <!-- Header: icon + name/model + status chip -->
@@ -116,6 +117,21 @@ const {
 const providerTintClass = computed(() =>
   PROVIDER_TINT[props.item.provider] ?? 'text-gray-500 dark:text-gray-300'
 )
+
+// 卡片背景按监控状态着色：可用淡绿 / 降级淡黄 / 不可用淡红（含暗色变体）。
+const cardBgClass = (status: string): string => {
+  switch (status) {
+    case 'operational':
+      return 'bg-emerald-50 dark:bg-emerald-950/40'
+    case 'degraded':
+      return 'bg-amber-50 dark:bg-amber-950/40'
+    case 'failed':
+    case 'error':
+      return 'bg-red-50 dark:bg-red-950/40'
+    default:
+      return 'bg-background'
+  }
+}
 
 const availabilityLabel = computed(() => {
   const win = t(`channelStatus.windowTab.${props.window}`)
