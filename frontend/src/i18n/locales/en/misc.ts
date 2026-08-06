@@ -296,6 +296,8 @@ export default {
     fee: 'Fee',
     actualPay: 'Actual Payment',
     createOrder: 'Confirm Payment',
+    confirmRecharge: 'Confirm Recharge',
+    nextStep: 'Next',
     methods: {
       easypay: 'EasyPay',
       alipay: 'Alipay',

@@ -1,24 +1,25 @@
 <template>
   <div class="space-y-4">
-    <!-- Quick Amount Buttons -->
+    <!-- Quick Amount Cards -->
     <div>
       <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
         {{ t('payment.quickAmounts') }}
       </label>
-      <div class="grid grid-cols-3 gap-2">
+      <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
         <button
           v-for="amt in filteredAmounts"
           :key="amt"
           type="button"
           :class="[
-            'rounded-lg border-2 px-4 py-3 text-center font-medium transition-colors',
+            'rounded-xl border-2 px-4 py-4 text-center transition-all duration-200',
             modelValue === amt
-              ? 'border-primary-500 bg-primary-50 text-primary-700 dark:border-primary-400 dark:bg-primary-900/40 dark:text-primary-300'
-              : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 dark:border-dark-600 dark:bg-dark-800 dark:text-gray-200 dark:hover:border-dark-500',
+              ? 'border-primary-500 bg-primary-50 text-primary-700 shadow-sm dark:border-primary-400 dark:bg-primary-900/40 dark:text-primary-300'
+              : 'border-gray-200 bg-white text-gray-700 hover:border-primary-300 hover:shadow-sm dark:border-dark-600 dark:bg-dark-800 dark:text-gray-200 dark:hover:border-dark-500',
           ]"
-          @click="selectAmount(amt)"
+          @click="onCardClick(amt)"
         >
-          {{ amt }}
+          <span class="block text-lg font-semibold leading-tight">${{ amt }}</span>
+          <span v-if="modelValue === amt" class="mt-1 block text-xs font-medium text-primary-600 dark:text-primary-400">✓</span>
         </button>
       </div>
     </div>
@@ -28,18 +29,28 @@
       <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
         {{ t('payment.customAmount') }}
       </label>
-      <div class="relative">
-        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-dark-500">
-          $
-        </span>
-        <input
-          type="text"
-          inputmode="decimal"
-          :value="customText"
-          :placeholder="placeholderText"
-          class="input w-full py-3 pl-8 pr-4"
-          @input="handleInput"
-        />
+      <div class="flex gap-2">
+        <div class="relative flex-1">
+          <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-dark-500">
+            $
+          </span>
+          <input
+            type="text"
+            inputmode="decimal"
+            :value="customText"
+            :placeholder="placeholderText"
+            class="input w-full py-3 pl-8 pr-4"
+            @input="handleInput"
+          />
+        </div>
+        <button
+          type="button"
+          class="btn btn-primary shrink-0 px-4"
+          :disabled="modelValue === null || modelValue <= 0"
+          @click="emit('confirm-click')"
+        >
+          {{ t('payment.nextStep') }}
+        </button>
       </div>
     </div>
   </div>
@@ -62,6 +73,8 @@ const props = withDefaults(defineProps<{
 
 const emit = defineEmits<{
   'update:modelValue': [value: number | null]
+  'preset-select': [value: number]
+  'confirm-click': []
 }>()
 
 const { t } = useI18n()
@@ -85,6 +98,11 @@ const AMOUNT_PATTERN = /^\d*(\.\d{0,2})?$/
 function selectAmount(amt: number) {
   customText.value = String(amt)
   emit('update:modelValue', amt)
+}
+
+function onCardClick(amt: number) {
+  selectAmount(amt)
+  emit('preset-select', amt)
 }
 
 function handleInput(e: Event) {

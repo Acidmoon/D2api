@@ -35,12 +35,6 @@
         <template v-else>
           <!-- Top-up Tab -->
           <template v-if="activeTab === 'recharge'">
-            <!-- Recharge Account Card -->
-            <div class="card p-5">
-              <p class="text-xs font-medium text-muted-foreground">{{ t('payment.rechargeAccount') }}</p>
-              <p class="mt-1 text-base font-semibold text-foreground">{{ user?.username || '' }}</p>
-              <p class="mt-0.5 text-sm font-medium text-green-600 dark:text-green-400">{{ t('payment.currentBalance') }}: {{ user?.balance?.toFixed(2) || '0.00' }}</p>
-            </div>
             <div v-if="enabledMethods.length === 0" class="card py-16 text-center">
               <p class="text-muted-foreground">{{ t('payment.notAvailable') }}</p>
             </div>
@@ -51,6 +45,8 @@
                 :amounts="[10, 20, 50, 100, 200, 500, 1000, 2000, 5000]"
                 :min="globalMinAmount"
                 :max="globalMaxAmount"
+                @preset-select="openRechargeConfirm"
+                @confirm-click="openRechargeConfirm"
               />
               <p v-if="amountError" class="mt-2 text-xs text-amber-600 dark:text-amber-300">{{ amountError }}</p>
             </div>
@@ -61,36 +57,65 @@
                 @select="selectedMethod = $event"
               />
             </div>
-            <div v-if="validAmount > 0" class="card p-6">
-              <div class="space-y-2 text-sm">
-                <div class="flex justify-between">
-                  <span class="text-muted-foreground">{{ t('payment.paymentAmount') }}</span>
-                  <span class="text-foreground">{{ formatSelectedPaymentAmount(validAmount) }}</span>
+            <!-- Recharge Confirm Dialog -->
+            <BaseDialog
+              :show="showRechargeConfirm"
+              :title="t('payment.confirmRecharge')"
+              width="normal"
+              @close="showRechargeConfirm = false"
+            >
+              <div class="space-y-4">
+                <div class="flex items-center justify-between rounded-lg bg-muted px-4 py-3">
+                  <span class="text-sm text-muted-foreground">{{ t('payment.paymentAmount') }}</span>
+                  <span class="text-xl font-bold text-foreground">{{ formatSelectedPaymentAmount(validAmount) }}</span>
                 </div>
-                <div v-if="feeRate > 0" class="flex justify-between">
-                  <span class="text-muted-foreground">{{ t('payment.fee') }} ({{ feeRate }}%)</span>
-                  <span class="text-foreground">{{ formatSelectedPaymentAmount(feeAmount) }}</span>
+                <div v-if="feeRate > 0" class="space-y-2 text-sm">
+                  <div class="flex justify-between">
+                    <span class="text-muted-foreground">{{ t('payment.fee') }} ({{ feeRate }}%)</span>
+                    <span class="text-foreground">{{ formatSelectedPaymentAmount(feeAmount) }}</span>
+                  </div>
+                  <div class="flex justify-between border-t border-border pt-2">
+                    <span class="font-medium text-foreground">{{ t('payment.actualPay') }}</span>
+                    <span class="text-lg font-bold text-primary-600 dark:text-primary-400">{{ formatSelectedPaymentAmount(totalAmount) }}</span>
+                  </div>
                 </div>
-                <div v-if="feeRate > 0" class="flex justify-between border-t border-border pt-2">
-                  <span class="font-medium text-foreground">{{ t('payment.actualPay') }}</span>
-                  <span class="text-lg font-bold text-primary-600 dark:text-primary-400">{{ formatSelectedPaymentAmount(totalAmount) }}</span>
+                <div v-if="balanceRechargeMultiplier !== 1" class="space-y-2 text-sm">
+                  <div class="flex justify-between">
+                    <span class="text-muted-foreground">{{ t('payment.creditedBalance') }}</span>
+                    <span class="text-foreground">${{ creditedAmount.toFixed(2) }}</span>
+                  </div>
+                  <p class="border-t border-border pt-2 text-xs text-muted-foreground">
+                    {{ t('payment.rechargeRatePreview', { usd: balanceRechargeMultiplier.toFixed(2) }) }}
+                  </p>
                 </div>
-                <div v-if="balanceRechargeMultiplier !== 1" class="flex justify-between" :class="{ 'border-t border-border pt-2': feeRate <= 0 }">
-                  <span class="text-muted-foreground">{{ t('payment.creditedBalance') }}</span>
-                  <span class="text-foreground">${{ creditedAmount.toFixed(2) }}</span>
+                <div>
+                  <p class="mb-2 text-sm font-medium text-foreground">{{ t('payment.paymentMethod') }}</p>
+                  <PaymentMethodSelector
+                    :methods="methodOptions"
+                    :selected="selectedMethod"
+                    @select="selectedMethod = $event"
+                  />
                 </div>
-                <p v-if="balanceRechargeMultiplier !== 1" class="border-t border-border pt-2 text-xs text-muted-foreground">
-                  {{ t('payment.rechargeRatePreview', { usd: balanceRechargeMultiplier.toFixed(2) }) }}
-                </p>
+                <p v-if="amountError" class="text-xs text-amber-600 dark:text-amber-300">{{ amountError }}</p>
               </div>
-            </div>
-            <button :class="['btn w-full overflow-hidden text-ellipsis py-3 text-base font-medium', paymentButtonClass]" :disabled="!canSubmit || submitting" @click="handleSubmitRecharge">
-              <span v-if="submitting" class="flex items-center justify-center gap-2">
-                <span class="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
-                {{ t('common.processing') }}
-              </span>
-              <span v-else>{{ t('payment.createOrder') }} {{ formatSelectedPaymentAmount(totalAmount) }}</span>
-            </button>
+              <template #footer>
+                <div class="flex justify-end gap-3">
+                  <button type="button" class="btn" @click="showRechargeConfirm = false">{{ t('common.cancel') }}</button>
+                  <button
+                    type="button"
+                    class="btn btn-primary"
+                    :disabled="!canSubmit || submitting"
+                    @click="handleSubmitRecharge"
+                  >
+                    <span v-if="submitting" class="flex items-center gap-2">
+                      <span class="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
+                      {{ t('common.processing') }}
+                    </span>
+                    <span v-else>{{ t('payment.createOrder') }} {{ formatSelectedPaymentAmount(totalAmount) }}</span>
+                  </button>
+                </div>
+              </template>
+            </BaseDialog>
             </template>
           </template>
           <!-- Subscribe Tab -->
@@ -270,6 +295,7 @@ import { hasPeakRate, formatPeakRateWindow, serverTimezoneLabel, type PeakRateFi
 import type { SubscriptionPlan, CheckoutInfoResponse, CreateOrderResult, OrderType } from '@/types/payment'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import AmountInput from '@/components/payment/AmountInput.vue'
+import BaseDialog from '@/components/common/BaseDialog.vue'
 import PaymentMethodSelector from '@/components/payment/PaymentMethodSelector.vue'
 import { METHOD_ORDER, getPaymentPopupFeatures, isBuiltInAlipayMethod, isBuiltInWxpayMethod } from '@/components/payment/providerConfig'
 import {
@@ -302,7 +328,6 @@ const paymentStore = usePaymentStore()
 const subscriptionStore = useSubscriptionStore()
 const appStore = useAppStore()
 
-const user = computed(() => authStore.user)
 const activeSubscriptions = computed(() => subscriptionStore.activeSubscriptions)
 
 function getDaysRemaining(expiresAt: string): number {
@@ -324,6 +349,7 @@ const errorMessage = ref('')
 const errorHintMessage = ref('')
 const activeTab = ref<'recharge' | 'subscription'>('recharge')
 const amount = ref<number | null>(null)
+const showRechargeConfirm = ref(false)
 const selectedMethod = ref('')
 const selectedPlan = ref<SubscriptionPlan | null>(null)
 const previewImage = ref('')
@@ -754,6 +780,10 @@ function closeRenewalModal() {
 async function handleSubmitRecharge() {
   if (!canSubmit.value || submitting.value) return
   await createOrder(validAmount.value, 'balance')
+}
+
+function openRechargeConfirm() {
+  if (validAmount.value > 0) showRechargeConfirm.value = true
 }
 
 async function confirmSubscribe() {
