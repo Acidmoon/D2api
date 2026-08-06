@@ -42,3 +42,10 @@ exceptions:
     mitigation: "Browser XHR adapter unaffected; no proxy config in frontend; upgrade axios when upstream sub2api bumps it"
     expires_on: "2026-10-22"
     owner: "security@your-domain"
+  - package: picomatch
+    advisory: "GHSA-c2c7-rcm5-vvqj"
+    severity: high
+    reason: "Build-time transitive dependency (tailwindcss chain); no runtime glob matching against user input"
+    mitigation: "Frontend never applies picomatch globs to user-controlled strings; upgrade when tailwindcss bumps fixed picomatch"
+    expires_on: "2026-10-31"
+    owner: "security@your-domain"

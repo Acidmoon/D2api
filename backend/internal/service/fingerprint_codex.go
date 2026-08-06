@@ -157,7 +157,7 @@ func extractFingerprintCodexSSE(body []byte) (string, int, string) {
 		switch gjson.GetBytes(payloadBytes, "type").String() {
 		case "response.output_text.delta":
 			// Codex 流式文本在 delta 事件里，必须从事件流累积。
-			textBuilder.WriteString(gjson.GetBytes(payloadBytes, "delta").String())
+			_, _ = textBuilder.WriteString(gjson.GetBytes(payloadBytes, "delta").String())
 		case "response.completed", "response.done":
 			completed = []byte(gjson.GetBytes(payloadBytes, "response").Raw)
 		case "response.failed":
