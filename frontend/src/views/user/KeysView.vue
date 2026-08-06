@@ -127,11 +127,13 @@
               <button
                 :ref="(el) => setGroupButtonRef(row.id, 'primary', el)"
                 @click="openGroupSelector(row, 'primary')"
-                class="-mx-2 -my-1 flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1 transition-all duration-200 hover:bg-muted"
+                class="-mx-2 -my-1 flex max-w-full cursor-pointer items-center gap-2 overflow-hidden rounded-lg px-2 py-1 transition-all duration-200 hover:bg-muted"
                 :title="t('keys.clickToChangeGroup')"
               >
                 <GroupBadge
                   v-if="row.primary_group"
+                  class="min-w-0 overflow-hidden"
+                  :title="row.primary_group.name"
                   :name="row.primary_group.name"
                   :platform="row.primary_group.platform"
                   :subscription-type="row.primary_group.subscription_type"
@@ -141,9 +143,9 @@
                 <span v-else class="text-sm text-muted-foreground">{{
                   t('keys.noGroup')
                 }}</span>
-                <span class="text-xs text-muted-foreground">{{ t('keys.selectGroup') }}</span>
+                <span class="shrink-0 text-xs text-muted-foreground">{{ t('keys.selectGroup') }}</span>
                 <svg
-                  class="h-3.5 w-3.5 text-muted-foreground opacity-60 transition-opacity group-hover/dropdown:opacity-100"
+                  class="h-3.5 w-3.5 shrink-0 text-muted-foreground opacity-60 transition-opacity group-hover/dropdown:opacity-100"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -164,11 +166,13 @@
               <button
                 :ref="(el) => setGroupButtonRef(row.id, 'secondary', el)"
                 @click="openGroupSelector(row, 'secondary')"
-                class="-mx-2 -my-1 flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1 transition-all duration-200 hover:bg-muted"
+                class="-mx-2 -my-1 flex max-w-full cursor-pointer items-center gap-2 overflow-hidden rounded-lg px-2 py-1 transition-all duration-200 hover:bg-muted"
                 :title="t('keys.clickToChangeGroup')"
               >
                 <GroupBadge
                   v-if="row.group"
+                  class="min-w-0 overflow-hidden"
+                  :title="row.group.name"
                   :name="row.group.name"
                   :platform="row.group.platform"
                   :subscription-type="row.group.subscription_type"
@@ -182,9 +186,9 @@
                 <span v-else class="text-sm text-muted-foreground">{{
                   t('keys.noGroup')
                 }}</span>
-                <span class="text-xs text-muted-foreground">{{ t('keys.selectGroup') }}</span>
+                <span class="shrink-0 text-xs text-muted-foreground">{{ t('keys.selectGroup') }}</span>
                 <svg
-                  class="h-3.5 w-3.5 text-muted-foreground opacity-60 transition-opacity group-hover/dropdown:opacity-100"
+                  class="h-3.5 w-3.5 shrink-0 text-muted-foreground opacity-60 transition-opacity group-hover/dropdown:opacity-100"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -362,10 +366,11 @@
                 @click="openUseKeyModal(row)"
                 variant="ghost"
                 size="sm"
-                class="h-8 gap-1 px-2 text-xs"
+                class="h-8 w-8 p-0"
+                :title="t('keys.useKey')"
+                :aria-label="t('keys.useKey')"
               >
                 <Terminal class="h-4 w-4" />
-                <span class="text-xs">{{ t('keys.useKey') }}</span>
               </Button>
               <!-- Import to CC Switch Button -->
               <Button
@@ -373,10 +378,11 @@
                 @click="importToCcswitch(row)"
                 variant="ghost"
                 size="sm"
-                class="h-8 gap-1 px-2 text-xs"
+                class="h-8 w-8 p-0"
+                :title="t('keys.importToCcSwitch')"
+                :aria-label="t('keys.importToCcSwitch')"
               >
                 <Upload class="h-4 w-4" />
-                <span class="text-xs">{{ t('keys.importToCcSwitch') }}</span>
               </Button>
               <!-- Toggle Status Button -->
               <Button
@@ -384,35 +390,38 @@
                 variant="ghost"
                 size="sm"
                 :class="[
-                  'h-8 gap-1 px-2 text-xs',
+                  'h-8 w-8 p-0',
                   row.status === 'active'
                     ? 'hover:!text-[var(--nm-warning-text)]'
                     : 'hover:!text-[var(--nm-success-text)]'
                 ]"
+                :title="row.status === 'active' ? t('keys.disable') : t('keys.enable')"
+                :aria-label="row.status === 'active' ? t('keys.disable') : t('keys.enable')"
               >
                 <Ban v-if="row.status === 'active'" class="h-4 w-4" />
                 <CheckCircle2 v-else class="h-4 w-4" />
-                <span class="text-xs">{{ row.status === 'active' ? t('keys.disable') : t('keys.enable') }}</span>
               </Button>
               <!-- Edit Button -->
               <Button
                 @click="editKey(row)"
                 variant="ghost"
                 size="sm"
-                class="h-8 gap-1 px-2 text-xs"
+                class="h-8 w-8 p-0"
+                :title="t('common.edit')"
+                :aria-label="t('common.edit')"
               >
                 <Pencil class="h-4 w-4" />
-                <span class="text-xs">{{ t('common.edit') }}</span>
               </Button>
               <!-- Delete Button -->
               <Button
                 @click="confirmDelete(row)"
                 variant="ghost"
                 size="sm"
-                class="h-8 gap-1 px-2 text-xs hover:!text-[var(--nm-danger-text)]"
+                class="h-8 w-8 p-0 hover:!text-[var(--nm-danger-text)]"
+                :title="t('common.delete')"
+                :aria-label="t('common.delete')"
               >
                 <Trash2 class="h-4 w-4" />
-                <span class="text-xs">{{ t('common.delete') }}</span>
               </Button>
             </div>
           </template>
@@ -1123,8 +1132,8 @@ const allColumns = computed<Column[]>(() => [
   { key: 'name', label: t('common.name'), sortable: true },
   { key: 'id', label: t('keys.id'), sortable: true },
   { key: 'key', label: t('keys.apiKey'), sortable: false },
-  { key: 'primary_group', label: t('keys.primaryGroup'), sortable: false },
-  { key: 'group', label: t('keys.secondaryGroup'), sortable: false },
+  { key: 'primary_group', label: t('keys.primaryGroup'), sortable: false, class: 'w-56' },
+  { key: 'group', label: t('keys.secondaryGroup'), sortable: false, class: 'w-56' },
   { key: 'current_concurrency', label: t('keys.currentConcurrency'), sortable: true },
   { key: 'usage', label: t('keys.usage'), sortable: false },
   { key: 'rate_limit', label: t('keys.rateLimitColumn'), sortable: false },
