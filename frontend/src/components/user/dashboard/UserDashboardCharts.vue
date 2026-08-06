@@ -1,7 +1,5 @@
 <template>
   <section>
-    <h2 class="section-title">{{ t('dashboard.activityAnalysis') }}</h2>
-
     <!-- Date Range Filter -->
     <div class="card mb-4 p-4">
       <div class="flex flex-wrap items-center gap-3">
@@ -81,17 +79,6 @@ const { t } = useI18n()
 </script>
 
 <style scoped>
-.section-title {
-  font-size: 0.8125rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0;
-  color: hsl(var(--foreground));
-  margin-bottom: 0.75rem;
-  padding-bottom: 0.5rem;
-  border-bottom: 1px solid hsl(var(--border));
-}
-
 .usage-detail-panel {
   overflow: hidden;
 }

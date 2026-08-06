@@ -1,6 +1,5 @@
 <template>
   <section>
-    <h2 class="section-title">{{ t('dashboard.overview') }}</h2>
     <div class="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
       <!-- 余额（简单模式隐藏） -->
       <div v-if="!isSimple" class="kpi-cell card">
@@ -78,17 +77,6 @@ const formatTokens = (t: number) => {
 </script>
 
 <style scoped>
-.section-title {
-  font-size: 0.8125rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0;
-  color: hsl(var(--foreground));
-  margin-bottom: 0.75rem;
-  padding-bottom: 0.5rem;
-  border-bottom: 1px solid hsl(var(--border));
-}
-
 .kpi-cell {
   padding: 0.875rem 1rem;
   min-height: 7rem;
