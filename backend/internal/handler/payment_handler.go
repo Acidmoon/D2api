@@ -144,13 +144,20 @@ func (h *PaymentHandler) GetCheckoutInfo(c *gin.Context) {
 		})
 	}
 
+	// 充值倍率按当前登录用户解析有效值（用户级 > 分组级 > 全局），
+	// 保证前端"预计到账"预览与实际入账一致；未登录时回落到全局设置。
+	balanceRechargeMultiplier := cfg.BalanceRechargeMultiplier
+	if subject, ok := middleware2.GetAuthSubjectFromContext(c); ok && subject.UserID > 0 {
+		balanceRechargeMultiplier = h.paymentService.GetEffectiveRechargeMultiplier(ctx, subject.UserID, cfg.BalanceRechargeMultiplier)
+	}
+
 	response.Success(c, checkoutInfoResponse{
 		Methods:                       limitsResp.Methods,
 		GlobalMin:                     limitsResp.GlobalMin,
 		GlobalMax:                     limitsResp.GlobalMax,
 		Plans:                         planList,
 		BalanceDisabled:               cfg.BalanceDisabled,
-		BalanceRechargeMultiplier:     cfg.BalanceRechargeMultiplier,
+		BalanceRechargeMultiplier:     balanceRechargeMultiplier,
 		SubscriptionUSDToCNYRate:      cfg.SubscriptionUSDToCNYRate,
 		RechargeFeeRate:               cfg.RechargeFeeRate,
 		HelpText:                      cfg.HelpText,

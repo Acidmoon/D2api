@@ -115,6 +115,13 @@ func (User) Fields() []ent.Field {
 		// 用户级每分钟请求数上限（0 = 不限制）。仅当所在分组未设置 rpm_limit 时作为兜底生效。
 		field.Int("rpm_limit").
 			Default(0),
+
+		// 用户级余额充值倍率覆盖（migration 221）：
+		// NULL 表示不覆盖，回落到分组级/全局 BALANCE_RECHARGE_MULTIPLIER；合法值 > 0。
+		field.Float("recharge_multiplier").
+			SchemaType(map[string]string{dialect.Postgres: "decimal(20,8)"}).
+			Optional().
+			Nillable(),
 	}
 }
 

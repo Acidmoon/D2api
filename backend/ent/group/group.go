@@ -128,6 +128,8 @@ const (
 	FieldRpmLimit = "rpm_limit"
 	// FieldUnavailableAlertEnabled holds the string denoting the unavailable_alert_enabled field in the database.
 	FieldUnavailableAlertEnabled = "unavailable_alert_enabled"
+	// FieldRechargeMultiplier holds the string denoting the recharge_multiplier field in the database.
+	FieldRechargeMultiplier = "recharge_multiplier"
 	// FieldMaxReasoningEffort holds the string denoting the max_reasoning_effort field in the database.
 	FieldMaxReasoningEffort = "max_reasoning_effort"
 	// FieldReasoningEffortMappings holds the string denoting the reasoning_effort_mappings field in the database.
@@ -278,6 +280,7 @@ var Columns = []string{
 	FieldModelsListConfig,
 	FieldRpmLimit,
 	FieldUnavailableAlertEnabled,
+	FieldRechargeMultiplier,
 	FieldMaxReasoningEffort,
 	FieldReasoningEffortMappings,
 	FieldProfitControlEnabled,
@@ -681,6 +684,11 @@ func ByRpmLimit(opts ...sql.OrderTermOption) OrderOption {
 // ByUnavailableAlertEnabled orders the results by the unavailable_alert_enabled field.
 func ByUnavailableAlertEnabled(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldUnavailableAlertEnabled, opts...).ToFunc()
+}
+
+// ByRechargeMultiplier orders the results by the recharge_multiplier field.
+func ByRechargeMultiplier(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldRechargeMultiplier, opts...).ToFunc()
 }
 
 // ByMaxReasoningEffort orders the results by the max_reasoning_effort field.

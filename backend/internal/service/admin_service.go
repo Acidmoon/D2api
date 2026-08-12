@@ -148,6 +148,8 @@ type CreateUserInput struct {
 	Concurrency   int
 	RPMLimit      int
 	AllowedGroups []int64
+	// RechargeMultiplier 用户级充值倍率覆盖；nil 表示不设置（回落到分组/全局），非 nil 必须 > 0。
+	RechargeMultiplier *float64
 	// ActorAdminID 执行本次操作的管理员ID(来自JWT)，仅用于权限敏感操作的审计日志。
 	ActorAdminID int64
 }
@@ -163,6 +165,8 @@ type UpdateUserInput struct {
 	RPMLimit      *int     // 使用指针区分"未提供"和"设置为0"
 	Status        string
 	AllowedGroups *[]int64 // 使用指针区分"未提供"和"设置为空数组"
+	// RechargeMultiplier 用户级充值倍率覆盖；nil 表示不修改，非 nil 且 >0 表示设置，非 nil 且 <=0 表示清除（置 NULL）。
+	RechargeMultiplier *float64
 	// GroupRates 用户专属分组倍率配置
 	// map[groupID]*rate，nil 表示删除该分组的专属倍率
 	GroupRates map[int64]*float64
@@ -280,6 +284,8 @@ type CreateGroupInput struct {
 	ProfitSafetyBuffer   *float64
 	// 从指定分组复制账号（创建分组后在同一事务内绑定）
 	CopyAccountsFromGroupIDs []int64
+	// RechargeMultiplier 分组级充值倍率覆盖；nil 表示不设置（回落到全局），非 nil 必须 > 0。
+	RechargeMultiplier *float64
 }
 
 type UpdateGroupInput struct {
@@ -355,6 +361,8 @@ type UpdateGroupInput struct {
 	ProfitSafetyBuffer   *float64
 	// 从指定分组复制账号（同步操作：先清空当前分组的账号绑定，再绑定源分组的账号）
 	CopyAccountsFromGroupIDs []int64
+	// RechargeMultiplier 分组级充值倍率覆盖；nil 表示不修改，非 nil 且 >0 表示设置，非 nil 且 <=0 表示清除（置 NULL）。
+	RechargeMultiplier *float64
 }
 
 type CreateAccountInput struct {

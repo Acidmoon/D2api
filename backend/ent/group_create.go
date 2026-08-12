@@ -781,6 +781,20 @@ func (_c *GroupCreate) SetNillableUnavailableAlertEnabled(v *bool) *GroupCreate 
 	return _c
 }
 
+// SetRechargeMultiplier sets the "recharge_multiplier" field.
+func (_c *GroupCreate) SetRechargeMultiplier(v float64) *GroupCreate {
+	_c.mutation.SetRechargeMultiplier(v)
+	return _c
+}
+
+// SetNillableRechargeMultiplier sets the "recharge_multiplier" field if the given value is not nil.
+func (_c *GroupCreate) SetNillableRechargeMultiplier(v *float64) *GroupCreate {
+	if v != nil {
+		_c.SetRechargeMultiplier(*v)
+	}
+	return _c
+}
+
 // SetMaxReasoningEffort sets the "max_reasoning_effort" field.
 func (_c *GroupCreate) SetMaxReasoningEffort(v string) *GroupCreate {
 	_c.mutation.SetMaxReasoningEffort(v)
@@ -1587,6 +1601,10 @@ func (_c *GroupCreate) createSpec() (*Group, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.UnavailableAlertEnabled(); ok {
 		_spec.SetField(group.FieldUnavailableAlertEnabled, field.TypeBool, value)
 		_node.UnavailableAlertEnabled = value
+	}
+	if value, ok := _c.mutation.RechargeMultiplier(); ok {
+		_spec.SetField(group.FieldRechargeMultiplier, field.TypeFloat64, value)
+		_node.RechargeMultiplier = &value
 	}
 	if value, ok := _c.mutation.MaxReasoningEffort(); ok {
 		_spec.SetField(group.FieldMaxReasoningEffort, field.TypeString, value)
@@ -2695,6 +2713,30 @@ func (u *GroupUpsert) SetUnavailableAlertEnabled(v bool) *GroupUpsert {
 // UpdateUnavailableAlertEnabled sets the "unavailable_alert_enabled" field to the value that was provided on create.
 func (u *GroupUpsert) UpdateUnavailableAlertEnabled() *GroupUpsert {
 	u.SetExcluded(group.FieldUnavailableAlertEnabled)
+	return u
+}
+
+// SetRechargeMultiplier sets the "recharge_multiplier" field.
+func (u *GroupUpsert) SetRechargeMultiplier(v float64) *GroupUpsert {
+	u.Set(group.FieldRechargeMultiplier, v)
+	return u
+}
+
+// UpdateRechargeMultiplier sets the "recharge_multiplier" field to the value that was provided on create.
+func (u *GroupUpsert) UpdateRechargeMultiplier() *GroupUpsert {
+	u.SetExcluded(group.FieldRechargeMultiplier)
+	return u
+}
+
+// AddRechargeMultiplier adds v to the "recharge_multiplier" field.
+func (u *GroupUpsert) AddRechargeMultiplier(v float64) *GroupUpsert {
+	u.Add(group.FieldRechargeMultiplier, v)
+	return u
+}
+
+// ClearRechargeMultiplier clears the value of the "recharge_multiplier" field.
+func (u *GroupUpsert) ClearRechargeMultiplier() *GroupUpsert {
+	u.SetNull(group.FieldRechargeMultiplier)
 	return u
 }
 
@@ -3886,6 +3928,34 @@ func (u *GroupUpsertOne) SetUnavailableAlertEnabled(v bool) *GroupUpsertOne {
 func (u *GroupUpsertOne) UpdateUnavailableAlertEnabled() *GroupUpsertOne {
 	return u.Update(func(s *GroupUpsert) {
 		s.UpdateUnavailableAlertEnabled()
+	})
+}
+
+// SetRechargeMultiplier sets the "recharge_multiplier" field.
+func (u *GroupUpsertOne) SetRechargeMultiplier(v float64) *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.SetRechargeMultiplier(v)
+	})
+}
+
+// AddRechargeMultiplier adds v to the "recharge_multiplier" field.
+func (u *GroupUpsertOne) AddRechargeMultiplier(v float64) *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.AddRechargeMultiplier(v)
+	})
+}
+
+// UpdateRechargeMultiplier sets the "recharge_multiplier" field to the value that was provided on create.
+func (u *GroupUpsertOne) UpdateRechargeMultiplier() *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.UpdateRechargeMultiplier()
+	})
+}
+
+// ClearRechargeMultiplier clears the value of the "recharge_multiplier" field.
+func (u *GroupUpsertOne) ClearRechargeMultiplier() *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.ClearRechargeMultiplier()
 	})
 }
 
@@ -5255,6 +5325,34 @@ func (u *GroupUpsertBulk) SetUnavailableAlertEnabled(v bool) *GroupUpsertBulk {
 func (u *GroupUpsertBulk) UpdateUnavailableAlertEnabled() *GroupUpsertBulk {
 	return u.Update(func(s *GroupUpsert) {
 		s.UpdateUnavailableAlertEnabled()
+	})
+}
+
+// SetRechargeMultiplier sets the "recharge_multiplier" field.
+func (u *GroupUpsertBulk) SetRechargeMultiplier(v float64) *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.SetRechargeMultiplier(v)
+	})
+}
+
+// AddRechargeMultiplier adds v to the "recharge_multiplier" field.
+func (u *GroupUpsertBulk) AddRechargeMultiplier(v float64) *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.AddRechargeMultiplier(v)
+	})
+}
+
+// UpdateRechargeMultiplier sets the "recharge_multiplier" field to the value that was provided on create.
+func (u *GroupUpsertBulk) UpdateRechargeMultiplier() *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.UpdateRechargeMultiplier()
+	})
+}
+
+// ClearRechargeMultiplier clears the value of the "recharge_multiplier" field.
+func (u *GroupUpsertBulk) ClearRechargeMultiplier() *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.ClearRechargeMultiplier()
 	})
 }
 

@@ -310,6 +310,11 @@ func UnavailableAlertEnabled(v bool) predicate.Group {
 	return predicate.Group(sql.FieldEQ(FieldUnavailableAlertEnabled, v))
 }
 
+// RechargeMultiplier applies equality check predicate on the "recharge_multiplier" field. It's identical to RechargeMultiplierEQ.
+func RechargeMultiplier(v float64) predicate.Group {
+	return predicate.Group(sql.FieldEQ(FieldRechargeMultiplier, v))
+}
+
 // MaxReasoningEffort applies equality check predicate on the "max_reasoning_effort" field. It's identical to MaxReasoningEffortEQ.
 func MaxReasoningEffort(v string) predicate.Group {
 	return predicate.Group(sql.FieldEQ(FieldMaxReasoningEffort, v))
@@ -2383,6 +2388,56 @@ func UnavailableAlertEnabledEQ(v bool) predicate.Group {
 // UnavailableAlertEnabledNEQ applies the NEQ predicate on the "unavailable_alert_enabled" field.
 func UnavailableAlertEnabledNEQ(v bool) predicate.Group {
 	return predicate.Group(sql.FieldNEQ(FieldUnavailableAlertEnabled, v))
+}
+
+// RechargeMultiplierEQ applies the EQ predicate on the "recharge_multiplier" field.
+func RechargeMultiplierEQ(v float64) predicate.Group {
+	return predicate.Group(sql.FieldEQ(FieldRechargeMultiplier, v))
+}
+
+// RechargeMultiplierNEQ applies the NEQ predicate on the "recharge_multiplier" field.
+func RechargeMultiplierNEQ(v float64) predicate.Group {
+	return predicate.Group(sql.FieldNEQ(FieldRechargeMultiplier, v))
+}
+
+// RechargeMultiplierIn applies the In predicate on the "recharge_multiplier" field.
+func RechargeMultiplierIn(vs ...float64) predicate.Group {
+	return predicate.Group(sql.FieldIn(FieldRechargeMultiplier, vs...))
+}
+
+// RechargeMultiplierNotIn applies the NotIn predicate on the "recharge_multiplier" field.
+func RechargeMultiplierNotIn(vs ...float64) predicate.Group {
+	return predicate.Group(sql.FieldNotIn(FieldRechargeMultiplier, vs...))
+}
+
+// RechargeMultiplierGT applies the GT predicate on the "recharge_multiplier" field.
+func RechargeMultiplierGT(v float64) predicate.Group {
+	return predicate.Group(sql.FieldGT(FieldRechargeMultiplier, v))
+}
+
+// RechargeMultiplierGTE applies the GTE predicate on the "recharge_multiplier" field.
+func RechargeMultiplierGTE(v float64) predicate.Group {
+	return predicate.Group(sql.FieldGTE(FieldRechargeMultiplier, v))
+}
+
+// RechargeMultiplierLT applies the LT predicate on the "recharge_multiplier" field.
+func RechargeMultiplierLT(v float64) predicate.Group {
+	return predicate.Group(sql.FieldLT(FieldRechargeMultiplier, v))
+}
+
+// RechargeMultiplierLTE applies the LTE predicate on the "recharge_multiplier" field.
+func RechargeMultiplierLTE(v float64) predicate.Group {
+	return predicate.Group(sql.FieldLTE(FieldRechargeMultiplier, v))
+}
+
+// RechargeMultiplierIsNil applies the IsNil predicate on the "recharge_multiplier" field.
+func RechargeMultiplierIsNil() predicate.Group {
+	return predicate.Group(sql.FieldIsNull(FieldRechargeMultiplier))
+}
+
+// RechargeMultiplierNotNil applies the NotNil predicate on the "recharge_multiplier" field.
+func RechargeMultiplierNotNil() predicate.Group {
+	return predicate.Group(sql.FieldNotNull(FieldRechargeMultiplier))
 }
 
 // MaxReasoningEffortEQ applies the EQ predicate on the "max_reasoning_effort" field.

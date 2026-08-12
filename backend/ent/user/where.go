@@ -175,6 +175,11 @@ func RpmLimit(v int) predicate.User {
 	return predicate.User(sql.FieldEQ(FieldRpmLimit, v))
 }
 
+// RechargeMultiplier applies equality check predicate on the "recharge_multiplier" field. It's identical to RechargeMultiplierEQ.
+func RechargeMultiplier(v float64) predicate.User {
+	return predicate.User(sql.FieldEQ(FieldRechargeMultiplier, v))
+}
+
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.
 func CreatedAtEQ(v time.Time) predicate.User {
 	return predicate.User(sql.FieldEQ(FieldCreatedAt, v))
@@ -1383,6 +1388,56 @@ func RpmLimitLT(v int) predicate.User {
 // RpmLimitLTE applies the LTE predicate on the "rpm_limit" field.
 func RpmLimitLTE(v int) predicate.User {
 	return predicate.User(sql.FieldLTE(FieldRpmLimit, v))
+}
+
+// RechargeMultiplierEQ applies the EQ predicate on the "recharge_multiplier" field.
+func RechargeMultiplierEQ(v float64) predicate.User {
+	return predicate.User(sql.FieldEQ(FieldRechargeMultiplier, v))
+}
+
+// RechargeMultiplierNEQ applies the NEQ predicate on the "recharge_multiplier" field.
+func RechargeMultiplierNEQ(v float64) predicate.User {
+	return predicate.User(sql.FieldNEQ(FieldRechargeMultiplier, v))
+}
+
+// RechargeMultiplierIn applies the In predicate on the "recharge_multiplier" field.
+func RechargeMultiplierIn(vs ...float64) predicate.User {
+	return predicate.User(sql.FieldIn(FieldRechargeMultiplier, vs...))
+}
+
+// RechargeMultiplierNotIn applies the NotIn predicate on the "recharge_multiplier" field.
+func RechargeMultiplierNotIn(vs ...float64) predicate.User {
+	return predicate.User(sql.FieldNotIn(FieldRechargeMultiplier, vs...))
+}
+
+// RechargeMultiplierGT applies the GT predicate on the "recharge_multiplier" field.
+func RechargeMultiplierGT(v float64) predicate.User {
+	return predicate.User(sql.FieldGT(FieldRechargeMultiplier, v))
+}
+
+// RechargeMultiplierGTE applies the GTE predicate on the "recharge_multiplier" field.
+func RechargeMultiplierGTE(v float64) predicate.User {
+	return predicate.User(sql.FieldGTE(FieldRechargeMultiplier, v))
+}
+
+// RechargeMultiplierLT applies the LT predicate on the "recharge_multiplier" field.
+func RechargeMultiplierLT(v float64) predicate.User {
+	return predicate.User(sql.FieldLT(FieldRechargeMultiplier, v))
+}
+
+// RechargeMultiplierLTE applies the LTE predicate on the "recharge_multiplier" field.
+func RechargeMultiplierLTE(v float64) predicate.User {
+	return predicate.User(sql.FieldLTE(FieldRechargeMultiplier, v))
+}
+
+// RechargeMultiplierIsNil applies the IsNil predicate on the "recharge_multiplier" field.
+func RechargeMultiplierIsNil() predicate.User {
+	return predicate.User(sql.FieldIsNull(FieldRechargeMultiplier))
+}
+
+// RechargeMultiplierNotNil applies the NotNil predicate on the "recharge_multiplier" field.
+func RechargeMultiplierNotNil() predicate.User {
+	return predicate.User(sql.FieldNotNull(FieldRechargeMultiplier))
 }
 
 // HasAPIKeys applies the HasEdge predicate on the "api_keys" edge.

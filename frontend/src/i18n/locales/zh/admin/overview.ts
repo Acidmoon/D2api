@@ -599,7 +599,11 @@ export default {
         selectStatus: '选择状态',
         rpmLimit: '每分钟请求数 (RPM)',
         rpmLimitPlaceholder: '0 表示不限制',
-        rpmLimitHint: '该用户每分钟最大请求数，0 = 不限制；仅在所用分组未设置 rpm_limit 时作为兜底生效'
+        rpmLimitHint: '该用户每分钟最大请求数，0 = 不限制；仅在所用分组未设置 rpm_limit 时作为兜底生效',
+        rechargeMultiplier: '充值倍率',
+        rechargeMultiplierPlaceholder: '留空表示跟随分组/全局设置',
+        rechargeMultiplierHint: '余额充值入账倍率，> 0 生效；优先级高于分组级与全局设置',
+        rechargeMultiplierInvalid: '充值倍率必须大于 0，或留空跟随分组/全局设置'
       },
       adjustBalance: '调整余额',
       adjustConcurrency: '调整并发数',
@@ -855,6 +859,9 @@ export default {
         rpmLimit: '每分钟请求数 (RPM)',
         rpmLimitPlaceholder: '0 表示不限制',
         rpmLimitHint: '每用户在本分组每分钟最大请求数，0 = 不限制；一旦设置即接管该用户的限流（覆盖用户级 rpm_limit）',
+        rechargeMultiplierLabel: '充值倍率',
+        rechargeMultiplierHint: '余额充值入账倍率，留空表示跟随全局设置；用户属于多个分组时取最高值，用户级设置优先于本字段',
+        rechargeMultiplierInvalid: '充值倍率必须大于 0，或留空跟随全局设置',
         maxReasoningEffort: '推理强度上限',
         maxReasoningEffortUnlimited: '不限制（跟随请求）',
         maxReasoningEffortHint: '仅限制客户端主动请求的 OpenAI reasoning effort；Composite 分组仅对解析到 OpenAI 的请求生效。超过上限时自动降档，不会为缺省请求主动开启推理。上限优先级高于推理强度映射。',

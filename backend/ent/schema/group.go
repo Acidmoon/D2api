@@ -260,6 +260,15 @@ func (Group) Fields() []ent.Field {
 			Default(false).
 			Comment("是否在该分组所有账号不可用时发送邮件警告"),
 
+		// 分组级余额充值倍率覆盖（migration 221）：
+		// NULL 表示不覆盖；用户属于多个分组时取各分组非空值的最高倍率；合法值 > 0。
+		// 注意与 rate_multiplier（计费倍率）区分，本字段只影响充值入账金额。
+		field.Float("recharge_multiplier").
+			SchemaType(map[string]string{dialect.Postgres: "decimal(10,4)"}).
+			Optional().
+			Nillable().
+			Comment("余额充值倍率覆盖，NULL 表示回落到全局设置"),
+
 		// OpenAI/Codex 请求的推理强度上限（空字符串表示不限制）。
 		field.String("max_reasoning_effort").
 			MaxLen(20).

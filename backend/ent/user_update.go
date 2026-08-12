@@ -432,6 +432,33 @@ func (_u *UserUpdate) AddRpmLimit(v int) *UserUpdate {
 	return _u
 }
 
+// SetRechargeMultiplier sets the "recharge_multiplier" field.
+func (_u *UserUpdate) SetRechargeMultiplier(v float64) *UserUpdate {
+	_u.mutation.ResetRechargeMultiplier()
+	_u.mutation.SetRechargeMultiplier(v)
+	return _u
+}
+
+// SetNillableRechargeMultiplier sets the "recharge_multiplier" field if the given value is not nil.
+func (_u *UserUpdate) SetNillableRechargeMultiplier(v *float64) *UserUpdate {
+	if v != nil {
+		_u.SetRechargeMultiplier(*v)
+	}
+	return _u
+}
+
+// AddRechargeMultiplier adds value to the "recharge_multiplier" field.
+func (_u *UserUpdate) AddRechargeMultiplier(v float64) *UserUpdate {
+	_u.mutation.AddRechargeMultiplier(v)
+	return _u
+}
+
+// ClearRechargeMultiplier clears the value of the "recharge_multiplier" field.
+func (_u *UserUpdate) ClearRechargeMultiplier() *UserUpdate {
+	_u.mutation.ClearRechargeMultiplier()
+	return _u
+}
+
 // AddAPIKeyIDs adds the "api_keys" edge to the APIKey entity by IDs.
 func (_u *UserUpdate) AddAPIKeyIDs(ids ...int64) *UserUpdate {
 	_u.mutation.AddAPIKeyIDs(ids...)
@@ -1098,6 +1125,15 @@ func (_u *UserUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.AddedRpmLimit(); ok {
 		_spec.AddField(user.FieldRpmLimit, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.RechargeMultiplier(); ok {
+		_spec.SetField(user.FieldRechargeMultiplier, field.TypeFloat64, value)
+	}
+	if value, ok := _u.mutation.AddedRechargeMultiplier(); ok {
+		_spec.AddField(user.FieldRechargeMultiplier, field.TypeFloat64, value)
+	}
+	if _u.mutation.RechargeMultiplierCleared() {
+		_spec.ClearField(user.FieldRechargeMultiplier, field.TypeFloat64)
 	}
 	if _u.mutation.APIKeysCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -2108,6 +2144,33 @@ func (_u *UserUpdateOne) AddRpmLimit(v int) *UserUpdateOne {
 	return _u
 }
 
+// SetRechargeMultiplier sets the "recharge_multiplier" field.
+func (_u *UserUpdateOne) SetRechargeMultiplier(v float64) *UserUpdateOne {
+	_u.mutation.ResetRechargeMultiplier()
+	_u.mutation.SetRechargeMultiplier(v)
+	return _u
+}
+
+// SetNillableRechargeMultiplier sets the "recharge_multiplier" field if the given value is not nil.
+func (_u *UserUpdateOne) SetNillableRechargeMultiplier(v *float64) *UserUpdateOne {
+	if v != nil {
+		_u.SetRechargeMultiplier(*v)
+	}
+	return _u
+}
+
+// AddRechargeMultiplier adds value to the "recharge_multiplier" field.
+func (_u *UserUpdateOne) AddRechargeMultiplier(v float64) *UserUpdateOne {
+	_u.mutation.AddRechargeMultiplier(v)
+	return _u
+}
+
+// ClearRechargeMultiplier clears the value of the "recharge_multiplier" field.
+func (_u *UserUpdateOne) ClearRechargeMultiplier() *UserUpdateOne {
+	_u.mutation.ClearRechargeMultiplier()
+	return _u
+}
+
 // AddAPIKeyIDs adds the "api_keys" edge to the APIKey entity by IDs.
 func (_u *UserUpdateOne) AddAPIKeyIDs(ids ...int64) *UserUpdateOne {
 	_u.mutation.AddAPIKeyIDs(ids...)
@@ -2804,6 +2867,15 @@ func (_u *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) {
 	}
 	if value, ok := _u.mutation.AddedRpmLimit(); ok {
 		_spec.AddField(user.FieldRpmLimit, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.RechargeMultiplier(); ok {
+		_spec.SetField(user.FieldRechargeMultiplier, field.TypeFloat64, value)
+	}
+	if value, ok := _u.mutation.AddedRechargeMultiplier(); ok {
+		_spec.AddField(user.FieldRechargeMultiplier, field.TypeFloat64, value)
+	}
+	if _u.mutation.RechargeMultiplierCleared() {
+		_spec.ClearField(user.FieldRechargeMultiplier, field.TypeFloat64)
 	}
 	if _u.mutation.APIKeysCleared() {
 		edge := &sqlgraph.EdgeSpec{

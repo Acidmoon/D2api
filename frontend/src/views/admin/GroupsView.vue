@@ -517,6 +517,21 @@
           <p class="input-hint">{{ t("admin.groups.rateMultiplierHint") }}</p>
         </div>
         <div>
+          <label class="input-label">{{
+            t("admin.groups.form.rechargeMultiplierLabel")
+          }}</label>
+          <input
+            v-model.number="createForm.recharge_multiplier"
+            type="number"
+            step="0.01"
+            min="0"
+            class="input"
+          />
+          <p class="input-hint">
+            {{ t("admin.groups.form.rechargeMultiplierHint") }}
+          </p>
+        </div>
+        <div>
           <label class="input-label">{{ t("admin.groups.form.rpmLimit") }}</label>
           <input
             v-model.number="createForm.rpm_limit"
@@ -2203,6 +2218,21 @@
             class="input"
             data-tour="group-form-multiplier"
           />
+        </div>
+        <div>
+          <label class="input-label">{{
+            t("admin.groups.form.rechargeMultiplierLabel")
+          }}</label>
+          <input
+            v-model.number="editForm.recharge_multiplier"
+            type="number"
+            step="0.01"
+            min="0"
+            class="input"
+          />
+          <p class="input-hint">
+            {{ t("admin.groups.form.rechargeMultiplierHint") }}
+          </p>
         </div>
         <div>
           <label class="input-label">{{ t("admin.groups.form.rpmLimit") }}</label>
@@ -4798,6 +4828,8 @@ const createForm = reactive({
   daily_limit_usd: null as number | null,
   weekly_limit_usd: null as number | null,
   monthly_limit_usd: null as number | null,
+  // 分组级充值倍率覆盖；null = 跟随全局设置
+  recharge_multiplier: null as number | null,
   // 图片生成计费配置
   allow_image_generation: false,
   allow_batch_image_generation: false,
@@ -5159,6 +5191,8 @@ const editForm = reactive({
   daily_limit_usd: null as number | null,
   weekly_limit_usd: null as number | null,
   monthly_limit_usd: null as number | null,
+  // 分组级充值倍率覆盖；null = 跟随全局设置
+  recharge_multiplier: null as number | null,
   // 图片生成计费配置
   allow_image_generation: false,
   allow_batch_image_generation: false,
@@ -5593,6 +5627,7 @@ const closeCreateModal = () => {
   createForm.daily_limit_usd = null;
   createForm.weekly_limit_usd = null;
   createForm.monthly_limit_usd = null;
+  createForm.recharge_multiplier = null;
   createForm.allow_image_generation = false;
   createForm.allow_batch_image_generation = false;
   createForm.image_rate_independent = false;
@@ -5686,6 +5721,14 @@ const handleCreateGroup = async () => {
     appStore.showError(t("admin.groups.nameRequired"));
     return;
   }
+  // 充值倍率：留空 = 不设置；填写时必须 > 0
+  if (
+    createForm.recharge_multiplier !== null &&
+    !(Number(createForm.recharge_multiplier) > 0)
+  ) {
+    appStore.showError(t("admin.groups.form.rechargeMultiplierInvalid"));
+    return;
+  }
   if (
     supportsReasoningEffortPolicyPlatform(createForm.platform) &&
     createReasoningEffortPolicyRef.value &&
@@ -5757,6 +5800,10 @@ const handleCreateGroup = async () => {
     requestData.daily_limit_usd = emptyToNull(requestData.daily_limit_usd);
     requestData.weekly_limit_usd = emptyToNull(requestData.weekly_limit_usd);
     requestData.monthly_limit_usd = emptyToNull(requestData.monthly_limit_usd);
+    // 充值倍率清空（""）时按 null 提交：不设置覆盖
+    requestData.recharge_multiplier = emptyToNull(
+      requestData.recharge_multiplier,
+    );
     requestData.image_rate_multiplier = normalizeRateMultiplier(
       requestData.image_rate_multiplier,
     );
@@ -5830,6 +5877,7 @@ const handleEdit = async (group: AdminGroup) => {
   editForm.daily_limit_usd = group.daily_limit_usd;
   editForm.weekly_limit_usd = group.weekly_limit_usd;
   editForm.monthly_limit_usd = group.monthly_limit_usd;
+  editForm.recharge_multiplier = group.recharge_multiplier ?? null;
   editForm.allow_image_generation = group.allow_image_generation ?? false;
   editForm.allow_batch_image_generation =
     group.allow_batch_image_generation ?? false;
@@ -5917,6 +5965,7 @@ const closeEditModal = () => {
   clearAllAccountSearchState();
   showEditModal.value = false;
   editingGroup.value = null;
+  editForm.recharge_multiplier = null;
   editForm.max_reasoning_effort = "";
   editForm.reasoning_effort_mappings = [];
   editReasoningEffortPolicyRef.value?.resetValidation();
@@ -5950,6 +5999,14 @@ const handleUpdateGroup = async () => {
   if (!editingGroup.value) return;
   if (!editForm.name.trim()) {
     appStore.showError(t("admin.groups.nameRequired"));
+    return;
+  }
+  // 充值倍率：留空 = 清除分组级覆盖；填写时必须 > 0
+  if (
+    editForm.recharge_multiplier !== null &&
+    !(Number(editForm.recharge_multiplier) > 0)
+  ) {
+    appStore.showError(t("admin.groups.form.rechargeMultiplierInvalid"));
     return;
   }
   if (
@@ -6023,6 +6080,8 @@ const handleUpdateGroup = async () => {
     payload.daily_limit_usd = emptyToNull(payload.daily_limit_usd);
     payload.weekly_limit_usd = emptyToNull(payload.weekly_limit_usd);
     payload.monthly_limit_usd = emptyToNull(payload.monthly_limit_usd);
+    // 充值倍率清空（""）时按 null 提交：清除分组级覆盖
+    payload.recharge_multiplier = emptyToNull(payload.recharge_multiplier);
     payload.image_rate_multiplier = normalizeRateMultiplier(
       payload.image_rate_multiplier,
     );

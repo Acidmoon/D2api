@@ -42,6 +42,11 @@ type Group struct {
 	MonthlyLimitUSD     *float64
 	DefaultValidityDays int
 
+	// RechargeMultiplier 分组级余额充值倍率覆盖；nil 表示不覆盖。
+	// 用户属于多个分组时取各分组非空值的最高倍率，仍为空则回落到全局
+	// BALANCE_RECHARGE_MULTIPLIER。与 RateMultiplier（计费倍率）无关。
+	RechargeMultiplier *float64
+
 	// 图片生成计费配置（antigravity 和 gemini 平台使用）
 	AllowImageGeneration         bool
 	AllowBatchImageGeneration    bool

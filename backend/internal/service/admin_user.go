@@ -125,6 +125,11 @@ func (s *adminServiceImpl) CreateUser(ctx context.Context, input *CreateUserInpu
 		balance = s.settingService.GetDefaultBalance(ctx)
 	}
 
+	// 用户级充值倍率覆盖：仅允许 > 0，nil 表示不设置。
+	if input.RechargeMultiplier != nil && *input.RechargeMultiplier <= 0 {
+		return nil, errors.New("recharge_multiplier must be > 0")
+	}
+
 	// 角色可由管理员在创建时指定(admin/user);未提供时默认 user。
 	role, err := normalizeUserRole(input.Role, RoleUser)
 	if err != nil {
@@ -132,15 +137,16 @@ func (s *adminServiceImpl) CreateUser(ctx context.Context, input *CreateUserInpu
 	}
 
 	user := &User{
-		Email:         input.Email,
-		Username:      input.Username,
-		Notes:         input.Notes,
-		Role:          role,
-		Balance:       balance,
-		Concurrency:   input.Concurrency,
-		RPMLimit:      input.RPMLimit,
-		Status:        StatusActive,
-		AllowedGroups: input.AllowedGroups,
+		Email:              input.Email,
+		Username:           input.Username,
+		Notes:              input.Notes,
+		Role:               role,
+		Balance:            balance,
+		Concurrency:        input.Concurrency,
+		RPMLimit:           input.RPMLimit,
+		Status:             StatusActive,
+		AllowedGroups:      input.AllowedGroups,
+		RechargeMultiplier: input.RechargeMultiplier,
 	}
 	if err := user.SetPassword(input.Password); err != nil {
 		return nil, err
@@ -275,6 +281,16 @@ func (s *adminServiceImpl) UpdateUser(ctx context.Context, id int64, input *Upda
 	if input.RPMLimit != nil {
 		user.RPMLimit = *input.RPMLimit
 		fields.RPMLimit = true
+	}
+
+	// 用户级充值倍率覆盖：>0 设置，<=0 清除（置 NULL，回落到分组/全局）。
+	if input.RechargeMultiplier != nil {
+		if *input.RechargeMultiplier > 0 {
+			user.RechargeMultiplier = input.RechargeMultiplier
+		} else {
+			user.RechargeMultiplier = nil
+		}
+		fields.RechargeMultiplier = true
 	}
 
 	if input.AllowedGroups != nil {

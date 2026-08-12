@@ -299,6 +299,10 @@ func (s *adminServiceImpl) CreateGroup(ctx context.Context, input *CreateGroupIn
 	if input.RateMultiplier <= 0 {
 		return nil, errors.New("rate_multiplier must be > 0")
 	}
+	// 分组级充值倍率覆盖：仅允许 > 0，nil 表示不设置。
+	if input.RechargeMultiplier != nil && *input.RechargeMultiplier <= 0 {
+		return nil, errors.New("recharge_multiplier must be > 0")
+	}
 
 	platform := NormalizeGroupPlatform(input.Platform)
 	maxReasoningEffort, err := normalizeMaxReasoningEffortForPlatform(platform, input.MaxReasoningEffort)
@@ -458,6 +462,7 @@ func (s *adminServiceImpl) CreateGroup(ctx context.Context, input *CreateGroupIn
 		DailyLimitUSD:                   dailyLimit,
 		WeeklyLimitUSD:                  weeklyLimit,
 		MonthlyLimitUSD:                 monthlyLimit,
+		RechargeMultiplier:              input.RechargeMultiplier,
 		AllowImageGeneration:            allowImageGeneration,
 		AllowBatchImageGeneration:       allowBatchImageGeneration,
 		ImageRateIndependent:            input.ImageRateIndependent,
@@ -658,6 +663,14 @@ func (s *adminServiceImpl) UpdateGroup(ctx context.Context, id int64, input *Upd
 	group.DailyLimitUSD = normalizeLimit(input.DailyLimitUSD)
 	group.WeeklyLimitUSD = normalizeLimit(input.WeeklyLimitUSD)
 	group.MonthlyLimitUSD = normalizeLimit(input.MonthlyLimitUSD)
+	// 分组级充值倍率覆盖：>0 设置，<=0 清除（置 NULL，回落到全局）；nil 表示不修改
+	if input.RechargeMultiplier != nil {
+		if *input.RechargeMultiplier > 0 {
+			group.RechargeMultiplier = input.RechargeMultiplier
+		} else {
+			group.RechargeMultiplier = nil
+		}
+	}
 	// 图片生成计费配置：负数表示清除（使用默认价格）
 	if input.AllowImageGeneration != nil {
 		group.AllowImageGeneration = *input.AllowImageGeneration

@@ -104,9 +104,11 @@ type UserUpdateFields struct {
 	Status       bool
 	Concurrency  bool
 	RPMLimit     bool
-	SignupSource bool
-	LastLoginAt  bool
-	LastActiveAt bool
+	// RechargeMultiplier 为 true 时写入用户级充值倍率覆盖；user.RechargeMultiplier 为 nil 表示清除（置 NULL）。
+	RechargeMultiplier bool
+	SignupSource       bool
+	LastLoginAt        bool
+	LastActiveAt       bool
 	// BalanceNotifySettings 覆盖 balance_notify_enabled / _threshold_type / _threshold。
 	BalanceNotifySettings bool
 	// BalanceNotifyExtraEmails 与上一项分开，避免"改通知阈值"覆盖并发的"加通知邮箱"。

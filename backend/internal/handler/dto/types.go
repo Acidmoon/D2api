@@ -45,6 +45,8 @@ type AdminUser struct {
 
 	Notes      string     `json:"notes"`
 	LastUsedAt *time.Time `json:"last_used_at"`
+	// RechargeMultiplier 用户级充值倍率覆盖；null 表示未设置（回落到分组/全局）
+	RechargeMultiplier *float64 `json:"recharge_multiplier"`
 	// GroupRates 用户专属分组倍率配置
 	// map[groupID]rateMultiplier
 	GroupRates map[int64]float64 `json:"group_rates,omitempty"`
@@ -105,6 +107,8 @@ type Group struct {
 	DailyLimitUSD    *float64 `json:"daily_limit_usd"`
 	WeeklyLimitUSD   *float64 `json:"weekly_limit_usd"`
 	MonthlyLimitUSD  *float64 `json:"monthly_limit_usd"`
+	// RechargeMultiplier 分组级充值倍率覆盖；null 表示未设置（回落到全局）
+	RechargeMultiplier *float64 `json:"recharge_multiplier"`
 
 	// 图片生成计费配置（仅 antigravity 平台使用）
 	AllowImageGeneration         bool    `json:"allow_image_generation"`

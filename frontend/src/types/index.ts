@@ -107,6 +107,8 @@ export interface AdminUser extends User {
   last_used_at?: string | null
   // 用户专属分组倍率配置 (group_id -> rate_multiplier)
   group_rates?: Record<number, number>
+  // 用户级充值倍率覆盖；null/缺省 = 跟随分组/全局设置
+  recharge_multiplier?: number | null
   // 当前并发数（仅管理员列表接口返回）
   current_concurrency?: number
   // 内容违规临时封禁的解封时间（Unix 秒；缺省/null = 未封禁，仅管理员列表接口返回）
@@ -559,6 +561,8 @@ export interface Group {
   daily_limit_usd: number | null
   weekly_limit_usd: number | null
   monthly_limit_usd: number | null
+  // 分组级充值倍率覆盖；null/缺省 = 跟随全局设置
+  recharge_multiplier?: number | null
   // 图片生成计费配置
   allow_image_generation: boolean
   allow_batch_image_generation: boolean
@@ -770,6 +774,8 @@ export interface CreateGroupRequest {
   daily_limit_usd?: number | null
   weekly_limit_usd?: number | null
   monthly_limit_usd?: number | null
+  // 分组级充值倍率覆盖；null = 不设置（跟随全局）
+  recharge_multiplier?: number | null
   allow_image_generation?: boolean
   allow_batch_image_generation?: boolean
   image_rate_independent?: boolean
@@ -831,6 +837,8 @@ export interface UpdateGroupRequest {
   daily_limit_usd?: number | null
   weekly_limit_usd?: number | null
   monthly_limit_usd?: number | null
+  // 分组级充值倍率覆盖；null = 清除（跟随全局），缺省 = 不修改
+  recharge_multiplier?: number | null
   allow_image_generation?: boolean
   allow_batch_image_generation?: boolean
   image_rate_independent?: boolean
@@ -1959,6 +1967,8 @@ export interface UpdateUserRequest {
   rpm_limit?: number
   status?: 'active' | 'disabled'
   allowed_groups?: number[] | null
+  // 用户级充值倍率覆盖；null 表示清除（跟随分组/全局）
+  recharge_multiplier?: number | null
   // 用户专属分组倍率配置 (group_id -> rate_multiplier | null)
   // null 表示删除该分组的专属倍率
   group_rates?: Record<number, number | null>

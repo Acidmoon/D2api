@@ -1061,6 +1061,33 @@ func (_u *GroupUpdate) SetNillableUnavailableAlertEnabled(v *bool) *GroupUpdate 
 	return _u
 }
 
+// SetRechargeMultiplier sets the "recharge_multiplier" field.
+func (_u *GroupUpdate) SetRechargeMultiplier(v float64) *GroupUpdate {
+	_u.mutation.ResetRechargeMultiplier()
+	_u.mutation.SetRechargeMultiplier(v)
+	return _u
+}
+
+// SetNillableRechargeMultiplier sets the "recharge_multiplier" field if the given value is not nil.
+func (_u *GroupUpdate) SetNillableRechargeMultiplier(v *float64) *GroupUpdate {
+	if v != nil {
+		_u.SetRechargeMultiplier(*v)
+	}
+	return _u
+}
+
+// AddRechargeMultiplier adds value to the "recharge_multiplier" field.
+func (_u *GroupUpdate) AddRechargeMultiplier(v float64) *GroupUpdate {
+	_u.mutation.AddRechargeMultiplier(v)
+	return _u
+}
+
+// ClearRechargeMultiplier clears the value of the "recharge_multiplier" field.
+func (_u *GroupUpdate) ClearRechargeMultiplier() *GroupUpdate {
+	_u.mutation.ClearRechargeMultiplier()
+	return _u
+}
+
 // SetMaxReasoningEffort sets the "max_reasoning_effort" field.
 func (_u *GroupUpdate) SetMaxReasoningEffort(v string) *GroupUpdate {
 	_u.mutation.SetMaxReasoningEffort(v)
@@ -1823,6 +1850,15 @@ func (_u *GroupUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.UnavailableAlertEnabled(); ok {
 		_spec.SetField(group.FieldUnavailableAlertEnabled, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.RechargeMultiplier(); ok {
+		_spec.SetField(group.FieldRechargeMultiplier, field.TypeFloat64, value)
+	}
+	if value, ok := _u.mutation.AddedRechargeMultiplier(); ok {
+		_spec.AddField(group.FieldRechargeMultiplier, field.TypeFloat64, value)
+	}
+	if _u.mutation.RechargeMultiplierCleared() {
+		_spec.ClearField(group.FieldRechargeMultiplier, field.TypeFloat64)
 	}
 	if value, ok := _u.mutation.MaxReasoningEffort(); ok {
 		_spec.SetField(group.FieldMaxReasoningEffort, field.TypeString, value)
@@ -3234,6 +3270,33 @@ func (_u *GroupUpdateOne) SetNillableUnavailableAlertEnabled(v *bool) *GroupUpda
 	return _u
 }
 
+// SetRechargeMultiplier sets the "recharge_multiplier" field.
+func (_u *GroupUpdateOne) SetRechargeMultiplier(v float64) *GroupUpdateOne {
+	_u.mutation.ResetRechargeMultiplier()
+	_u.mutation.SetRechargeMultiplier(v)
+	return _u
+}
+
+// SetNillableRechargeMultiplier sets the "recharge_multiplier" field if the given value is not nil.
+func (_u *GroupUpdateOne) SetNillableRechargeMultiplier(v *float64) *GroupUpdateOne {
+	if v != nil {
+		_u.SetRechargeMultiplier(*v)
+	}
+	return _u
+}
+
+// AddRechargeMultiplier adds value to the "recharge_multiplier" field.
+func (_u *GroupUpdateOne) AddRechargeMultiplier(v float64) *GroupUpdateOne {
+	_u.mutation.AddRechargeMultiplier(v)
+	return _u
+}
+
+// ClearRechargeMultiplier clears the value of the "recharge_multiplier" field.
+func (_u *GroupUpdateOne) ClearRechargeMultiplier() *GroupUpdateOne {
+	_u.mutation.ClearRechargeMultiplier()
+	return _u
+}
+
 // SetMaxReasoningEffort sets the "max_reasoning_effort" field.
 func (_u *GroupUpdateOne) SetMaxReasoningEffort(v string) *GroupUpdateOne {
 	_u.mutation.SetMaxReasoningEffort(v)
@@ -4026,6 +4089,15 @@ func (_u *GroupUpdateOne) sqlSave(ctx context.Context) (_node *Group, err error)
 	}
 	if value, ok := _u.mutation.UnavailableAlertEnabled(); ok {
 		_spec.SetField(group.FieldUnavailableAlertEnabled, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.RechargeMultiplier(); ok {
+		_spec.SetField(group.FieldRechargeMultiplier, field.TypeFloat64, value)
+	}
+	if value, ok := _u.mutation.AddedRechargeMultiplier(); ok {
+		_spec.AddField(group.FieldRechargeMultiplier, field.TypeFloat64, value)
+	}
+	if _u.mutation.RechargeMultiplierCleared() {
+		_spec.ClearField(group.FieldRechargeMultiplier, field.TypeFloat64)
 	}
 	if value, ok := _u.mutation.MaxReasoningEffort(); ok {
 		_spec.SetField(group.FieldMaxReasoningEffort, field.TypeString, value)

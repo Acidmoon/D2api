@@ -56,6 +56,18 @@
         />
         <p class="input-hint">{{ t('admin.users.form.rpmLimitHint') }}</p>
       </div>
+      <div>
+        <label class="input-label">{{ t('admin.users.form.rechargeMultiplier') }}</label>
+        <input
+          v-model.number="form.recharge_multiplier"
+          type="number"
+          min="0"
+          step="0.01"
+          class="input"
+          :placeholder="t('admin.users.form.rechargeMultiplierPlaceholder')"
+        />
+        <p class="input-hint">{{ t('admin.users.form.rechargeMultiplierHint') }}</p>
+      </div>
       <UserAttributeForm v-model="form.customAttributes" :user-id="user?.id" />
       <div v-if="!violationBan.loading" class="rounded-lg border px-4 py-3 text-sm" :class="violationBan.banned ? 'border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/30' : 'border-gray-200 dark:border-dark-700'">
         <template v-if="violationBan.banned">
@@ -126,7 +138,7 @@ const emit = defineEmits(['close', 'success'])
 const { t } = useI18n(); const appStore = useAppStore(); const { copyToClipboard } = useClipboard()
 
 const submitting = ref(false); const passwordCopied = ref(false)
-const form = reactive({ email: '', password: '', username: '', notes: '', role: 'user', concurrency: 1, rpm_limit: 0, customAttributes: {} as UserAttributeValuesMap })
+const form = reactive({ email: '', password: '', username: '', notes: '', role: 'user', concurrency: 1, rpm_limit: 0, recharge_multiplier: '' as string | number, customAttributes: {} as UserAttributeValuesMap })
 
 // 用户内容违规临时封禁状态（独立于表单，只读展示 + 解除操作）
 const violationBan = reactive<{ loading: boolean; banned: boolean; until: string | null; clearing: boolean; banning: boolean }>({ loading: false, banned: false, until: null, clearing: false, banning: false })
@@ -181,7 +193,7 @@ const handleClearViolationBan = async () => {
 
 watch(() => props.user, (u) => {
   if (u) {
-    Object.assign(form, { email: u.email, password: '', username: u.username || '', notes: u.notes || '', role: u.role || 'user', concurrency: u.concurrency, rpm_limit: u.rpm_limit ?? 0, customAttributes: {} })
+    Object.assign(form, { email: u.email, password: '', username: u.username || '', notes: u.notes || '', role: u.role || 'user', concurrency: u.concurrency, rpm_limit: u.rpm_limit ?? 0, recharge_multiplier: u.recharge_multiplier ?? '', customAttributes: {} })
     passwordCopied.value = false
     void loadViolationBan(u.id)
   }
@@ -209,10 +221,15 @@ const handleUpdateUser = async () => {
     appStore.showError(t('admin.users.concurrencyMin'))
     return
   }
+  // 充值倍率：留空 = 清除用户级覆盖（跟随分组/全局）；填写时必须 > 0
+  if (form.recharge_multiplier !== '' && !(Number(form.recharge_multiplier) > 0)) {
+    appStore.showError(t('admin.users.form.rechargeMultiplierInvalid'))
+    return
+  }
   const userId = props.user.id
   submitting.value = true
   try {
-    const data: any = { email: form.email, username: form.username, notes: form.notes, role: form.role, concurrency: form.concurrency, rpm_limit: form.rpm_limit }
+    const data: any = { email: form.email, username: form.username, notes: form.notes, role: form.role, concurrency: form.concurrency, rpm_limit: form.rpm_limit, recharge_multiplier: form.recharge_multiplier === '' ? null : Number(form.recharge_multiplier) }
     if (form.password.trim()) data.password = form.password.trim()
     // 提升为管理员属敏感操作：后端返回 STEP_UP_REQUIRED 时弹 TOTP 验证并重试
     await stepUp.run(() => adminAPI.users.update(userId, data))

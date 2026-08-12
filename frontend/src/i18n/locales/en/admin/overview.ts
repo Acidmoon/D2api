@@ -534,7 +534,11 @@ export default {
         selectStatus: 'Select status',
         rpmLimit: 'Requests Per Minute (RPM)',
         rpmLimitPlaceholder: '0 = unlimited',
-        rpmLimitHint: 'Max requests per minute for this user; 0 = unlimited. Acts as a fallback only when the group has no rpm_limit set.'
+        rpmLimitHint: 'Max requests per minute for this user; 0 = unlimited. Acts as a fallback only when the group has no rpm_limit set.',
+        rechargeMultiplier: 'Recharge Multiplier',
+        rechargeMultiplierPlaceholder: 'Leave empty to follow group/global setting',
+        rechargeMultiplierHint: 'Balance recharge credit multiplier; must be > 0. Takes precedence over group-level and global settings.',
+        rechargeMultiplierInvalid: 'Recharge multiplier must be greater than 0, or leave empty to follow group/global setting.'
       },
       columns: {
         user: 'User',
@@ -873,6 +877,9 @@ export default {
         rpmLimit: 'Requests Per Minute (RPM)',
         rpmLimitPlaceholder: '0 = unlimited',
         rpmLimitHint: 'Max requests per minute for each user in this group; 0 = unlimited. Once set, it takes over per-user rate limiting in this group (overrides the user-level rpm_limit fallback).',
+        rechargeMultiplierLabel: 'Recharge Multiplier',
+        rechargeMultiplierHint: 'Balance recharge credit multiplier; leave empty to follow the global setting. For users in multiple groups the highest value wins, and a user-level override takes precedence.',
+        rechargeMultiplierInvalid: 'Recharge multiplier must be greater than 0, or leave empty to follow the global setting.',
         maxReasoningEffort: 'Max reasoning effort',
         maxReasoningEffortUnlimited: 'Unlimited (follow request)',
         maxReasoningEffortHint: 'Limits explicit OpenAI reasoning effort requests only. For Composite groups, it applies only to requests resolved to OpenAI. Higher values are capped; omitted effort stays omitted. The ceiling takes precedence over reasoning effort mappings.',

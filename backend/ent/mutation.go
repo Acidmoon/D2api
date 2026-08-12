@@ -22048,6 +22048,8 @@ type GroupMutation struct {
 	rpm_limit                               *int
 	addrpm_limit                            *int
 	unavailable_alert_enabled               *bool
+	recharge_multiplier                     *float64
+	addrecharge_multiplier                  *float64
 	max_reasoning_effort                    *string
 	reasoning_effort_mappings               *[]domain.ReasoningEffortMapping
 	appendreasoning_effort_mappings         []domain.ReasoningEffortMapping
@@ -25001,6 +25003,76 @@ func (m *GroupMutation) ResetUnavailableAlertEnabled() {
 	m.unavailable_alert_enabled = nil
 }
 
+// SetRechargeMultiplier sets the "recharge_multiplier" field.
+func (m *GroupMutation) SetRechargeMultiplier(f float64) {
+	m.recharge_multiplier = &f
+	m.addrecharge_multiplier = nil
+}
+
+// RechargeMultiplier returns the value of the "recharge_multiplier" field in the mutation.
+func (m *GroupMutation) RechargeMultiplier() (r float64, exists bool) {
+	v := m.recharge_multiplier
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRechargeMultiplier returns the old "recharge_multiplier" field's value of the Group entity.
+// If the Group object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *GroupMutation) OldRechargeMultiplier(ctx context.Context) (v *float64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRechargeMultiplier is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRechargeMultiplier requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRechargeMultiplier: %w", err)
+	}
+	return oldValue.RechargeMultiplier, nil
+}
+
+// AddRechargeMultiplier adds f to the "recharge_multiplier" field.
+func (m *GroupMutation) AddRechargeMultiplier(f float64) {
+	if m.addrecharge_multiplier != nil {
+		*m.addrecharge_multiplier += f
+	} else {
+		m.addrecharge_multiplier = &f
+	}
+}
+
+// AddedRechargeMultiplier returns the value that was added to the "recharge_multiplier" field in this mutation.
+func (m *GroupMutation) AddedRechargeMultiplier() (r float64, exists bool) {
+	v := m.addrecharge_multiplier
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearRechargeMultiplier clears the value of the "recharge_multiplier" field.
+func (m *GroupMutation) ClearRechargeMultiplier() {
+	m.recharge_multiplier = nil
+	m.addrecharge_multiplier = nil
+	m.clearedFields[group.FieldRechargeMultiplier] = struct{}{}
+}
+
+// RechargeMultiplierCleared returns if the "recharge_multiplier" field was cleared in this mutation.
+func (m *GroupMutation) RechargeMultiplierCleared() bool {
+	_, ok := m.clearedFields[group.FieldRechargeMultiplier]
+	return ok
+}
+
+// ResetRechargeMultiplier resets all changes to the "recharge_multiplier" field.
+func (m *GroupMutation) ResetRechargeMultiplier() {
+	m.recharge_multiplier = nil
+	m.addrecharge_multiplier = nil
+	delete(m.clearedFields, group.FieldRechargeMultiplier)
+}
+
 // SetMaxReasoningEffort sets the "max_reasoning_effort" field.
 func (m *GroupMutation) SetMaxReasoningEffort(s string) {
 	m.max_reasoning_effort = &s
@@ -25648,7 +25720,7 @@ func (m *GroupMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *GroupMutation) Fields() []string {
-	fields := make([]string, 0, 61)
+	fields := make([]string, 0, 62)
 	if m.created_at != nil {
 		fields = append(fields, group.FieldCreatedAt)
 	}
@@ -25817,6 +25889,9 @@ func (m *GroupMutation) Fields() []string {
 	if m.unavailable_alert_enabled != nil {
 		fields = append(fields, group.FieldUnavailableAlertEnabled)
 	}
+	if m.recharge_multiplier != nil {
+		fields = append(fields, group.FieldRechargeMultiplier)
+	}
 	if m.max_reasoning_effort != nil {
 		fields = append(fields, group.FieldMaxReasoningEffort)
 	}
@@ -25952,6 +26027,8 @@ func (m *GroupMutation) Field(name string) (ent.Value, bool) {
 		return m.RpmLimit()
 	case group.FieldUnavailableAlertEnabled:
 		return m.UnavailableAlertEnabled()
+	case group.FieldRechargeMultiplier:
+		return m.RechargeMultiplier()
 	case group.FieldMaxReasoningEffort:
 		return m.MaxReasoningEffort()
 	case group.FieldReasoningEffortMappings:
@@ -26083,6 +26160,8 @@ func (m *GroupMutation) OldField(ctx context.Context, name string) (ent.Value, e
 		return m.OldRpmLimit(ctx)
 	case group.FieldUnavailableAlertEnabled:
 		return m.OldUnavailableAlertEnabled(ctx)
+	case group.FieldRechargeMultiplier:
+		return m.OldRechargeMultiplier(ctx)
 	case group.FieldMaxReasoningEffort:
 		return m.OldMaxReasoningEffort(ctx)
 	case group.FieldReasoningEffortMappings:
@@ -26494,6 +26573,13 @@ func (m *GroupMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetUnavailableAlertEnabled(v)
 		return nil
+	case group.FieldRechargeMultiplier:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRechargeMultiplier(v)
+		return nil
 	case group.FieldMaxReasoningEffort:
 		v, ok := value.(string)
 		if !ok {
@@ -26612,6 +26698,9 @@ func (m *GroupMutation) AddedFields() []string {
 	if m.addrpm_limit != nil {
 		fields = append(fields, group.FieldRpmLimit)
 	}
+	if m.addrecharge_multiplier != nil {
+		fields = append(fields, group.FieldRechargeMultiplier)
+	}
 	if m.addprofit_min_margin != nil {
 		fields = append(fields, group.FieldProfitMinMargin)
 	}
@@ -26676,6 +26765,8 @@ func (m *GroupMutation) AddedField(name string) (ent.Value, bool) {
 		return m.AddedSortOrder()
 	case group.FieldRpmLimit:
 		return m.AddedRpmLimit()
+	case group.FieldRechargeMultiplier:
+		return m.AddedRechargeMultiplier()
 	case group.FieldProfitMinMargin:
 		return m.AddedProfitMinMargin()
 	case group.FieldProfitSafetyBuffer:
@@ -26864,6 +26955,13 @@ func (m *GroupMutation) AddField(name string, value ent.Value) error {
 		}
 		m.AddRpmLimit(v)
 		return nil
+	case group.FieldRechargeMultiplier:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddRechargeMultiplier(v)
+		return nil
 	case group.FieldProfitMinMargin:
 		v, ok := value.(float64)
 		if !ok {
@@ -26949,6 +27047,9 @@ func (m *GroupMutation) ClearedFields() []string {
 	if m.FieldCleared(group.FieldModelRouting) {
 		fields = append(fields, group.FieldModelRouting)
 	}
+	if m.FieldCleared(group.FieldRechargeMultiplier) {
+		fields = append(fields, group.FieldRechargeMultiplier)
+	}
 	return fields
 }
 
@@ -27025,6 +27126,9 @@ func (m *GroupMutation) ClearField(name string) error {
 		return nil
 	case group.FieldModelRouting:
 		m.ClearModelRouting()
+		return nil
+	case group.FieldRechargeMultiplier:
+		m.ClearRechargeMultiplier()
 		return nil
 	}
 	return fmt.Errorf("unknown Group nullable field %s", name)
@@ -27201,6 +27305,9 @@ func (m *GroupMutation) ResetField(name string) error {
 		return nil
 	case group.FieldUnavailableAlertEnabled:
 		m.ResetUnavailableAlertEnabled()
+		return nil
+	case group.FieldRechargeMultiplier:
+		m.ResetRechargeMultiplier()
 		return nil
 	case group.FieldMaxReasoningEffort:
 		m.ResetMaxReasoningEffort()
@@ -48630,6 +48737,8 @@ type UserMutation struct {
 	addtotal_recharged            *float64
 	rpm_limit                     *int
 	addrpm_limit                  *int
+	recharge_multiplier           *float64
+	addrecharge_multiplier        *float64
 	clearedFields                 map[string]struct{}
 	api_keys                      map[int64]struct{}
 	removedapi_keys               map[int64]struct{}
@@ -49836,6 +49945,76 @@ func (m *UserMutation) ResetRpmLimit() {
 	m.addrpm_limit = nil
 }
 
+// SetRechargeMultiplier sets the "recharge_multiplier" field.
+func (m *UserMutation) SetRechargeMultiplier(f float64) {
+	m.recharge_multiplier = &f
+	m.addrecharge_multiplier = nil
+}
+
+// RechargeMultiplier returns the value of the "recharge_multiplier" field in the mutation.
+func (m *UserMutation) RechargeMultiplier() (r float64, exists bool) {
+	v := m.recharge_multiplier
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRechargeMultiplier returns the old "recharge_multiplier" field's value of the User entity.
+// If the User object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UserMutation) OldRechargeMultiplier(ctx context.Context) (v *float64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRechargeMultiplier is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRechargeMultiplier requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRechargeMultiplier: %w", err)
+	}
+	return oldValue.RechargeMultiplier, nil
+}
+
+// AddRechargeMultiplier adds f to the "recharge_multiplier" field.
+func (m *UserMutation) AddRechargeMultiplier(f float64) {
+	if m.addrecharge_multiplier != nil {
+		*m.addrecharge_multiplier += f
+	} else {
+		m.addrecharge_multiplier = &f
+	}
+}
+
+// AddedRechargeMultiplier returns the value that was added to the "recharge_multiplier" field in this mutation.
+func (m *UserMutation) AddedRechargeMultiplier() (r float64, exists bool) {
+	v := m.addrecharge_multiplier
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearRechargeMultiplier clears the value of the "recharge_multiplier" field.
+func (m *UserMutation) ClearRechargeMultiplier() {
+	m.recharge_multiplier = nil
+	m.addrecharge_multiplier = nil
+	m.clearedFields[user.FieldRechargeMultiplier] = struct{}{}
+}
+
+// RechargeMultiplierCleared returns if the "recharge_multiplier" field was cleared in this mutation.
+func (m *UserMutation) RechargeMultiplierCleared() bool {
+	_, ok := m.clearedFields[user.FieldRechargeMultiplier]
+	return ok
+}
+
+// ResetRechargeMultiplier resets all changes to the "recharge_multiplier" field.
+func (m *UserMutation) ResetRechargeMultiplier() {
+	m.recharge_multiplier = nil
+	m.addrecharge_multiplier = nil
+	delete(m.clearedFields, user.FieldRechargeMultiplier)
+}
+
 // AddAPIKeyIDs adds the "api_keys" edge to the APIKey entity by ids.
 func (m *UserMutation) AddAPIKeyIDs(ids ...int64) {
 	if m.api_keys == nil {
@@ -50572,7 +50751,7 @@ func (m *UserMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *UserMutation) Fields() []string {
-	fields := make([]string, 0, 24)
+	fields := make([]string, 0, 25)
 	if m.created_at != nil {
 		fields = append(fields, user.FieldCreatedAt)
 	}
@@ -50645,6 +50824,9 @@ func (m *UserMutation) Fields() []string {
 	if m.rpm_limit != nil {
 		fields = append(fields, user.FieldRpmLimit)
 	}
+	if m.recharge_multiplier != nil {
+		fields = append(fields, user.FieldRechargeMultiplier)
+	}
 	return fields
 }
 
@@ -50701,6 +50883,8 @@ func (m *UserMutation) Field(name string) (ent.Value, bool) {
 		return m.TotalRecharged()
 	case user.FieldRpmLimit:
 		return m.RpmLimit()
+	case user.FieldRechargeMultiplier:
+		return m.RechargeMultiplier()
 	}
 	return nil, false
 }
@@ -50758,6 +50942,8 @@ func (m *UserMutation) OldField(ctx context.Context, name string) (ent.Value, er
 		return m.OldTotalRecharged(ctx)
 	case user.FieldRpmLimit:
 		return m.OldRpmLimit(ctx)
+	case user.FieldRechargeMultiplier:
+		return m.OldRechargeMultiplier(ctx)
 	}
 	return nil, fmt.Errorf("unknown User field %s", name)
 }
@@ -50935,6 +51121,13 @@ func (m *UserMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetRpmLimit(v)
 		return nil
+	case user.FieldRechargeMultiplier:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRechargeMultiplier(v)
+		return nil
 	}
 	return fmt.Errorf("unknown User field %s", name)
 }
@@ -50961,6 +51154,9 @@ func (m *UserMutation) AddedFields() []string {
 	if m.addrpm_limit != nil {
 		fields = append(fields, user.FieldRpmLimit)
 	}
+	if m.addrecharge_multiplier != nil {
+		fields = append(fields, user.FieldRechargeMultiplier)
+	}
 	return fields
 }
 
@@ -50981,6 +51177,8 @@ func (m *UserMutation) AddedField(name string) (ent.Value, bool) {
 		return m.AddedTotalRecharged()
 	case user.FieldRpmLimit:
 		return m.AddedRpmLimit()
+	case user.FieldRechargeMultiplier:
+		return m.AddedRechargeMultiplier()
 	}
 	return nil, false
 }
@@ -51032,6 +51230,13 @@ func (m *UserMutation) AddField(name string, value ent.Value) error {
 		}
 		m.AddRpmLimit(v)
 		return nil
+	case user.FieldRechargeMultiplier:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddRechargeMultiplier(v)
+		return nil
 	}
 	return fmt.Errorf("unknown User numeric field %s", name)
 }
@@ -51057,6 +51262,9 @@ func (m *UserMutation) ClearedFields() []string {
 	}
 	if m.FieldCleared(user.FieldBalanceNotifyThreshold) {
 		fields = append(fields, user.FieldBalanceNotifyThreshold)
+	}
+	if m.FieldCleared(user.FieldRechargeMultiplier) {
+		fields = append(fields, user.FieldRechargeMultiplier)
 	}
 	return fields
 }
@@ -51089,6 +51297,9 @@ func (m *UserMutation) ClearField(name string) error {
 		return nil
 	case user.FieldBalanceNotifyThreshold:
 		m.ClearBalanceNotifyThreshold()
+		return nil
+	case user.FieldRechargeMultiplier:
+		m.ClearRechargeMultiplier()
 		return nil
 	}
 	return fmt.Errorf("unknown User nullable field %s", name)
@@ -51169,6 +51380,9 @@ func (m *UserMutation) ResetField(name string) error {
 		return nil
 	case user.FieldRpmLimit:
 		m.ResetRpmLimit()
+		return nil
+	case user.FieldRechargeMultiplier:
+		m.ResetRechargeMultiplier()
 		return nil
 	}
 	return fmt.Errorf("unknown User field %s", name)

@@ -69,6 +69,8 @@ type CreateUserRequest struct {
 	Concurrency   int      `json:"concurrency"`
 	RPMLimit      int      `json:"rpm_limit"`
 	AllowedGroups []int64  `json:"allowed_groups"`
+	// 用户级充值倍率覆盖；nil 表示不设置，非 nil 必须 > 0
+	RechargeMultiplier *float64 `json:"recharge_multiplier" binding:"omitempty,gt=0"`
 }
 
 // UpdateUserRequest represents admin update user request
@@ -84,6 +86,8 @@ type UpdateUserRequest struct {
 	RPMLimit      *int     `json:"rpm_limit"`
 	Status        string   `json:"status" binding:"omitempty,oneof=active disabled"`
 	AllowedGroups *[]int64 `json:"allowed_groups"`
+	// 用户级充值倍率覆盖；缺省表示不修改，null/空字符串表示清除（置 NULL），数值必须 > 0
+	RechargeMultiplier optionalLimitField `json:"recharge_multiplier"`
 	// GroupRates 用户专属分组倍率配置
 	// map[groupID]*rate，nil 表示删除该分组的专属倍率
 	GroupRates map[int64]*float64 `json:"group_rates"`
@@ -301,16 +305,17 @@ func (h *UserHandler) Create(c *gin.Context) {
 	}
 
 	user, err := h.adminService.CreateUser(c.Request.Context(), &service.CreateUserInput{
-		Email:         req.Email,
-		Password:      req.Password,
-		Username:      req.Username,
-		Notes:         req.Notes,
-		Role:          req.Role,
-		Balance:       req.Balance,
-		Concurrency:   req.Concurrency,
-		RPMLimit:      req.RPMLimit,
-		AllowedGroups: req.AllowedGroups,
-		ActorAdminID:  getAdminIDFromContext(c),
+		Email:              req.Email,
+		Password:           req.Password,
+		Username:           req.Username,
+		Notes:              req.Notes,
+		Role:               req.Role,
+		Balance:            req.Balance,
+		Concurrency:        req.Concurrency,
+		RPMLimit:           req.RPMLimit,
+		AllowedGroups:      req.AllowedGroups,
+		RechargeMultiplier: req.RechargeMultiplier,
+		ActorAdminID:       getAdminIDFromContext(c),
 	})
 	if err != nil {
 		response.ErrorFrom(c, err)
@@ -359,18 +364,19 @@ func (h *UserHandler) Update(c *gin.Context) {
 
 	// 使用指针类型直接传递，nil 表示未提供该字段
 	user, err := h.adminService.UpdateUser(c.Request.Context(), userID, &service.UpdateUserInput{
-		Email:         req.Email,
-		Password:      req.Password,
-		Username:      req.Username,
-		Notes:         req.Notes,
-		Role:          req.Role,
-		Balance:       req.Balance,
-		Concurrency:   req.Concurrency,
-		RPMLimit:      req.RPMLimit,
-		Status:        req.Status,
-		AllowedGroups: req.AllowedGroups,
-		GroupRates:    req.GroupRates,
-		ActorAdminID:  getAdminIDFromContext(c),
+		Email:              req.Email,
+		Password:           req.Password,
+		Username:           req.Username,
+		Notes:              req.Notes,
+		Role:               req.Role,
+		Balance:            req.Balance,
+		Concurrency:        req.Concurrency,
+		RPMLimit:           req.RPMLimit,
+		Status:             req.Status,
+		AllowedGroups:      req.AllowedGroups,
+		RechargeMultiplier: req.RechargeMultiplier.ToServiceInput(),
+		GroupRates:         req.GroupRates,
+		ActorAdminID:       getAdminIDFromContext(c),
 	})
 	if err != nil {
 		response.ErrorFrom(c, err)

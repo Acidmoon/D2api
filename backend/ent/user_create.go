@@ -354,6 +354,20 @@ func (_c *UserCreate) SetNillableRpmLimit(v *int) *UserCreate {
 	return _c
 }
 
+// SetRechargeMultiplier sets the "recharge_multiplier" field.
+func (_c *UserCreate) SetRechargeMultiplier(v float64) *UserCreate {
+	_c.mutation.SetRechargeMultiplier(v)
+	return _c
+}
+
+// SetNillableRechargeMultiplier sets the "recharge_multiplier" field if the given value is not nil.
+func (_c *UserCreate) SetNillableRechargeMultiplier(v *float64) *UserCreate {
+	if v != nil {
+		_c.SetRechargeMultiplier(*v)
+	}
+	return _c
+}
+
 // AddAPIKeyIDs adds the "api_keys" edge to the APIKey entity by IDs.
 func (_c *UserCreate) AddAPIKeyIDs(ids ...int64) *UserCreate {
 	_c.mutation.AddAPIKeyIDs(ids...)
@@ -867,6 +881,10 @@ func (_c *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.RpmLimit(); ok {
 		_spec.SetField(user.FieldRpmLimit, field.TypeInt, value)
 		_node.RpmLimit = value
+	}
+	if value, ok := _c.mutation.RechargeMultiplier(); ok {
+		_spec.SetField(user.FieldRechargeMultiplier, field.TypeFloat64, value)
+		_node.RechargeMultiplier = &value
 	}
 	if nodes := _c.mutation.APIKeysIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
@@ -1480,6 +1498,30 @@ func (u *UserUpsert) AddRpmLimit(v int) *UserUpsert {
 	return u
 }
 
+// SetRechargeMultiplier sets the "recharge_multiplier" field.
+func (u *UserUpsert) SetRechargeMultiplier(v float64) *UserUpsert {
+	u.Set(user.FieldRechargeMultiplier, v)
+	return u
+}
+
+// UpdateRechargeMultiplier sets the "recharge_multiplier" field to the value that was provided on create.
+func (u *UserUpsert) UpdateRechargeMultiplier() *UserUpsert {
+	u.SetExcluded(user.FieldRechargeMultiplier)
+	return u
+}
+
+// AddRechargeMultiplier adds v to the "recharge_multiplier" field.
+func (u *UserUpsert) AddRechargeMultiplier(v float64) *UserUpsert {
+	u.Add(user.FieldRechargeMultiplier, v)
+	return u
+}
+
+// ClearRechargeMultiplier clears the value of the "recharge_multiplier" field.
+func (u *UserUpsert) ClearRechargeMultiplier() *UserUpsert {
+	u.SetNull(user.FieldRechargeMultiplier)
+	return u
+}
+
 // UpdateNewValues updates the mutable fields using the new values that were set on create.
 // Using this option is equivalent to using:
 //
@@ -1928,6 +1970,34 @@ func (u *UserUpsertOne) AddRpmLimit(v int) *UserUpsertOne {
 func (u *UserUpsertOne) UpdateRpmLimit() *UserUpsertOne {
 	return u.Update(func(s *UserUpsert) {
 		s.UpdateRpmLimit()
+	})
+}
+
+// SetRechargeMultiplier sets the "recharge_multiplier" field.
+func (u *UserUpsertOne) SetRechargeMultiplier(v float64) *UserUpsertOne {
+	return u.Update(func(s *UserUpsert) {
+		s.SetRechargeMultiplier(v)
+	})
+}
+
+// AddRechargeMultiplier adds v to the "recharge_multiplier" field.
+func (u *UserUpsertOne) AddRechargeMultiplier(v float64) *UserUpsertOne {
+	return u.Update(func(s *UserUpsert) {
+		s.AddRechargeMultiplier(v)
+	})
+}
+
+// UpdateRechargeMultiplier sets the "recharge_multiplier" field to the value that was provided on create.
+func (u *UserUpsertOne) UpdateRechargeMultiplier() *UserUpsertOne {
+	return u.Update(func(s *UserUpsert) {
+		s.UpdateRechargeMultiplier()
+	})
+}
+
+// ClearRechargeMultiplier clears the value of the "recharge_multiplier" field.
+func (u *UserUpsertOne) ClearRechargeMultiplier() *UserUpsertOne {
+	return u.Update(func(s *UserUpsert) {
+		s.ClearRechargeMultiplier()
 	})
 }
 
@@ -2545,6 +2615,34 @@ func (u *UserUpsertBulk) AddRpmLimit(v int) *UserUpsertBulk {
 func (u *UserUpsertBulk) UpdateRpmLimit() *UserUpsertBulk {
 	return u.Update(func(s *UserUpsert) {
 		s.UpdateRpmLimit()
+	})
+}
+
+// SetRechargeMultiplier sets the "recharge_multiplier" field.
+func (u *UserUpsertBulk) SetRechargeMultiplier(v float64) *UserUpsertBulk {
+	return u.Update(func(s *UserUpsert) {
+		s.SetRechargeMultiplier(v)
+	})
+}
+
+// AddRechargeMultiplier adds v to the "recharge_multiplier" field.
+func (u *UserUpsertBulk) AddRechargeMultiplier(v float64) *UserUpsertBulk {
+	return u.Update(func(s *UserUpsert) {
+		s.AddRechargeMultiplier(v)
+	})
+}
+
+// UpdateRechargeMultiplier sets the "recharge_multiplier" field to the value that was provided on create.
+func (u *UserUpsertBulk) UpdateRechargeMultiplier() *UserUpsertBulk {
+	return u.Update(func(s *UserUpsert) {
+		s.UpdateRechargeMultiplier()
+	})
+}
+
+// ClearRechargeMultiplier clears the value of the "recharge_multiplier" field.
+func (u *UserUpsertBulk) ClearRechargeMultiplier() *UserUpsertBulk {
+	return u.Update(func(s *UserUpsert) {
+		s.ClearRechargeMultiplier()
 	})
 }
 
