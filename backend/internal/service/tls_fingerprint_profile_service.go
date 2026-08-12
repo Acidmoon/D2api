@@ -173,7 +173,8 @@ func (s *TLSFingerprintProfileService) getRandomProfile() *tlsfingerprint.Profil
 // 逻辑：
 //  1. 未启用 TLS 指纹 → 返回 nil（不伪装）
 //  2. 启用 + 绑定了 profile_id → 从缓存查找对应 profile
-//  3. 启用 + 未绑定或找不到 → 返回空 Profile（使用代码内置默认值）
+//  3. 启用 + 随机（id=-1）→ 随机选择一个缓存模板
+//  4. 启用 + 未绑定（id=0）→ 平台感知内置默认：OpenAI=rustls 模板，其余=Node.js 模板
 func (s *TLSFingerprintProfileService) ResolveTLSProfile(account *Account) *tlsfingerprint.Profile {
 	if account == nil || !account.IsTLSFingerprintEnabled() {
 		return nil
@@ -190,8 +191,14 @@ func (s *TLSFingerprintProfileService) ResolveTLSProfile(account *Account) *tlsf
 			return p
 		}
 	}
-	// TLS 启用但无绑定 profile → 空 Profile → dialer 使用内置默认值
-	return &tlsfingerprint.Profile{Name: "Built-in Default (Node.js 24.x)"}
+	// TLS 启用但未绑定模板（id=0）→ 平台感知的内置默认：
+	// OpenAI 账号对外宣称 codex-tui（Rust codex-rs，reqwest+rustls），使用 rustls 模板；
+	// Anthropic 账号是 Claude Code（Node.js/BoringSSL），使用 Node.js 模板。
+	// 避免 UA/originator 与 TLS 指纹跨层矛盾（rustls UA + BoringSSL 握手一眼假）。
+	if account.Platform == PlatformOpenAI {
+		return tlsfingerprint.DefaultRustlsProfile()
+	}
+	return tlsfingerprint.DefaultNodeProfile()
 }
 
 // --- 缓存管理 ---

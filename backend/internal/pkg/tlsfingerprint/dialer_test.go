@@ -123,12 +123,13 @@ func TestJA3Fingerprint(t *testing.T) {
 		t.Errorf("✗ JA4 cipher hash mismatch: got %s, expected containing %s", fpResp.TLS.JA4, expectedJA4CipherHash)
 	}
 
-	// Verify JA4 prefix (t13d1714h1 or t13i1714h1)
-	expectedJA4Prefix := "t13d1714h1"
+	// Verify JA4 prefix (t13d1714h1 或 t13d1714h2；默认 ALPN 已升级为 h2 优先，
+	// 末位字符反映 ALPN：h1=http/1.1，h2=HTTP/2)
+	expectedJA4Prefix := "t13d1714h"
 	if strings.HasPrefix(fpResp.TLS.JA4, expectedJA4Prefix) {
-		t.Logf("✓ JA4 prefix matches: %s (t13=TLS1.3, d=domain, 17=ciphers, 14=extensions, h1=HTTP/1.1)", expectedJA4Prefix)
+		t.Logf("✓ JA4 prefix matches: %s (t13=TLS1.3, d=domain, 17=ciphers, 14=extensions)", expectedJA4Prefix)
 	} else {
-		altPrefix := "t13i1714h1"
+		altPrefix := "t13i1714h"
 		if strings.HasPrefix(fpResp.TLS.JA4, altPrefix) {
 			t.Logf("✓ JA4 prefix matches (IP variant): %s", altPrefix)
 		} else {

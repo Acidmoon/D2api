@@ -1871,6 +1871,13 @@ func (u *openAIHTTPPassthroughAuthFailoverUpstream) calls() []int64 {
 	return append([]int64(nil), u.accountIDs...)
 }
 
+// DoWithTLS 覆盖嵌入接口：自动透传路径统一走 DoWithTLS（tlsFPProfileService 未注入时
+// profile 恒为 nil），按接口契约 profile=nil 时行为与 Do 一致，直接委托。
+// 不覆盖的话会调用到嵌入的 nil 接口而 panic（被 handler recover 后表现为 upstream 未被调用）。
+func (u *openAIHTTPPassthroughAuthFailoverUpstream) DoWithTLS(req *http.Request, proxyURL string, accountID int64, accountConcurrency int, _ *tlsfingerprint.Profile) (*http.Response, error) {
+	return u.Do(req, proxyURL, accountID, accountConcurrency)
+}
+
 type openAIHTTPPassthroughSSERateLimitUpstream struct {
 	service.HTTPUpstream
 	mu         sync.Mutex
@@ -2172,6 +2179,9 @@ func TestOpenAIResponses_APIKeyPassthroughPoolAuthFailureRetriesThenSwitchesToHe
 				billingCacheSvc,
 				upstream,
 				&service.DeferredService{},
+				nil,
+				nil,
+				nil,
 				nil,
 				nil,
 				nil,

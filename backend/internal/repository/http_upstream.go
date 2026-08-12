@@ -251,6 +251,12 @@ func (s *httpUpstreamService) DoWithTLS(req *http.Request, proxyURL string, acco
 		return s.Do(req, proxyURL, accountID, accountConcurrency)
 	}
 	applyGrokCLIProxyHeaders(req)
+	// Accept-Encoding 对齐真实客户端（reqwest 声明 gzip, br）。显式设置后 Go
+	// transport 不再自动注入 gzip、也不自动解压，统一由下方的 decompressResponseBody
+	// 处理（gzip/br/zstd/deflate 解压链均已具备）。
+	if req != nil && req.Header != nil && !hasAcceptEncodingHeader(req.Header) {
+		req.Header.Set("Accept-Encoding", "gzip, br")
+	}
 	upstreamProfile := service.HTTPUpstreamProfileDefault
 	if req != nil {
 		upstreamProfile = service.HTTPUpstreamProfileFromContext(req.Context())
@@ -294,6 +300,17 @@ func (s *httpUpstreamService) DoWithTLS(req *http.Request, proxyURL string, acco
 	})
 
 	return resp, nil
+}
+
+// hasAcceptEncodingHeader 判断请求头是否已声明 Accept-Encoding（大小写不敏感，
+// 上游请求可能以下划线 wire casing 形式存在，不能只用 canonical Get）。
+func hasAcceptEncodingHeader(h http.Header) bool {
+	for k := range h {
+		if strings.EqualFold(k, "Accept-Encoding") {
+			return true
+		}
+	}
+	return false
 }
 
 func httpClientForUpstreamRequest(client *http.Client, req *http.Request) *http.Client {
@@ -548,7 +565,7 @@ func (s *httpUpstreamService) getClientEntryWithTLS(proxyURL string, accountID i
 
 	// 创建带 TLS 指纹的 Transport
 	slog.Debug("tls_fingerprint_creating_new_client", "account_id", accountID, "cache_key", cacheKey, "proxy", proxyKey)
-	transport, err := buildUpstreamTransportWithTLSFingerprint(settings, parsedProxy, profile)
+	transport, err := buildUpstreamTransportWithTLSFingerprint(settings, parsedProxy, profile, accountID)
 	if err != nil {
 		s.mu.Unlock()
 		return nil, fmt.Errorf("build TLS fingerprint transport: %w", err)
@@ -1342,66 +1359,157 @@ func enableOpenAIHTTP2KeepAlive(transport *http.Transport) (*http2.Transport, er
 	return h2, nil
 }
 
-// buildUpstreamTransportWithTLSFingerprint 构建带 TLS 指纹伪装的 Transport
-// 使用 utls 库模拟 Claude CLI 的 TLS 指纹
+// buildUpstreamTransportWithTLSFingerprint 构建带 TLS 指纹伪装的 RoundTripper
+// 使用 utls 库模拟真实客户端（Node.js/Claude Code 或 rustls/Codex CLI）的 TLS 指纹
 //
 // 参数:
 //   - settings: 连接池配置
 //   - proxyURL: 代理 URL（nil 表示直连）
 //   - profile: TLS 指纹配置
+//   - accountID: 账号 ID（仅用于日志上下文）
 //
 // 返回:
-//   - *http.Transport: 配置好的 Transport 实例
+//   - http.RoundTripper: 按 ALPN 协商结果在 h2/h1 之间分发的 Transport
 //   - error: 配置错误
 //
+// 协议分发:
+//   - 首个请求先走 h2 探测（uTLS 握手后校验 NegotiatedProtocol），成功后按主机缓存；
+//   - 服务器不支持 h2（ErrH2NotNegotiated）时缓存并回退 h1 transport，
+//     h1 路径的 ALPN 会收敛为仅 http/1.1，避免协议错配。
+//
 // 代理类型处理:
-//   - nil/空: 直连，使用 TLSFingerprintDialer
-//   - http/https: HTTP 代理，使用 HTTPProxyDialer（CONNECT 隧道 + utls 握手）
-//   - socks5: SOCKS5 代理，使用 SOCKS5ProxyDialer（SOCKS5 隧道 + utls 握手）
-func buildUpstreamTransportWithTLSFingerprint(settings poolSettings, proxyURL *url.URL, profile *tlsfingerprint.Profile) (*http.Transport, error) {
-	transport := &http.Transport{
+//   - nil/空: 直连
+//   - http: HTTP 代理（CONNECT 隧道 + utls 握手）
+//   - socks5/socks5h: SOCKS5 代理（SOCKS5 隧道 + utls 握手）
+//   - https: 指纹 dialer 只支持明文 CONNECT，无法对代理本身建立 TLS，
+//     回退为无指纹 transport 并打 Warn 日志（此前为静默回退）
+func buildUpstreamTransportWithTLSFingerprint(settings poolSettings, proxyURL *url.URL, profile *tlsfingerprint.Profile, accountID int64) (http.RoundTripper, error) {
+	h2Dial, h1Dial, err := tlsfingerprint.BuildDialTLSContextFuncs(profile, proxyURL)
+	if err != nil {
+		if errors.Is(err, tlsfingerprint.ErrHTTPSProxyUnsupported) {
+			// https 代理下指纹不生效是部署层面的重要信号，显式告警而非静默回退。
+			// 只记录 proxy host，不记录含凭据的完整 URL。
+			proxyHost := ""
+			if proxyURL != nil {
+				proxyHost = proxyURL.Host
+			}
+			slog.Warn("tls_fingerprint_https_proxy_fallback",
+				"account_id", accountID,
+				"proxy_host", proxyHost,
+				"reason", "https 代理不支持 TLS 指纹握手，回退为无指纹 transport")
+			return buildUpstreamTransport(settings, proxyURL, upstreamProtocolModeDefault)
+		}
+		// 未知代理协议：保持原有行为，仅配置代理、不启用指纹
+		scheme := ""
+		if proxyURL != nil {
+			scheme = proxyURL.Scheme
+		}
+		slog.Debug("tls_fingerprint_transport_unknown_scheme_fallback", "scheme", scheme, "account_id", accountID)
+		transport := &http.Transport{
+			MaxIdleConns:          settings.maxIdleConns,
+			MaxIdleConnsPerHost:   settings.maxIdleConnsPerHost,
+			MaxConnsPerHost:       settings.maxConnsPerHost,
+			IdleConnTimeout:       settings.idleConnTimeout,
+			ResponseHeaderTimeout: settings.responseHeaderTimeout,
+			ForceAttemptHTTP2:     false,
+		}
+		if err := proxyutil.ConfigureTransportProxy(transport, proxyURL); err != nil {
+			return nil, err
+		}
+		return transport, nil
+	}
+
+	slog.Debug("tls_fingerprint_transport_built",
+		"account_id", accountID,
+		"proxy", proxyLogHost(proxyURL),
+		"profile", profile.Name)
+
+	h1 := &http.Transport{
 		MaxIdleConns:          settings.maxIdleConns,
 		MaxIdleConnsPerHost:   settings.maxIdleConnsPerHost,
 		MaxConnsPerHost:       settings.maxConnsPerHost,
 		IdleConnTimeout:       settings.idleConnTimeout,
 		ResponseHeaderTimeout: settings.responseHeaderTimeout,
-		// 禁用默认的 TLS，我们使用自定义的 DialTLSContext
+		// h2 由独立的 http2.Transport 承载，h1 transport 固定 HTTP/1.1
 		ForceAttemptHTTP2: false,
+		DialTLSContext:    h1Dial,
 	}
 
-	// 根据代理类型选择合适的 TLS 指纹 Dialer
+	h2 := &http2.Transport{
+		// http2.Transport 的 DialTLSContext 多一个 *tls.Config 参数，
+		// uTLS 握手自带指纹配置，忽略之
+		DialTLSContext: func(ctx context.Context, network, addr string, _ *tls.Config) (net.Conn, error) {
+			return h2Dial(ctx, network, addr)
+		},
+		// 与 OpenAI h2 路径一致的健康探测：剔除被代理/NAT 静默掐断的死连接
+		ReadIdleTimeout: openAIHTTP2ReadIdleTimeout,
+		PingTimeout:     openAIHTTP2PingTimeout,
+		// h2 指纹对齐说明（已知限制）：x/net/http2 的 SETTINGS 只暴露有限旋钮
+		// （MaxReadFrameSize/HeaderTableSize 默认值已与常见客户端一致），
+		// INITIAL_WINDOW_SIZE 与连接级 WINDOW_UPDATE 无法通过公开 API 调整，
+		// 仍保留 Go 特有值（4MB 流窗口 + 约 1GB 连接窗口增量）。
+	}
+
+	return &tlsFingerprintDispatchTransport{h1: h1, h2: h2}, nil
+}
+
+// proxyLogHost 返回用于日志的代理 host（不含凭据）
+func proxyLogHost(proxyURL *url.URL) string {
 	if proxyURL == nil {
-		// 直连：使用 TLSFingerprintDialer
-		slog.Debug("tls_fingerprint_transport_direct")
-		dialer := tlsfingerprint.NewDialer(profile, nil)
-		transport.DialTLSContext = dialer.DialTLSContext
-	} else {
-		scheme := strings.ToLower(proxyURL.Scheme)
-		switch scheme {
-		case "socks5", "socks5h":
-			// SOCKS5 代理：使用 SOCKS5ProxyDialer
-			slog.Debug("tls_fingerprint_transport_socks5", "proxy", proxyURL.Host)
-			socks5Dialer := tlsfingerprint.NewSOCKS5ProxyDialer(profile, proxyURL)
-			transport.DialTLSContext = socks5Dialer.DialTLSContext
-		case "https":
-			// The fingerprint dialer emits a plaintext CONNECT preface and cannot
-			// establish TLS to an HTTPS proxy. Keep proxy routing via net/http.
-			return buildUpstreamTransport(settings, proxyURL, upstreamProtocolModeDefault)
-		case "http":
-			// HTTP/HTTPS 代理：使用 HTTPProxyDialer（CONNECT 隧道）
-			slog.Debug("tls_fingerprint_transport_http_connect", "proxy", proxyURL.Host)
-			httpDialer := tlsfingerprint.NewHTTPProxyDialer(profile, proxyURL)
-			transport.DialTLSContext = httpDialer.DialTLSContext
-		default:
-			// 未知代理类型，回退到普通代理配置（无 TLS 指纹）
-			slog.Debug("tls_fingerprint_transport_unknown_scheme_fallback", "scheme", scheme)
-			if err := proxyutil.ConfigureTransportProxy(transport, proxyURL); err != nil {
-				return nil, err
-			}
+		return "direct"
+	}
+	return proxyURL.Host
+}
+
+// tlsFingerprintDispatchTransport 按 ALPN 协商结果在 h2/h1 两个 transport 间分发请求。
+// 真实客户端（undici/reqwest）都优先 h2；此前指纹路径强制 HTTP/1.1，
+// 与 Node/rustls 指纹 + Codex UA 形成三重矛盾。
+type tlsFingerprintDispatchTransport struct {
+	h1 http.RoundTripper
+	h2 http.RoundTripper
+	// protos 按目标主机缓存协商出的协议（"h2" 或 "http/1.1"），避免重复探测。
+	// 条目数受上游主机数量约束（通常个位数），无需淘汰。
+	protos sync.Map // map[string]string
+}
+
+// CloseIdleConnections 委托两个底层 transport 关闭空闲连接。
+// http.Client.CloseIdleConnections 通过该接口清理被淘汰客户端的连接，
+// 不实现的话淘汰时 h1/h2 空闲连接会泄漏到各自的 idle timeout。
+func (t *tlsFingerprintDispatchTransport) CloseIdleConnections() {
+	if c, ok := t.h1.(interface{ CloseIdleConnections() }); ok {
+		c.CloseIdleConnections()
+	}
+	if c, ok := t.h2.(interface{ CloseIdleConnections() }); ok {
+		c.CloseIdleConnections()
+	}
+}
+
+func (t *tlsFingerprintDispatchTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	host := ""
+	if req.URL != nil {
+		host = req.URL.Host
+	}
+	if proto, ok := t.protos.Load(host); ok {
+		if proto == "h2" {
+			return t.h2.RoundTrip(req)
 		}
+		return t.h1.RoundTrip(req)
 	}
 
-	return transport, nil
+	// 未探测过的主机：先试 h2
+	resp, err := t.h2.RoundTrip(req)
+	if err == nil {
+		t.protos.Store(host, "h2")
+		return resp, nil
+	}
+	if errors.Is(err, tlsfingerprint.ErrH2NotNegotiated) {
+		// 服务器不支持 h2。ErrH2NotNegotiated 只可能在拨号阶段产生，
+		// 此时请求体尚未写出，用 h1 重试同一请求是安全的。
+		slog.Debug("tls_fingerprint_h2_fallback_h1", "host", host)
+		t.protos.Store(host, "http/1.1")
+		return t.h1.RoundTrip(req)
+	}
+	return nil, err
 }
 
 // trackedBody 带跟踪功能的响应体包装器
