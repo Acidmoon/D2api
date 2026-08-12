@@ -14,9 +14,11 @@ import (
 	"github.com/dgraph-io/ristretto"
 )
 
-// v18: merged fork v16 (primary-group snapshots + media pricing fields) with
-// upstream v17 (group Live gate + reasoning effort policy fields).
-const apiKeyAuthSnapshotVersion = 18
+// v19: merged fork v18 (primary-group snapshots + media pricing fields +
+// group Live gate + reasoning effort policy fields) with upstream v19
+// (group search/audio/video_model_prices billing fields), forcing refresh of
+// snapshots that predate either side's new fields.
+const apiKeyAuthSnapshotVersion = 19
 
 type apiKeyAuthCacheConfig struct {
 	l1Size        int
@@ -475,7 +477,12 @@ func snapshotGroupFromService(group *Group) *APIKeyAuthGroupSnapshot {
 		VideoPrice480P:                  group.VideoPrice480P,
 		VideoPrice720P:                  group.VideoPrice720P,
 		VideoPrice1080P:                 group.VideoPrice1080P,
+		VideoModelPrices:                NormalizeVideoModelPrices(group.VideoModelPrices),
 		WebSearchPricePerCall:           group.WebSearchPricePerCall,
+		SearchPricePer1k:                group.SearchPricePer1k,
+		AudioRealtimePricePerMin:        group.AudioRealtimePricePerMin,
+		AudioTTSPricePerMillionChars:    group.AudioTTSPricePerMillionChars,
+		AudioSTTPricePerHour:            group.AudioSTTPricePerHour,
 		ClaudeCodeOnly:                  group.ClaudeCodeOnly,
 		FallbackGroupID:                 group.FallbackGroupID,
 		FallbackGroupIDOnInvalidRequest: group.FallbackGroupIDOnInvalidRequest,
@@ -495,6 +502,9 @@ func snapshotGroupFromService(group *Group) *APIKeyAuthGroupSnapshot {
 		PeakStart:                       group.PeakStart,
 		PeakEnd:                         group.PeakEnd,
 		PeakRateMultiplier:              group.PeakRateMultiplier,
+		ProfitControlEnabled:            group.ProfitControlEnabled,
+		ProfitMinMargin:                 group.ProfitMinMargin,
+		ProfitSafetyBuffer:              group.ProfitSafetyBuffer,
 	}
 }
 
@@ -526,7 +536,12 @@ func snapshotGroupToService(group *APIKeyAuthGroupSnapshot) *Group {
 		VideoPrice480P:                  group.VideoPrice480P,
 		VideoPrice720P:                  group.VideoPrice720P,
 		VideoPrice1080P:                 group.VideoPrice1080P,
+		VideoModelPrices:                NormalizeVideoModelPrices(group.VideoModelPrices),
 		WebSearchPricePerCall:           group.WebSearchPricePerCall,
+		SearchPricePer1k:                group.SearchPricePer1k,
+		AudioRealtimePricePerMin:        group.AudioRealtimePricePerMin,
+		AudioTTSPricePerMillionChars:    group.AudioTTSPricePerMillionChars,
+		AudioSTTPricePerHour:            group.AudioSTTPricePerHour,
 		ClaudeCodeOnly:                  group.ClaudeCodeOnly,
 		FallbackGroupID:                 group.FallbackGroupID,
 		FallbackGroupIDOnInvalidRequest: group.FallbackGroupIDOnInvalidRequest,
@@ -546,5 +561,8 @@ func snapshotGroupToService(group *APIKeyAuthGroupSnapshot) *Group {
 		PeakStart:                       group.PeakStart,
 		PeakEnd:                         group.PeakEnd,
 		PeakRateMultiplier:              group.PeakRateMultiplier,
+		ProfitControlEnabled:            group.ProfitControlEnabled,
+		ProfitMinMargin:                 group.ProfitMinMargin,
+		ProfitSafetyBuffer:              group.ProfitSafetyBuffer,
 	}
 }

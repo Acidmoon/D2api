@@ -76,6 +76,13 @@ func (r *userSubscriptionRepository) GetByID(ctx context.Context, id int64) (*se
 	return r.getSubscriptionBalanceByID(ctx, id)
 }
 
+// GetByIDForUpdate 供上游续期流程在事务上下文中读取订阅。
+// 钱包计费模式下订阅数据以 subscription_balances 表为准（原生 SQL 路径），
+// 因此这里与 GetByID 使用同一数据源，避免读到 legacy user_subscriptions 快照的旧值。
+func (r *userSubscriptionRepository) GetByIDForUpdate(ctx context.Context, id int64) (*service.UserSubscription, error) {
+	return r.getSubscriptionBalanceByID(ctx, id)
+}
+
 // GetByIDIncludeDeleted returns wallet history for administrative recovery.
 func (r *userSubscriptionRepository) GetByIDIncludeDeleted(ctx context.Context, id int64) (*service.UserSubscription, error) {
 	subs, err := r.listSubscriptionBalances(ctx, "WHERE sb.id = $1", []any{id}, "", 1, 0)
@@ -293,21 +300,22 @@ func (r *userSubscriptionRepository) UpdateNotes(ctx context.Context, subscripti
 	return r.syncLegacySubscriptionSnapshot(ctx, subscriptionID)
 }
 
-func (r *userSubscriptionRepository) ActivateWindows(ctx context.Context, id int64, start time.Time) error {
+func (r *userSubscriptionRepository) ActivateWindows(ctx context.Context, id int64, dailyStart, periodicStart time.Time) error {
 	exec := r.subscriptionBalanceExec()
 	if exec == nil {
 		return errors.New("subscription balance repository db is nil")
 	}
 	// 仅在三个窗口均未初始化时设置（首次激活语义，来自上游改进），
 	// 避免后续请求覆盖已被其他请求推进的窗口起点。
+	// 上游将日窗口与周/月窗口起点拆分：日窗口用 dailyStart，周/月窗口用 periodicStart。
 	result, err := exec.ExecContext(ctx, `
 		UPDATE subscription_balances
-		SET daily_window_start = $1, weekly_window_start = $1, monthly_window_start = $1, updated_at = NOW()
-		WHERE id = $2 AND deleted_at IS NULL
+		SET daily_window_start = $1, weekly_window_start = $2, monthly_window_start = $2, updated_at = NOW()
+		WHERE id = $3 AND deleted_at IS NULL
 			AND daily_window_start IS NULL
 			AND weekly_window_start IS NULL
 			AND monthly_window_start IS NULL
-	`, start, id)
+	`, dailyStart, periodicStart, id)
 	if err != nil {
 		return err
 	}
@@ -329,18 +337,19 @@ func (r *userSubscriptionRepository) ActivateWindows(ctx context.Context, id int
 	return r.syncLegacySubscriptionSnapshot(ctx, id)
 }
 
-func (r *userSubscriptionRepository) ResetUsageWindows(ctx context.Context, id int64, resetDaily, resetWeekly, resetMonthly bool, newWindowStart time.Time) error {
+func (r *userSubscriptionRepository) ResetUsageWindows(ctx context.Context, id int64, resetDaily, resetWeekly, resetMonthly bool, dailyStart, periodicStart time.Time) error {
+	// 日窗口起点使用 dailyStart，周/月窗口起点使用 periodicStart（上游拆分语义）。
 	if err := r.execSubscriptionBalanceUpdate(ctx, `
 		UPDATE subscription_balances
 		SET daily_usage_usd = CASE WHEN $1 THEN 0 ELSE daily_usage_usd END,
 			daily_window_start = CASE WHEN $1 THEN $4 ELSE daily_window_start END,
 			weekly_usage_usd = CASE WHEN $2 THEN 0 ELSE weekly_usage_usd END,
-			weekly_window_start = CASE WHEN $2 THEN $4 ELSE weekly_window_start END,
+			weekly_window_start = CASE WHEN $2 THEN $5 ELSE weekly_window_start END,
 			monthly_usage_usd = CASE WHEN $3 THEN 0 ELSE monthly_usage_usd END,
-			monthly_window_start = CASE WHEN $3 THEN $4 ELSE monthly_window_start END,
+			monthly_window_start = CASE WHEN $3 THEN $5 ELSE monthly_window_start END,
 			updated_at = NOW()
-		WHERE id = $5 AND deleted_at IS NULL
-	`, resetDaily, resetWeekly, resetMonthly, newWindowStart, id); err != nil {
+		WHERE id = $6 AND deleted_at IS NULL
+	`, resetDaily, resetWeekly, resetMonthly, dailyStart, periodicStart, id); err != nil {
 		return err
 	}
 	return r.syncLegacySubscriptionSnapshot(ctx, id)

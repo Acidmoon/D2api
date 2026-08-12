@@ -29,7 +29,7 @@
         </div>
 
         <!-- Body -->
-        <div class="min-h-0 flex-1 overflow-y-auto">
+        <div ref="modalBodyRef" class="min-h-0 flex-1 overflow-y-auto">
           <slot></slot>
         </div>
 
@@ -43,7 +43,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import {
   DialogContent,
   DialogOverlay,
@@ -55,6 +55,9 @@ import { X } from 'lucide-vue-next'
 import Dialog from '@/components/ui/dialog/Dialog.vue'
 import DialogFooter from '@/components/ui/dialog/DialogFooter.vue'
 import { cn } from '@/lib/utils'
+
+// Body scroll container; reset to top each time the dialog opens (ported from upstream BaseDialog)
+const modalBodyRef = ref<HTMLElement | null>(null)
 
 type DialogWidth = 'narrow' | 'normal' | 'wide' | 'extra-wide' | 'full'
 
@@ -118,4 +121,17 @@ const onEscapeKeyDown = (event: Event) => {
     event.preventDefault()
   }
 }
+
+// Reset body scroll to top each time the dialog opens (ported from upstream BaseDialog;
+// focus management and body scroll locking are handled by reka-ui itself)
+watch(
+  () => props.show,
+  async (isOpen) => {
+    if (!isOpen) return
+    await nextTick()
+    if (modalBodyRef.value) {
+      modalBodyRef.value.scrollTop = 0
+    }
+  }
+)
 </script>

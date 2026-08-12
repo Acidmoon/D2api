@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Wei-Shaw/sub2api/internal/pkg/openai"
 	"github.com/tidwall/gjson"
 )
 
@@ -231,7 +232,7 @@ func TestCodexFingerprintHeaders(t *testing.T) {
 	if got := h["Chatgpt-Account-Id"]; got != "acc-123" {
 		t.Fatalf("chatgpt-account-id = %q", got)
 	}
-	if got := h["Originator"]; got != "codex_cli_rs" {
+	if got := h["Originator"]; got != openai.CodexDefaultOriginator {
 		t.Fatalf("originator = %q", got)
 	}
 	if got := h["User-Agent"]; got != codexCLIUserAgent {

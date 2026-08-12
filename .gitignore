@@ -145,3 +145,6 @@ aicodex
 output/
 .codegraph/
 .reasonix/
+
+# Vitest / Vite cache at repo root
+.vite/
