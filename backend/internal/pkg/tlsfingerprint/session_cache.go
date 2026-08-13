@@ -74,8 +74,13 @@ func (c *lruSessionCache) Get(key string) (*utls.ClientSessionState, bool) {
 	if !ok {
 		return nil, false
 	}
+	// comma-ok：list 元素只由本包写入，类型恒为 *lruSessionEntry；断言失败视为未命中
+	entry, ok := el.Value.(*lruSessionEntry)
+	if !ok {
+		return nil, false
+	}
 	c.lruList.MoveToFront(el)
-	return el.Value.(*lruSessionEntry).state, true
+	return entry.state, true
 }
 
 // Put 写入会话；cs 为 nil 时按接口约定删除该条目。
@@ -92,8 +97,10 @@ func (c *lruSessionCache) Put(key string, cs *utls.ClientSessionState) {
 	}
 
 	if el, ok := c.items[key]; ok {
-		el.Value.(*lruSessionEntry).state = cs
-		c.lruList.MoveToFront(el)
+		if entry, ok := el.Value.(*lruSessionEntry); ok {
+			entry.state = cs
+			c.lruList.MoveToFront(el)
+		}
 		return
 	}
 
@@ -101,7 +108,9 @@ func (c *lruSessionCache) Put(key string, cs *utls.ClientSessionState) {
 	if c.lruList.Len() > c.cap {
 		// 淘汰最久未使用的条目
 		if back := c.lruList.Back(); back != nil {
-			delete(c.items, back.Value.(*lruSessionEntry).key)
+			if entry, ok := back.Value.(*lruSessionEntry); ok {
+				delete(c.items, entry.key)
+			}
 			c.lruList.Remove(back)
 		}
 	}
