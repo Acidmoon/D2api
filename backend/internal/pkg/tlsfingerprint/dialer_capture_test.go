@@ -129,7 +129,9 @@ func TestDialerAgainstCaptureServer(t *testing.T) {
 			}
 			effectiveALPN := tc.profile.ALPNProtocols
 			if len(effectiveALPN) == 0 {
-				effectiveALPN = []string{"http/1.1"}
+				// 内置默认 ALPN 已升级为 h2 优先（真实 undici/reqwest 均声明 h2+http/1.1），
+				// 与 dialer.go 的 defaultALPNProtocols 保持一致
+				effectiveALPN = defaultALPNProtocols
 			}
 			effectiveVersions := tc.profile.SupportedVersions
 			if len(effectiveVersions) == 0 {
@@ -350,8 +352,10 @@ func TestBuildClientHelloSpecNewFields(t *testing.T) {
 	for _, ext := range specDefault.Extensions {
 		switch e := ext.(type) {
 		case *utls.ALPNExtension:
-			if len(e.AlpnProtocols) != 1 || e.AlpnProtocols[0] != "http/1.1" {
-				t.Errorf("default ALPN: got %v, want [http/1.1]", e.AlpnProtocols)
+			// 默认 ALPN 已升级为 h2 优先（h2/http1.1 分发见 repository 的
+			// tlsFingerprintDispatchTransport），旧期望 [http/1.1] 已过时
+			if len(e.AlpnProtocols) != 2 || e.AlpnProtocols[0] != "h2" || e.AlpnProtocols[1] != "http/1.1" {
+				t.Errorf("default ALPN: got %v, want [h2 http/1.1]", e.AlpnProtocols)
 			}
 		case *utls.SupportedVersionsExtension:
 			if len(e.Versions) != 2 {
