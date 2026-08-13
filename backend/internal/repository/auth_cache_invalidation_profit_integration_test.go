@@ -79,9 +79,10 @@ func TestAuthCacheInvalidationTrigger_ProfitControlColumns(t *testing.T) {
 	require.NoError(t, err)
 	require.Zero(t, count(), "利润字段无实际变化的 UPDATE 不得入队")
 
+	// 注意：上游用例里的 subscription_type = 'subscription' 已移除——迁移 174 的
+	// CHECK 约束（groups_subscription_type_check）要求该列恒为 'standard'，非法写不入。
 	for name, update := range map[string]string{
 		"platform":             "platform = 'anthropic'",
-		"subscription_type":    "subscription_type = 'subscription'",
 		"rate_multiplier":      "rate_multiplier = 0.9",
 		"peak_rate_enabled":    "peak_rate_enabled = true",
 		"peak_start":           "peak_start = '08:00'",
