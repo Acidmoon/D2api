@@ -14,11 +14,10 @@ import (
 	"github.com/dgraph-io/ristretto"
 )
 
-// v19: merged fork v18 (primary-group snapshots + media pricing fields +
-// group Live gate + reasoning effort policy fields) with upstream v19
-// (group search/audio/video_model_prices billing fields), forcing refresh of
-// snapshots that predate either side's new fields.
-const apiKeyAuthSnapshotVersion = 19
+// v20: group long-context switch + per-model pricing. v19 snapshots zeroed
+// LongContextPricingEnabled to false and dropped ModelPricing, which silently
+// collapsed channel token tiers to the first band on the auth hot path.
+const apiKeyAuthSnapshotVersion = 20
 
 type apiKeyAuthCacheConfig struct {
 	l1Size        int
@@ -483,6 +482,8 @@ func snapshotGroupFromService(group *Group) *APIKeyAuthGroupSnapshot {
 		AudioRealtimePricePerMin:        group.AudioRealtimePricePerMin,
 		AudioTTSPricePerMillionChars:    group.AudioTTSPricePerMillionChars,
 		AudioSTTPricePerHour:            group.AudioSTTPricePerHour,
+		LongContextPricingEnabled:       group.LongContextPricingEnabled,
+		ModelPricing:                    cloneGroupModelPricing(group.ModelPricing),
 		ClaudeCodeOnly:                  group.ClaudeCodeOnly,
 		FallbackGroupID:                 group.FallbackGroupID,
 		FallbackGroupIDOnInvalidRequest: group.FallbackGroupIDOnInvalidRequest,
@@ -542,6 +543,8 @@ func snapshotGroupToService(group *APIKeyAuthGroupSnapshot) *Group {
 		AudioRealtimePricePerMin:        group.AudioRealtimePricePerMin,
 		AudioTTSPricePerMillionChars:    group.AudioTTSPricePerMillionChars,
 		AudioSTTPricePerHour:            group.AudioSTTPricePerHour,
+		LongContextPricingEnabled:       group.LongContextPricingEnabled,
+		ModelPricing:                    cloneGroupModelPricing(group.ModelPricing),
 		ClaudeCodeOnly:                  group.ClaudeCodeOnly,
 		FallbackGroupID:                 group.FallbackGroupID,
 		FallbackGroupIDOnInvalidRequest: group.FallbackGroupIDOnInvalidRequest,

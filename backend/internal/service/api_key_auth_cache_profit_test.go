@@ -53,7 +53,7 @@ func TestAPIKeyAuthSnapshotProfitControlRoundtrip(t *testing.T) {
 	snapshot := svc.snapshotFromAPIKey(context.Background(), apiKey)
 	require.NotNil(t, snapshot)
 	require.Equal(t, apiKeyAuthSnapshotVersion, snapshot.Version)
-	require.Equal(t, 19, snapshot.Version, "v19 起认证快照携带 search/audio/video_model_prices 计费字段")
+	require.Equal(t, 20, snapshot.Version, "v20 起认证快照携带分组逐模型定价与长上下文开关")
 
 	// 模拟 L2 缓存的完整 JSON 往返（与 apiKeyCache.SetAuthCache/GetAuthCache 同构）。
 	payload, err := json.Marshal(&APIKeyAuthCacheEntry{Snapshot: snapshot})
@@ -77,6 +77,44 @@ func TestAPIKeyAuthSnapshotProfitControlRoundtrip(t *testing.T) {
 	gate := gwSvc.resolveOpenAIProfitControlGate(ctx, materialized.GroupID)
 	require.NotNil(t, gate, "还原后的认证分组必须能装门（投影漏列时本断言最先失败）")
 	require.InDelta(t, 0.06*(1-0.25), gate.threshold, 1e-12)
+}
+
+func TestAPIKeyAuthSnapshotGroupModelPricingRoundtrip(t *testing.T) {
+	svc := &APIKeyService{}
+	inputPrice := 3.0
+	outputPrice := 15.0
+	apiKey := profitAuthTestAPIKey()
+	apiKey.Group.LongContextPricingEnabled = true
+	apiKey.Group.ModelPricing = []ChannelModelPricing{{
+		Platform:    PlatformOpenAI,
+		Models:      []string{"gpt-5.4"},
+		BillingMode: "token",
+		InputPrice:  &inputPrice,
+		OutputPrice: &outputPrice,
+	}}
+
+	snapshot := svc.snapshotFromAPIKey(context.Background(), apiKey)
+	require.NotNil(t, snapshot)
+	require.Equal(t, apiKeyAuthSnapshotVersion, snapshot.Version)
+	require.True(t, snapshot.Group.LongContextPricingEnabled)
+	require.Len(t, snapshot.Group.ModelPricing, 1)
+
+	payload, err := json.Marshal(&APIKeyAuthCacheEntry{Snapshot: snapshot})
+	require.NoError(t, err)
+	var restored APIKeyAuthCacheEntry
+	require.NoError(t, json.Unmarshal(payload, &restored))
+
+	materialized, used, err := svc.applyAuthCacheEntry(apiKey.Key, &restored)
+	require.NoError(t, err)
+	require.True(t, used)
+	require.NotNil(t, materialized.Group)
+	require.True(t, materialized.Group.LongContextPricingEnabled)
+	require.Len(t, materialized.Group.ModelPricing, 1)
+	require.Equal(t, []string{"gpt-5.4"}, materialized.Group.ModelPricing[0].Models)
+	require.NotNil(t, materialized.Group.ModelPricing[0].InputPrice)
+	require.InDelta(t, 3.0, *materialized.Group.ModelPricing[0].InputPrice, 1e-12)
+	require.NotNil(t, materialized.Group.ModelPricing[0].OutputPrice)
+	require.InDelta(t, 15.0, *materialized.Group.ModelPricing[0].OutputPrice, 1e-12)
 }
 
 // 旧版本快照（v16 及更早，无利润字段保真保证）必须被淘汰回源，不得复用。

@@ -107,6 +107,9 @@ type CreateGroupRequest struct {
 	MonthlyLimitUSD  optionalLimitField `json:"monthly_limit_usd"`
 	// 分组级充值倍率覆盖；nil 表示不设置，非 nil 必须 > 0
 	RechargeMultiplier *float64 `json:"recharge_multiplier" binding:"omitempty,gt=0"`
+	// 长上下文阶梯价开关；nil 表示缺省按 true（与迁移/schema 默认一致）。
+	LongContextPricingEnabled *bool                         `json:"long_context_pricing_enabled"`
+	ModelPricing              []service.ChannelModelPricing `json:"model_pricing"`
 	// 图片生成计费配置（antigravity 和 gemini 平台使用，负数表示清除配置）
 	AllowImageGeneration            bool                          `json:"allow_image_generation"`
 	AllowBatchImageGeneration       bool                          `json:"allow_batch_image_generation"`
@@ -178,6 +181,9 @@ type UpdateGroupRequest struct {
 	MonthlyLimitUSD  optionalLimitField `json:"monthly_limit_usd"`
 	// 分组级充值倍率覆盖；缺省表示不修改，null/空字符串表示清除（置 NULL），数值必须 > 0
 	RechargeMultiplier optionalLimitField `json:"recharge_multiplier"`
+	// 长上下文阶梯价开关；nil 表示不修改。
+	LongContextPricingEnabled *bool                          `json:"long_context_pricing_enabled"`
+	ModelPricing              *[]service.ChannelModelPricing `json:"model_pricing"`
 	// 图片生成计费配置（antigravity 和 gemini 平台使用，负数表示清除配置）
 	AllowImageGeneration            *bool                         `json:"allow_image_generation"`
 	AllowBatchImageGeneration       *bool                         `json:"allow_batch_image_generation"`
@@ -506,6 +512,11 @@ func (h *GroupHandler) Create(c *gin.Context) {
 		return
 	}
 
+	longContextPricingEnabled := true
+	if req.LongContextPricingEnabled != nil {
+		longContextPricingEnabled = *req.LongContextPricingEnabled
+	}
+
 	group, err := h.adminService.CreateGroup(c.Request.Context(), &service.CreateGroupInput{
 		Name:                            req.Name,
 		Description:                     req.Description,
@@ -517,6 +528,8 @@ func (h *GroupHandler) Create(c *gin.Context) {
 		WeeklyLimitUSD:                  req.WeeklyLimitUSD.ToServiceInput(),
 		MonthlyLimitUSD:                 req.MonthlyLimitUSD.ToServiceInput(),
 		RechargeMultiplier:              req.RechargeMultiplier,
+		LongContextPricingEnabled:       longContextPricingEnabled,
+		ModelPricing:                    req.ModelPricing,
 		AllowImageGeneration:            req.AllowImageGeneration,
 		AllowBatchImageGeneration:       req.AllowBatchImageGeneration,
 		ImageRateIndependent:            req.ImageRateIndependent,
@@ -646,6 +659,8 @@ func (h *GroupHandler) Update(c *gin.Context) {
 		WeeklyLimitUSD:                  req.WeeklyLimitUSD.ToServiceInput(),
 		MonthlyLimitUSD:                 req.MonthlyLimitUSD.ToServiceInput(),
 		RechargeMultiplier:              req.RechargeMultiplier.ToServiceInput(),
+		LongContextPricingEnabled:       req.LongContextPricingEnabled,
+		ModelPricing:                    req.ModelPricing,
 		AllowImageGeneration:            req.AllowImageGeneration,
 		AllowBatchImageGeneration:       req.AllowBatchImageGeneration,
 		ImageRateIndependent:            req.ImageRateIndependent,

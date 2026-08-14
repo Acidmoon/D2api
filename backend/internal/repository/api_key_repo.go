@@ -3,8 +3,10 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -200,6 +202,8 @@ func (r *apiKeyRepository) GetByKeyForAuth(ctx context.Context, key string) (*se
 				group.FieldAudioRealtimePricePerMin,
 				group.FieldAudioTtsPricePerMillionChars,
 				group.FieldAudioSttPricePerHour,
+				group.FieldLongContextPricingEnabled,
+				group.FieldModelPricing,
 				group.FieldClaudeCodeOnly,
 				group.FieldFallbackGroupID,
 				group.FieldFallbackGroupIDOnInvalidRequest,
@@ -228,6 +232,8 @@ func (r *apiKeyRepository) GetByKeyForAuth(ctx context.Context, key string) (*se
 			)
 		}).
 		WithPrimaryGroup(func(q *dbent.GroupQuery) {
+			// 主分组可被 selectAPIKeyGroupForRequest 提升为 apiKey.Group，
+			// 投影必须与 WithGroup 对齐，否则热路径计费/调度会读到零值。
 			q.Select(
 				group.FieldID,
 				group.FieldName,
@@ -240,11 +246,25 @@ func (r *apiKeyRepository) GetByKeyForAuth(ctx context.Context, key string) (*se
 				group.FieldWeeklyLimitUsd,
 				group.FieldMonthlyLimitUsd,
 				group.FieldAllowImageGeneration,
+				group.FieldAllowBatchImageGeneration,
 				group.FieldImageRateIndependent,
 				group.FieldImageRateMultiplier,
 				group.FieldImagePrice1k,
 				group.FieldImagePrice2k,
 				group.FieldImagePrice4k,
+				group.FieldVideoRateIndependent,
+				group.FieldVideoRateMultiplier,
+				group.FieldVideoPrice480p,
+				group.FieldVideoPrice720p,
+				group.FieldVideoPrice1080p,
+				group.FieldVideoModelPrices,
+				group.FieldWebSearchPricePerCall,
+				group.FieldSearchPricePer1k,
+				group.FieldAudioRealtimePricePerMin,
+				group.FieldAudioTtsPricePerMillionChars,
+				group.FieldAudioSttPricePerHour,
+				group.FieldLongContextPricingEnabled,
+				group.FieldModelPricing,
 				group.FieldClaudeCodeOnly,
 				group.FieldFallbackGroupID,
 				group.FieldFallbackGroupIDOnInvalidRequest,
@@ -253,10 +273,20 @@ func (r *apiKeyRepository) GetByKeyForAuth(ctx context.Context, key string) (*se
 				group.FieldMcpXMLInject,
 				group.FieldSupportedModelScopes,
 				group.FieldAllowMessagesDispatch,
+				group.FieldAllowLive,
 				group.FieldDefaultMappedModel,
 				group.FieldMessagesDispatchModelConfig,
 				group.FieldModelsListConfig,
 				group.FieldRpmLimit,
+				group.FieldMaxReasoningEffort,
+				group.FieldReasoningEffortMappings,
+				group.FieldPeakRateEnabled,
+				group.FieldPeakStart,
+				group.FieldPeakEnd,
+				group.FieldPeakRateMultiplier,
+				group.FieldProfitControlEnabled,
+				group.FieldProfitMinMargin,
+				group.FieldProfitSafetyBuffer,
 			)
 		}).
 		Only(ctx)
@@ -1021,6 +1051,14 @@ func groupEntityToService(g *dbent.Group) *service.Group {
 	if g == nil {
 		return nil
 	}
+	var modelPricing []service.ChannelModelPricing
+	if len(g.ModelPricing) > 0 {
+		if err := json.Unmarshal(g.ModelPricing, &modelPricing); err != nil {
+			slog.Warn("group model_pricing unmarshal failed; falling back to channel/builtin pricing",
+				"group_id", g.ID, "error", err)
+			modelPricing = nil
+		}
+	}
 	return &service.Group{
 		ID:                              g.ID,
 		Name:                            g.Name,
@@ -1056,6 +1094,8 @@ func groupEntityToService(g *dbent.Group) *service.Group {
 		AudioRealtimePricePerMin:        g.AudioRealtimePricePerMin,
 		AudioTTSPricePerMillionChars:    g.AudioTtsPricePerMillionChars,
 		AudioSTTPricePerHour:            g.AudioSttPricePerHour,
+		LongContextPricingEnabled:       g.LongContextPricingEnabled,
+		ModelPricing:                    modelPricing,
 		DefaultValidityDays:             g.DefaultValidityDays,
 		ClaudeCodeOnly:                  g.ClaudeCodeOnly,
 		FallbackGroupID:                 g.FallbackGroupID,

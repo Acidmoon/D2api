@@ -290,6 +290,7 @@ func TestAPIContracts(t *testing.T) {
 						"audio_stt_price_per_hour": null,
 						"audio_realtime_price_per_min": null,
 						"recharge_multiplier": null,
+						"long_context_pricing_enabled": false,
 						"created_at": "2025-01-02T03:04:05Z",
 						"updated_at": "2025-01-02T03:04:05Z"
 					},
@@ -429,6 +430,7 @@ func TestAPIContracts(t *testing.T) {
 						"daily_limit_usd": null,
 						"weekly_limit_usd": null,
 						"monthly_limit_usd": null,
+						"long_context_pricing_enabled": false,
 						"image_price_1k": null,
 						"image_price_2k": null,
 						"image_price_4k": null,
@@ -1535,7 +1537,7 @@ func newContractDeps(t *testing.T) *contractDeps {
 	settingRepo := newStubSettingRepo()
 	settingService := service.NewSettingService(settingRepo, cfg)
 
-	adminService := service.NewAdminService(userRepo, groupRepo, &accountRepo, proxyRepo, apiKeyRepo, redeemRepo, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
+	adminService := service.NewAdminService(userRepo, groupRepo, &accountRepo, proxyRepo, apiKeyRepo, redeemRepo, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 	authHandler := handler.NewAuthHandler(cfg, nil, userService, settingService, nil, redeemService, nil, nil)
 	apiKeyHandler := handler.NewAPIKeyHandler(apiKeyService)
 	usageHandler := handler.NewUsageHandler(usageService, apiKeyService, nil, nil)

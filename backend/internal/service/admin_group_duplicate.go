@@ -93,6 +93,19 @@ func cloneGroupMessagesDispatchModelConfig(value OpenAIMessagesDispatchModelConf
 	return cloned
 }
 
+func cloneGroupModelPricing(value []ChannelModelPricing) []ChannelModelPricing {
+	if value == nil {
+		return nil
+	}
+	cloned := make([]ChannelModelPricing, len(value))
+	for i := range value {
+		cloned[i] = value[i].Clone()
+		cloned[i].ID = 0
+		cloned[i].ChannelID = 0
+	}
+	return cloned
+}
+
 func cloneGroupForDuplicate(source *Group, operationID string) *Group {
 	return &Group{
 		Name:                            duplicateGroupName(source.Name, 1),
@@ -113,6 +126,9 @@ func cloneGroupForDuplicate(source *Group, operationID string) *Group {
 		DailyLimitUSD:                   cloneGroupValuePointer(source.DailyLimitUSD),
 		WeeklyLimitUSD:                  cloneGroupValuePointer(source.WeeklyLimitUSD),
 		MonthlyLimitUSD:                 cloneGroupValuePointer(source.MonthlyLimitUSD),
+		RechargeMultiplier:              cloneGroupValuePointer(source.RechargeMultiplier),
+		LongContextPricingEnabled:       source.LongContextPricingEnabled,
+		ModelPricing:                    cloneGroupModelPricing(source.ModelPricing),
 		DefaultValidityDays:             source.DefaultValidityDays,
 		AllowImageGeneration:            source.AllowImageGeneration,
 		AllowBatchImageGeneration:       source.AllowBatchImageGeneration,
@@ -153,6 +169,7 @@ func cloneGroupForDuplicate(source *Group, operationID string) *Group {
 			Models:  append([]string(nil), source.ModelsListConfig.Models...),
 		},
 		RPMLimit:                source.RPMLimit,
+		UnavailableAlertEnabled: source.UnavailableAlertEnabled,
 		MaxReasoningEffort:      source.MaxReasoningEffort,
 		ReasoningEffortMappings: append([]ReasoningEffortMapping(nil), source.ReasoningEffortMappings...),
 	}
