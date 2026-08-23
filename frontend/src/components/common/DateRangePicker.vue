@@ -451,6 +451,9 @@ onUnmounted(() => {
 .date-picker-input::-webkit-calendar-picker-indicator:hover {
   opacity: 1;
 }
+.dark .date-picker-input::-webkit-calendar-picker-indicator {
+  filter: none;
+}
 
 .date-picker-separator {
   display: flex;

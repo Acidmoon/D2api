@@ -104,7 +104,8 @@
     color-scheme: light;
   }
 
-  html.dark {
+  html.dark,
+  .dark {
     color-scheme: dark;
   }
 

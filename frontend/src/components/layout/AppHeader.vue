@@ -183,8 +183,8 @@
               <div class="text-sm font-medium text-foreground">
                 {{ displayName }}
               </div>
-              <div class="text-xs capitalize text-muted-foreground">
-                {{ user.role }}
+              <div class="text-xs text-gray-500 dark:text-dark-400">
+                {{ t('admin.users.roles.' + user.role) }}
               </div>
             </div>
             <Icon name="chevronDown" size="sm" class="hidden text-muted-foreground md:block" />

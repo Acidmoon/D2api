@@ -489,7 +489,7 @@ func (s *FingerprintService) resolveExternalTarget(params FingerprintAuditParams
 	if baseURL == "" || apiKey == "" || provider == "" {
 		return nil, FingerprintReportTarget{}, ErrFingerprintMissingExternal
 	}
-	if !isSupportedProvider(provider) {
+	if err := validateProvider(provider); err != nil {
 		return nil, FingerprintReportTarget{}, ErrFingerprintInvalidProvider
 	}
 	if err := validateAPIMode(provider, params.APIMode); err != nil {
