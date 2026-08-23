@@ -733,12 +733,12 @@ func anonymizeLeaderboardName(email string, userID int64) string {
 		local := email[:at]
 		domain := email[at+1:]
 		var b strings.Builder
-		b.WriteByte(local[0])
-		b.WriteString("***@")
-		b.WriteByte(domain[0])
-		b.WriteString("***")
+		_, _ = b.WriteString(local[:1])
+		_, _ = b.WriteString("***@")
+		_, _ = b.WriteString(domain[:1])
+		_, _ = b.WriteString("***")
 		if dot := strings.LastIndexByte(domain, '.'); dot > 0 {
-			b.WriteString(domain[dot:])
+			_, _ = b.WriteString(domain[dot:])
 		}
 		return b.String()
 	}

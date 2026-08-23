@@ -911,7 +911,10 @@ func TestDedupWindowValidation(t *testing.T) {
 
 	// nil 指针不校验（省略字段保留存储现值）。
 	req := promptAuditUpdateRequest(1, 1, "")
-	require.NoError(t, validateUpdateConfigRequest(req))// Regression coverage for issue #5732: refreshLoop reloads every 5s, so
+	require.NoError(t, validateUpdateConfigRequest(req))
+}
+
+// Regression coverage for issue #5732: refreshLoop reloads every 5s, so
 // config_loaded must stay a change signal instead of ~17k identical lines a
 // day, while still reporting the first load, real config changes and a
 // recovery from a failed reload.
