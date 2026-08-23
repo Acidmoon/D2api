@@ -233,6 +233,7 @@ func (s *SettingService) GetPublicSettings(ctx context.Context) (*PublicSettings
 		SettingKeyChannelMonitorHideThroughput,
 		SettingKeyChannelMonitorShowQuota,
 		SettingKeyAvailableChannelsEnabled,
+		SettingKeyLeaderboardEnabled,
 		SettingKeyModelPlazaEnabled,
 		SettingKeyModelPlazaRequireAuth,
 		SettingKeyAffiliateEnabled,
@@ -359,6 +360,7 @@ func (s *SettingService) GetPublicSettings(ctx context.Context) (*PublicSettings
 		ChannelMonitorShowQuota:              settings[SettingKeyChannelMonitorShowQuota] == "true",
 
 		AvailableChannelsEnabled: settings[SettingKeyAvailableChannelsEnabled] == "true",
+		LeaderboardEnabled:       settings[SettingKeyLeaderboardEnabled] == "true",
 
 		ModelPlazaEnabled:     settings[SettingKeyModelPlazaEnabled] == "true",
 		ModelPlazaRequireAuth: settings[SettingKeyModelPlazaRequireAuth] == "true",
@@ -494,6 +496,16 @@ func (s *SettingService) GetAvailableChannelsRuntime(ctx context.Context) Availa
 	}
 }
 
+// IsLeaderboardEnabled is the lightweight runtime gate for the public
+// anonymized leaderboard endpoint. Unknown/missing key → disabled (fail closed).
+func (s *SettingService) IsLeaderboardEnabled(ctx context.Context) bool {
+	vals, err := s.settingRepo.GetMultiple(ctx, []string{SettingKeyLeaderboardEnabled})
+	if err != nil {
+		return false
+	}
+	return vals[SettingKeyLeaderboardEnabled] == "true"
+}
+
 // ModelPlazaRuntime is the lightweight view of the model-plaza feature consumed
 // by the public plaza handler.
 type ModelPlazaRuntime struct {
@@ -618,6 +630,7 @@ type PublicSettingsInjectionPayload struct {
 	// monitors; fail-closed (absent/false = hidden). Admin UI always shows it.
 	ChannelMonitorShowQuota    bool `json:"channel_monitor_show_quota"`
 	AvailableChannelsEnabled   bool `json:"available_channels_enabled"`
+	LeaderboardEnabled         bool `json:"leaderboard_enabled"`
 	ModelPlazaEnabled          bool `json:"model_plaza_enabled"`
 	ModelPlazaRequireAuth      bool `json:"model_plaza_require_auth"`
 	AffiliateEnabled           bool `json:"affiliate_enabled"`
@@ -698,6 +711,7 @@ func (s *SettingService) GetPublicSettingsForInjection(ctx context.Context) (any
 		ChannelMonitorHideThroughput:         settings.ChannelMonitorHideThroughput,
 		ChannelMonitorShowQuota:              settings.ChannelMonitorShowQuota,
 		AvailableChannelsEnabled:             settings.AvailableChannelsEnabled,
+		LeaderboardEnabled:                   settings.LeaderboardEnabled,
 		ModelPlazaEnabled:                    settings.ModelPlazaEnabled,
 		ModelPlazaRequireAuth:                settings.ModelPlazaRequireAuth,
 		AffiliateEnabled:                     settings.AffiliateEnabled,

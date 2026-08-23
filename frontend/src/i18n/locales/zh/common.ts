@@ -173,6 +173,7 @@ export default {
     groups: '分组管理',
     channels: '渠道管理',
     availableChannels: '可用渠道',
+    leaderboard: '排行榜',
     subscriptions: '订阅管理',
     accounts: '账号管理',
     proxies: 'IP管理',
@@ -207,6 +208,24 @@ export default {
     auditLogs: '操作日志',
   },
 
+  leaderboard: {
+    title: '使用排行榜',
+    subtitle: '全站用户用量的匿名排行。本页面由管理员统一开启或关闭。',
+    totalCost: '总费用',
+    totalRequests: '总请求数',
+    totalTokens: '总 Tokens',
+    rank: '排名',
+    user: '用户',
+    requests: '请求数',
+    tokens: 'Tokens',
+    cost: '费用',
+    loading: '加载排行榜中...',
+    empty: '暂无用量数据。',
+    unavailable: '排行榜当前未开启。',
+    loadFailed: '加载排行榜失败。',
+    rows: '行数',
+    privacy: '用户身份已脱敏，仅展示用量汇总。',
+  },
   // Auth
   auth: {
     welcomeBack: '欢迎回来',

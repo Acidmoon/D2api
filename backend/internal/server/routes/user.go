@@ -113,6 +113,9 @@ func RegisterUserRoutes(
 		}
 
 		// 公告（用户可见）
+		// 用户排行榜（管理员开启后对所有登录用户可见，信息脱敏）
+		authenticated.GET("/leaderboard", h.Usage.GetPublicLeaderboard)
+
 		announcements := authenticated.Group("/announcements")
 		{
 			announcements.GET("", h.Announcement.List)

@@ -342,6 +342,9 @@ type UpdateSettingsRequest struct {
 	// Available Channels feature switch (user-facing)
 	AvailableChannelsEnabled *bool `json:"available_channels_enabled"`
 
+	// Leaderboard feature switch (anonymized user usage ranking)
+	LeaderboardEnabled *bool `json:"leaderboard_enabled"`
+
 	// Model Plaza feature switches + description
 	ModelPlazaEnabled     *bool   `json:"model_plaza_enabled"`
 	ModelPlazaRequireAuth *bool   `json:"model_plaza_require_auth"`
@@ -1920,6 +1923,12 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 			}
 			return previousSettings.AvailableChannelsEnabled
 		}(),
+		LeaderboardEnabled: func() bool {
+			if req.LeaderboardEnabled != nil {
+				return *req.LeaderboardEnabled
+			}
+			return previousSettings.LeaderboardEnabled
+		}(),
 		ModelPlazaEnabled: func() bool {
 			if req.ModelPlazaEnabled != nil {
 				return *req.ModelPlazaEnabled
@@ -2356,6 +2365,7 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		GrokDefaultBaseURLMode:         updatedSettings.GrokDefaultBaseURLMode,
 
 		AvailableChannelsEnabled: updatedSettings.AvailableChannelsEnabled,
+		LeaderboardEnabled:       updatedSettings.LeaderboardEnabled,
 
 		ModelPlazaEnabled:     updatedSettings.ModelPlazaEnabled,
 		ModelPlazaRequireAuth: updatedSettings.ModelPlazaRequireAuth,

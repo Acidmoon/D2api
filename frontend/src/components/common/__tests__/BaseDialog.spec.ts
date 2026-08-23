@@ -23,7 +23,7 @@ describe('BaseDialog', () => {
 
     await wrapper.setProps({ show: true })
     await nextTick()
-    const body = document.body.querySelector<HTMLElement>('.modal-body')
+    const body = document.body.querySelector<HTMLElement>('[data-testid="modal-body"]')
     expect(body).not.toBeNull()
     body!.scrollTop = 480
 
@@ -31,7 +31,7 @@ describe('BaseDialog', () => {
     await wrapper.setProps({ show: true })
     await nextTick()
 
-    expect(document.body.querySelector<HTMLElement>('.modal-body')?.scrollTop).toBe(0)
+    expect(document.body.querySelector<HTMLElement>('[data-testid="modal-body"]')?.scrollTop).toBe(0)
     wrapper.unmount()
   })
 })

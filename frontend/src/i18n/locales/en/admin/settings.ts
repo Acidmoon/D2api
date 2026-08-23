@@ -42,6 +42,12 @@ export default {
           enabled: 'Enable Available Channels',
           enabledHint: 'When off, the sidebar entry is hidden and the endpoint returns an empty list.',
         },
+        leaderboard: {
+          title: 'User Leaderboard',
+          description: 'Show an anonymized usage ranking of all users to every logged-in user. Disabled by default.',
+          enabled: 'Enable User Leaderboard',
+          enabledHint: 'When off, the sidebar entry is hidden and the public endpoint returns 404. Identities are always anonymized.',
+        },
         riskControl: {
           title: 'Risk Control',
           description: 'Enable the content moderation menu and gateway audit entry point. Disabled by default.',

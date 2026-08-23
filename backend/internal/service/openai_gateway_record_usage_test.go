@@ -524,7 +524,7 @@ func TestOpenAIGatewayServiceRecordUsage_TimePricingUsesPricingAt(t *testing.T) 
 			Usage:     OpenAIUsage{InputTokens: 1000, OutputTokens: 500},
 		},
 		APIKey: &APIKey{ID: 1006, GroupID: i64p(groupID), Group: &Group{
-			ID: groupID, RateMultiplier: 0.8, SubscriptionType: SubscriptionTypeSubscription,
+			ID: groupID, RateMultiplier: 0.8, SubscriptionType: SubscriptionTypeStandard,
 		}},
 		User:      &User{ID: 2006},
 		Account:   &Account{ID: 3006},
@@ -557,7 +557,7 @@ func TestOpenAIGatewayServiceRecordUsage_TimePricingUsesExplicitPricingAt(t *tes
 			Usage:     OpenAIUsage{InputTokens: 1000, OutputTokens: 500},
 		},
 		APIKey: &APIKey{ID: 1007, GroupID: i64p(groupID), Group: &Group{
-			ID: groupID, RateMultiplier: 0.8, SubscriptionType: SubscriptionTypeSubscription,
+			ID: groupID, RateMultiplier: 0.8, SubscriptionType: SubscriptionTypeStandard,
 		}},
 		User:      &User{ID: 2007},
 		Account:   &Account{ID: 3007},

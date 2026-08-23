@@ -384,7 +384,45 @@ export const usageAPI = {
   getDashboardApiKeysUsage,
   // Error requests
   listMyErrorRequests,
-  getMyErrorDetail
+  getMyErrorDetail,
+  // Public leaderboard
+  getPublicLeaderboard
 }
 
 export default usageAPI
+// ==================== Public Leaderboard ====================
+
+export interface PublicLeaderboardEntry {
+  rank: number
+  display_name: string
+  requests: number
+  tokens: number
+  actual_cost: number
+}
+
+export interface PublicLeaderboardResponse {
+  ranking: PublicLeaderboardEntry[]
+  total_actual_cost: number
+  total_requests: number
+  total_tokens: number
+  start_date: string
+  end_date: string
+}
+
+export interface PublicLeaderboardParams {
+  start_date?: string
+  end_date?: string
+  limit?: number
+}
+
+/**
+ * Fetch the anonymized public user usage leaderboard.
+ * The backend returns 404 when the admin has not enabled the feature.
+ */
+export async function getPublicLeaderboard(
+  params: PublicLeaderboardParams = {}
+): Promise<PublicLeaderboardResponse> {
+  const { data } = await apiClient.get<PublicLeaderboardResponse>('/leaderboard', { params })
+  return data
+}
+

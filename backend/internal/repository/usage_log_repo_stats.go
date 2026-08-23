@@ -498,17 +498,19 @@ func (r *usageLogRepository) GetBatchUserUsageStats(ctx context.Context, userIDs
 			ul.user_id,
 			` + usageLogEffectivePlatformExpr + ` as platform,
 			COALESCE(SUM(ul.actual_cost) FILTER (WHERE ul.created_at >= $2 AND ul.created_at < $3), 0) as total_cost,
-			COALESCE(SUM(ul.actual_cost) FILTER (WHERE ul.created_at >= $4), 0) as today_cost
+			COALESCE(SUM(ul.actual_cost) FILTER (WHERE ul.created_at >= $4), 0) as today_cost,
+			COALESCE(SUM(ul.actual_cost) FILTER (WHERE ul.created_at >= $5), 0) as last7d_cost
 		FROM usage_logs ul
 		LEFT JOIN groups g ON g.id = ul.group_id
 		LEFT JOIN accounts a ON a.id = ul.account_id
 		WHERE ul.user_id = ANY($1)
-		  AND ul.created_at >= LEAST($2, $4)
+		  AND ul.created_at >= LEAST($2, $4, $5)
 		  AND ` + usageLogSuccessFilterUL + `
 		GROUP BY ul.user_id, ` + usageLogEffectivePlatformExpr + `
 	`
 	today := timezone.Today()
-	rows, err := r.sql.QueryContext(ctx, query, pq.Array(normalizedUserIDs), startTime, endTime, today)
+	last7dStart := time.Now().Add(-7 * 24 * time.Hour)
+	rows, err := r.sql.QueryContext(ctx, query, pq.Array(normalizedUserIDs), startTime, endTime, today, last7dStart)
 	if err != nil {
 		return nil, err
 	}
@@ -517,7 +519,8 @@ func (r *usageLogRepository) GetBatchUserUsageStats(ctx context.Context, userIDs
 		var platform sql.NullString
 		var total float64
 		var todayTotal float64
-		if err := rows.Scan(&userID, &platform, &total, &todayTotal); err != nil {
+		var last7dTotal float64
+		if err := rows.Scan(&userID, &platform, &total, &todayTotal, &last7dTotal); err != nil {
 			_ = rows.Close()
 			return nil, err
 		}
@@ -527,11 +530,13 @@ func (r *usageLogRepository) GetBatchUserUsageStats(ctx context.Context, userIDs
 		}
 		stats.TotalActualCost += total
 		stats.TodayActualCost += todayTotal
+		stats.Last7DaysActualCost += last7dTotal
 		if platform.Valid && platform.String != "" {
 			stats.ByPlatform = append(stats.ByPlatform, PlatformUsage{
-				Platform:        platform.String,
-				TotalActualCost: total,
-				TodayActualCost: todayTotal,
+				Platform:            platform.String,
+				TotalActualCost:     total,
+				TodayActualCost:     todayTotal,
+				Last7DaysActualCost: last7dTotal,
 			})
 		}
 	}

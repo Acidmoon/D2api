@@ -173,6 +173,7 @@ export default {
     groups: 'Groups',
     channels: 'Channels',
     availableChannels: 'Available Channels',
+    leaderboard: 'Leaderboard',
     subscriptions: 'Subscriptions',
     accounts: 'Accounts',
     proxies: 'Proxies',
@@ -207,6 +208,24 @@ export default {
     auditLogs: 'Audit Logs',
   },
 
+  leaderboard: {
+    title: 'Usage Leaderboard',
+    subtitle: 'Anonymous ranking of usage across all users. Only the admin can enable or disable this page.',
+    totalCost: 'Total Cost',
+    totalRequests: 'Total Requests',
+    totalTokens: 'Total Tokens',
+    rank: 'Rank',
+    user: 'User',
+    requests: 'Requests',
+    tokens: 'Tokens',
+    cost: 'Cost',
+    loading: 'Loading leaderboard...',
+    empty: 'No usage data yet.',
+    unavailable: 'The leaderboard is currently disabled.',
+    loadFailed: 'Failed to load the leaderboard.',
+    rows: 'Rows',
+    privacy: 'User identity is anonymized. Only usage totals are shown.',
+  },
   // Auth
   auth: {
     welcomeBack: 'Welcome Back',

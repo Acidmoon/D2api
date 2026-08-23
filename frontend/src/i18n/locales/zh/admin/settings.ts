@@ -42,6 +42,12 @@ export default {
           enabled: '启用可用渠道',
           enabledHint: '关闭后用户端侧边栏入口隐藏，接口返回空数组。',
         },
+        leaderboard: {
+          title: '用户排行榜',
+          description: '向所有已登录用户展示脱敏后的全站用量排行。默认关闭。',
+          enabled: '启用用户排行榜',
+          enabledHint: '关闭后侧边栏入口隐藏，公开接口返回 404。用户身份始终脱敏。',
+        },
         riskControl: {
           title: '风控中心',
           description: '启用内容审计菜单和全端点请求审核入口。默认关闭。',

@@ -274,6 +274,7 @@ export interface PublicSettings {
   /** When true, user monitor shows account quota/balance snapshots (default off). */
   channel_monitor_show_quota?: boolean
   available_channels_enabled: boolean
+  leaderboard_enabled: boolean
   service_quota_enabled: boolean
   affiliate_enabled: boolean
   allow_user_view_error_requests?: boolean

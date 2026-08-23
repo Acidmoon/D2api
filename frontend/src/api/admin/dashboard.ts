@@ -274,12 +274,14 @@ export async function getUserSpendingRanking(
 export interface PlatformUsage {
   platform: string
   today_actual_cost: number
+  last_7d_actual_cost: number
   total_actual_cost: number
 }
 
 export interface BatchUserUsageStats {
   user_id: number
   today_actual_cost: number
+  last_7d_actual_cost: number
   total_actual_cost: number
   by_platform?: PlatformUsage[]
 }

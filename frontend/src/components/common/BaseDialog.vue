@@ -29,7 +29,7 @@
         </div>
 
         <!-- Body -->
-        <div ref="modalBodyRef" class="min-h-0 flex-1 overflow-y-auto">
+        <div ref="modalBodyRef" data-testid="modal-body" class="min-h-0 flex-1 overflow-y-auto">
           <slot></slot>
         </div>
 

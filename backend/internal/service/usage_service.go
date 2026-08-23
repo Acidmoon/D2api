@@ -461,3 +461,12 @@ func (s *UsageService) GetStatsWithFilters(ctx context.Context, filters usagesta
 	}
 	return stats, nil
 }
+
+// GetUserSpendingRanking returns the user spending ranking for the requested
+// time range. Shared by the admin dashboard and the public anonymized leaderboard.
+func (s *UsageService) GetUserSpendingRanking(ctx context.Context, startTime, endTime time.Time, limit int) (*usagestats.UserSpendingRankingResponse, error) {
+	if s.usageRepo == nil {
+		return nil, errors.New("usage repository is not configured")
+	}
+	return s.usageRepo.GetUserSpendingRanking(ctx, startTime, endTime, limit)
+}

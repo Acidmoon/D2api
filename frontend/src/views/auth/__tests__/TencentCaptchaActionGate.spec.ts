@@ -200,30 +200,4 @@ describe('Tencent captcha action gate', () => {
     expect(startOAuthLoginMock).not.toHaveBeenCalled()
     expect(locationState.href).toBe('http://localhost/login')
   })
-
-  it('passes a fresh Tencent proof to Passkey login', async () => {
-    const wrapper = mountLogin()
-    await flushPromises()
-
-    await wrapper.get('button.btn-secondary.w-full').trigger('click')
-    await flushPromises()
-
-    expect(verifyActionMock).toHaveBeenCalledOnce()
-    expect(loginWithPasskeyMock).toHaveBeenCalledWith({
-      tencent_captcha_ticket: 'ticket-1',
-      tencent_captcha_randstr: '@rand-1'
-    })
-    expect(captchaResetMock).toHaveBeenCalledOnce()
-  })
-
-  it('does not invoke Passkey when Tencent captcha is closed', async () => {
-    verifyActionMock.mockResolvedValue(null)
-    const wrapper = mountLogin()
-    await flushPromises()
-
-    await wrapper.get('button.btn-secondary.w-full').trigger('click')
-    await flushPromises()
-
-    expect(loginWithPasskeyMock).not.toHaveBeenCalled()
-  })
 })

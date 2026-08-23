@@ -711,3 +711,108 @@ func (h *UsageHandler) GetMyAPIKeyDailyUsage(c *gin.Context) {
 		"end_date":   endTime.AddDate(0, 0, -1).Format("2006-01-02"),
 	})
 }
+
+// publicLeaderboardEntry is the anonymized row returned by the public leaderboard.
+// Email/username/user_id are never exposed; display_name is derived from a masked
+// email or a masked user ID.
+type publicLeaderboardEntry struct {
+	Rank        int64   `json:"rank"`
+	DisplayName string  `json:"display_name"`
+	Requests    int64   `json:"requests"`
+	Tokens      int64   `json:"tokens"`
+	ActualCost  float64 `json:"actual_cost"`
+}
+
+// anonymizeLeaderboardName derives a stable, non-identifying display name for
+// the public leaderboard. Emails become "f***@d***.tld"; users without an email
+// become "User #<last-4-digits-of-id>".
+func anonymizeLeaderboardName(email string, userID int64) string {
+	email = strings.TrimSpace(email)
+	at := strings.IndexByte(email, '@')
+	if at > 0 && at < len(email)-1 {
+		local := email[:at]
+		domain := email[at+1:]
+		var b strings.Builder
+		b.WriteByte(local[0])
+		b.WriteString("***@")
+		b.WriteByte(domain[0])
+		b.WriteString("***")
+		if dot := strings.LastIndexByte(domain, '.'); dot > 0 {
+			b.WriteString(domain[dot:])
+		}
+		return b.String()
+	}
+	masked := userID % 10000
+	if masked < 0 {
+		masked = -masked
+	}
+	return "User #" + strconv.FormatInt(masked, 10)
+}
+
+// GetPublicLeaderboard GET /leaderboard
+// 返回脱敏后的全站用户用量排行。仅当管理员开启 leaderboard_enabled 时可用；
+// 未开启返回 404（与侧栏隐藏保持一致）。
+func (h *UsageHandler) GetPublicLeaderboard(c *gin.Context) {
+	if h.settingService == nil || !h.settingService.IsLeaderboardEnabled(c.Request.Context()) {
+		response.NotFound(c, "Leaderboard is not available")
+		return
+	}
+	if h.usageService == nil {
+		response.Error(c, http.StatusServiceUnavailable, "Usage service is not available")
+		return
+	}
+
+	userTZ := c.Query("timezone")
+	now := timezone.NowInUserLocation(userTZ)
+	startDate := c.Query("start_date")
+	endDate := c.Query("end_date")
+
+	startTime := timezone.StartOfDayInUserLocation(now.AddDate(0, 0, -7), userTZ)
+	if startDate != "" {
+		if t, err := timezone.ParseInUserLocation("2006-01-02", startDate, userTZ); err == nil {
+			startTime = t
+		}
+	}
+	endTime := timezone.StartOfDayInUserLocation(now.AddDate(0, 0, 1), userTZ)
+	if endDate != "" {
+		if t, err := timezone.ParseInUserLocation("2006-01-02", endDate, userTZ); err == nil {
+			endTime = t.Add(24 * time.Hour)
+		}
+	}
+
+	limit := 50
+	if raw := strings.TrimSpace(c.Query("limit")); raw != "" {
+		if v, err := strconv.Atoi(raw); err == nil && v > 0 {
+			limit = v
+		}
+	}
+	if limit > 100 {
+		limit = 100
+	}
+
+	ranking, err := h.usageService.GetUserSpendingRanking(c.Request.Context(), startTime, endTime, limit)
+	if err != nil {
+		response.Error(c, http.StatusInternalServerError, "Failed to get leaderboard")
+		return
+	}
+
+	entries := make([]publicLeaderboardEntry, 0, len(ranking.Ranking))
+	for i, row := range ranking.Ranking {
+		entries = append(entries, publicLeaderboardEntry{
+			Rank:        int64(i + 1),
+			DisplayName: anonymizeLeaderboardName(row.Email, row.UserID),
+			Requests:    row.Requests,
+			Tokens:      row.Tokens,
+			ActualCost:  row.ActualCost,
+		})
+	}
+
+	response.Success(c, gin.H{
+		"ranking":           entries,
+		"total_actual_cost": ranking.TotalActualCost,
+		"total_requests":    ranking.TotalRequests,
+		"total_tokens":      ranking.TotalTokens,
+		"start_date":        startTime.Format("2006-01-02"),
+		"end_date":          endTime.Add(-24 * time.Hour).Format("2006-01-02"),
+	})
+}

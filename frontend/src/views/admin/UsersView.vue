@@ -127,6 +127,31 @@
           <div class="flex flex-wrap items-center justify-end gap-2">
             <!-- Mobile: Secondary buttons (icon only) -->
             <div class="flex items-center gap-2 md:contents">
+              <!-- 活跃度按钮：按近 7 天用量排序（desc → asc → off） -->
+              <button
+                type="button"
+                class="btn btn-secondary px-2 md:px-3"
+                :class="isUsageSortActive('usage', 'last7d') ? 'text-primary-600 dark:text-primary-400' : ''"
+                :title="t('admin.users.activitySortHint')"
+                :data-test="'activity-sort-button'"
+                @click="toggleUsageSort('usage', 'last7d')"
+              >
+                <Icon name="bolt" size="sm" class="md:mr-1.5" />
+                <span class="hidden md:inline">{{ t('admin.users.activitySort') }}</span>
+                <svg
+                  v-if="getUsageSortOrder('usage', 'last7d')"
+                  class="h-3.5 w-3.5"
+                  :class="{ 'rotate-180': getUsageSortOrder('usage', 'last7d') === 'desc' }"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fill-rule="evenodd"
+                    d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z"
+                    clip-rule="evenodd"
+                  />
+                </svg>
+              </button>
               <!-- Refresh Button -->
               <button
                 @click="loadUsers"
@@ -481,7 +506,7 @@
                   <span
                     v-if="usageSort && usageSort.key === usageKey"
                     class="text-[10px] normal-case font-medium tracking-normal"
-                  >{{ usageSort.metric === 'today' ? t('admin.users.today') : t('admin.users.total') }}</span>
+                  >{{ usageSortMetricLabel(usageSort.metric) }}</span>
                   <svg
                     v-if="usageSort && usageSort.key === usageKey"
                     class="h-3.5 w-3.5"
@@ -505,7 +530,7 @@
                   class="absolute right-0 top-full z-50 mt-1 min-w-[120px] rounded-lg border border-gray-200 bg-white py-1 shadow-lg dark:border-dark-600 dark:bg-dark-800"
                 >
                   <button
-                    v-for="metric in (['today', 'total'] as const)"
+                    v-for="metric in (['today', 'last7d', 'total'] as const)"
                     :key="metric"
                     type="button"
                     class="flex w-full items-center justify-between gap-3 px-3 py-1.5 text-left text-xs normal-case tracking-normal hover:bg-gray-100 dark:hover:bg-dark-700"
@@ -515,7 +540,7 @@
                     :data-test="`usage-sort-${usageKey}-${metric}`"
                     @click.stop="toggleUsageSort(usageKey, metric)"
                   >
-                    <span>{{ metric === 'today' ? t('admin.users.today') : t('admin.users.total') }}</span>
+                    <span>{{ usageSortMetricLabel(metric) }}</span>
                     <svg
                       v-if="getUsageSortOrder(usageKey, metric)"
                       class="h-3 w-3"
@@ -1208,7 +1233,7 @@ const getPlatformUsage = (userId: number, platform: string) =>
 // 字段都会触发后端查询，而用量列数据是异步批量拉取后再合并到当前页，
 // 因此采用独立的前端排序状态对当前页 users 做本地排序。
 // 排序状态独立于后端 sortState 持久化；缺失数据按 0 处理（desc 沉底、asc 置顶）。
-type UsageMetric = 'today' | 'total'
+type UsageMetric = 'today' | 'last7d' | 'total'
 type UsageSortState = { key: string; metric: UsageMetric; order: 'asc' | 'desc' } | null
 const USAGE_SORT_STORAGE_KEY = 'admin-users-usage-sort'
 // 列头排序按钮点击后弹出的"今日/近30天"选择菜单，同时只允许一个列展开。
@@ -1220,7 +1245,8 @@ const loadInitialUsageSort = (): UsageSortState => {
     if (!raw) return null
     const parsed = JSON.parse(raw) as Partial<{ key: string; metric: string; order: string }>
     if (!parsed.key || !USAGE_COLUMN_KEYS.includes(parsed.key)) return null
-    const metric: UsageMetric = parsed.metric === 'total' ? 'total' : 'today'
+    const metric: UsageMetric =
+      parsed.metric === 'total' ? 'total' : parsed.metric === 'last7d' ? 'last7d' : 'today'
     const order: 'asc' | 'desc' = parsed.order === 'asc' ? 'asc' : 'desc'
     return { key: parsed.key, metric, order }
   } catch {
@@ -1269,16 +1295,26 @@ const toggleUsageSortMenu = (key: string) => {
   openUsageSortMenu.value = openUsageSortMenu.value === key ? null : key
 }
 
+const usageSortMetricLabel = (metric: UsageMetric): string => {
+  if (metric === 'today') return t('admin.users.today')
+  if (metric === 'last7d') return t('admin.users.last7d')
+  return t('admin.users.total')
+}
+
 const getUsageValue = (userId: number, key: string, metric: UsageMetric): number => {
   const stats = usageStats.value[userId]
   if (!stats) return 0
   const platform = USAGE_COLUMN_PLATFORMS[key]
   if (platform === null) {
-    return metric === 'today' ? stats.today_actual_cost ?? 0 : stats.total_actual_cost ?? 0
+    if (metric === 'today') return stats.today_actual_cost ?? 0
+    if (metric === 'last7d') return stats.last_7d_actual_cost ?? 0
+    return stats.total_actual_cost ?? 0
   }
   const p = stats.by_platform?.find((x) => x.platform === platform)
   if (!p) return 0
-  return metric === 'today' ? p.today_actual_cost ?? 0 : p.total_actual_cost ?? 0
+  if (metric === 'today') return p.today_actual_cost ?? 0
+  if (metric === 'last7d') return p.last_7d_actual_cost ?? 0
+  return p.total_actual_cost ?? 0
 }
 
 // 在 server-side 排序结果之上叠加用量列的本地排序；无 usageSort 时直接透传原数组。

@@ -502,6 +502,11 @@ const (
 	// sidebar entry is hidden. Defaults to false (opt-in feature).
 	SettingKeyAvailableChannelsEnabled = "available_channels_enabled"
 
+	// SettingKeyLeaderboardEnabled is a DB-backed soft switch for the public
+	// user usage leaderboard. When false the user endpoint returns 404 and the
+	// sidebar entry is hidden. Defaults to false (opt-in feature).
+	SettingKeyLeaderboardEnabled = "leaderboard_enabled"
+
 	// SettingKeyModelPlazaEnabled is a DB-backed soft switch for the Model Plaza page
 	// (public group/model pricing showcase). When false: the plaza endpoint returns 404
 	// and the header entry is hidden. Defaults to false (opt-in feature).
