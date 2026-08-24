@@ -176,6 +176,7 @@ export default {
     leaderboard: 'Leaderboard',
     subscriptions: 'Subscriptions',
     accounts: 'Accounts',
+    plugins: 'Plugins',
     proxies: 'Proxies',
     redeemCodes: 'Redeem Codes',
     ops: 'Ops',
