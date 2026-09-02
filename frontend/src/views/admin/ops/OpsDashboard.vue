@@ -1,9 +1,15 @@
 <template>
-  <component :is="isFullscreen ? 'div' : AppLayout" :class="isFullscreen ? 'flex min-h-screen flex-col justify-center bg-gray-50 dark:bg-dark-950' : ''">
+  <component :is="isFullscreen ? 'div' : AppLayout" :class="isFullscreen ? 'flex min-h-screen flex-col justify-center bg-background' : ''">
     <div :class="[isFullscreen ? 'p-4 md:p-6' : '', 'space-y-6 pb-12']">
+      <!-- In-content page header -->
+      <div v-if="!isFullscreen" class="page-header">
+        <h1 class="page-title">{{ t('admin.ops.title') }}</h1>
+        <p class="page-description">{{ t('admin.ops.description') }}</p>
+      </div>
+
       <div
         v-if="errorMessage"
-        class="rounded-2xl bg-red-50 p-4 text-sm text-red-600 dark:bg-red-900/20 dark:text-red-400"
+        class="rounded-2xl bg-[color:var(--nm-danger-soft)] p-4 text-sm text-semantic-danger"
       >
         {{ errorMessage }}
       </div>

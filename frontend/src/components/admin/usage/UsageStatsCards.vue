@@ -1,89 +1,99 @@
 <template>
-  <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
-    <div class="card p-4 flex items-center gap-3">
-      <div class="rounded-lg bg-blue-100 p-2 dark:bg-blue-900/30 text-blue-600">
-        <Icon name="document" size="md" />
+  <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <!-- Requests -->
+    <div class="card p-5">
+      <div class="flex items-center justify-between">
+        <span class="stat-label">{{ t('usage.totalRequests') }}</span>
+        <span class="stat-icon stat-icon-primary">
+          <Icon name="document" size="sm" />
+        </span>
       </div>
-      <div>
-        <p class="text-xs font-medium text-gray-500">{{ t('usage.totalRequests') }}</p>
-        <p class="text-xl font-bold">{{ stats?.total_requests?.toLocaleString() || '0' }}</p>
-        <p class="text-xs text-gray-400">{{ t('usage.inSelectedRange') }}</p>
-      </div>
+      <p class="stat-value mt-3">{{ stats?.total_requests?.toLocaleString() || '0' }}</p>
+      <p class="mt-1 text-xs text-muted-foreground">{{ t('usage.inSelectedRange') }}</p>
     </div>
-    <div class="card p-4 flex items-center gap-3">
-      <div class="rounded-lg bg-amber-100 p-2 dark:bg-amber-900/30 text-amber-600"><svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m21 7.5-9-5.25L3 7.5m18 0-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" /></svg></div>
-      <div>
-        <p class="text-xs font-medium text-gray-500">{{ t('usage.totalTokens') }}</p>
-        <p class="text-xl font-bold">{{ formatTokens(stats?.total_tokens || 0) }}</p>
-        <p class="flex flex-wrap items-center gap-x-1 text-xs text-gray-500">
-          <span>{{ t('usage.in') }}: {{ formatTokens(stats?.total_input_tokens || 0) }}</span>
-          <span>/</span>
-          <span>{{ t('usage.out') }}: {{ formatTokens(stats?.total_output_tokens || 0) }}</span>
-          <span>/</span>
-          <span class="group relative inline-flex cursor-help items-center gap-0.5" tabindex="0">
-            <span>{{ cacheLabel() }}: {{ formatTokens(stats?.total_cache_tokens || 0) }}</span>
-            <svg
-              class="h-3.5 w-3.5 text-gray-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
-            <span
-              class="pointer-events-none absolute left-1/2 top-full z-30 mt-2 w-56 -translate-x-1/2 rounded-lg border border-gray-200 bg-white p-3 text-left text-xs text-gray-700 opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100 group-focus:opacity-100 dark:border-dark-600 dark:bg-dark-800 dark:text-dark-200"
-            >
-              <span class="mb-2 block font-medium text-gray-900 dark:text-white">
-                {{ cacheDetailLabel() }}
+
+    <!-- Tokens -->
+    <div class="card p-5">
+      <div class="flex items-center justify-between">
+        <span class="stat-label">{{ t('usage.totalTokens') }}</span>
+        <span class="stat-icon"><svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m21 7.5-9-5.25L3 7.5m18 0-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" /></svg></span>
+      </div>
+      <p class="stat-value mt-3">{{ formatTokens(stats?.total_tokens || 0) }}</p>
+      <p class="mt-1 flex flex-wrap items-center gap-x-1 text-xs text-muted-foreground">
+        <span>{{ t('usage.in') }}: {{ formatTokens(stats?.total_input_tokens || 0) }}</span>
+        <span>/</span>
+        <span>{{ t('usage.out') }}: {{ formatTokens(stats?.total_output_tokens || 0) }}</span>
+        <span>/</span>
+        <span class="group relative inline-flex cursor-help items-center gap-0.5" tabindex="0">
+          <span>{{ cacheLabel() }}: {{ formatTokens(stats?.total_cache_tokens || 0) }}</span>
+          <svg
+            class="h-3.5 w-3.5 text-muted-foreground/70"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
+          </svg>
+          <span
+            class="pointer-events-none absolute left-1/2 top-full z-30 mt-2 w-56 -translate-x-1/2 rounded-lg border border-border bg-popover p-3 text-left text-xs text-popover-foreground opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100 group-focus:opacity-100"
+          >
+            <span class="mb-2 block font-medium text-foreground">
+              {{ cacheDetailLabel() }}
+            </span>
+            <span class="flex items-center justify-between gap-3">
+              <span class="text-muted-foreground">{{ t('usage.cacheCreationTokensLabel') }}</span>
+              <span class="tabular-nums">
+                {{ formatTokens(stats?.total_cache_creation_tokens || 0) }}
               </span>
-              <span class="flex items-center justify-between gap-3">
-                <span>{{ t('usage.cacheCreationTokensLabel') }}</span>
-                <span class="tabular-nums">
-                  {{ formatTokens(stats?.total_cache_creation_tokens || 0) }}
-                </span>
-              </span>
-              <span class="mt-1 flex items-center justify-between gap-3">
-                <span>{{ t('usage.cacheReadTokensLabel') }}</span>
-                <span class="tabular-nums">
-                  {{ formatTokens(stats?.total_cache_read_tokens || 0) }}
-                </span>
+            </span>
+            <span class="mt-1 flex items-center justify-between gap-3">
+              <span class="text-muted-foreground">{{ t('usage.cacheReadTokensLabel') }}</span>
+              <span class="tabular-nums">
+                {{ formatTokens(stats?.total_cache_read_tokens || 0) }}
               </span>
             </span>
           </span>
-        </p>
-      </div>
+        </span>
+      </p>
     </div>
-    <div class="card p-4 flex items-center gap-3">
-      <div class="rounded-lg bg-green-100 p-2 dark:bg-green-900/30 text-green-600">
-        <Icon name="dollar" size="md" />
+
+    <!-- Cost -->
+    <div class="card p-5">
+      <div class="flex items-center justify-between">
+        <span class="stat-label">{{ t('usage.totalCost') }}</span>
+        <span class="stat-icon stat-icon-success">
+          <Icon name="dollar" size="sm" />
+        </span>
       </div>
-      <div class="min-w-0 flex-1">
-        <p class="text-xs font-medium text-muted-foreground">{{ t('usage.totalCost') }}</p>
-        <p class="text-xl font-bold text-green-600">
-          ${{ (stats?.total_actual_cost || 0).toFixed(4) }}
-        </p>
-        <p class="text-xs text-muted-foreground/80">
-          <template v-if="showAccountCost && totalAccountCost != null">
-            <span class="text-orange-500">{{ t('usage.accountCost') }} ${{ totalAccountCost.toFixed(4) }}</span>
-            <span> · </span>
-          </template>
-          <span>
-            {{ t('usage.standardCost') }}
-            <span :class="{ 'line-through': strikeStandardCost }">${{ (stats?.total_cost || 0).toFixed(4) }}</span>
-          </span>
-        </p>
-      </div>
+      <p class="stat-value mt-3" style="color: var(--nm-success-text)">
+        ${{ (stats?.total_actual_cost || 0).toFixed(4) }}
+      </p>
+      <p class="mt-1 text-xs text-muted-foreground">
+        <template v-if="showAccountCost && totalAccountCost != null">
+          <span class="text-semantic-warning">{{ t('usage.accountCost') }} ${{ totalAccountCost.toFixed(4) }}</span>
+          <span> · </span>
+        </template>
+        <span>
+          {{ t('usage.standardCost') }}
+          <span :class="{ 'line-through': strikeStandardCost }">${{ (stats?.total_cost || 0).toFixed(4) }}</span>
+        </span>
+      </p>
     </div>
-    <div class="card p-4 flex items-center gap-3">
-      <div class="rounded-lg bg-purple-100 p-2 dark:bg-purple-900/30 text-purple-600">
-        <Icon name="clock" size="md" />
+
+    <!-- Avg duration -->
+    <div class="card p-5">
+      <div class="flex items-center justify-between">
+        <span class="stat-label">{{ t('usage.avgDuration') }}</span>
+        <span class="stat-icon stat-icon-warning">
+          <Icon name="clock" size="sm" />
+        </span>
       </div>
-      <div><p class="text-xs font-medium text-gray-500">{{ t('usage.avgDuration') }}</p><p class="text-xl font-bold">{{ formatDuration(stats?.average_duration_ms || 0) }}</p></div>
+      <p class="stat-value mt-3">{{ formatDuration(stats?.average_duration_ms || 0) }}</p>
     </div>
   </div>
 </template>

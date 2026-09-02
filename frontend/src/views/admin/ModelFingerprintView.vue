@@ -1,64 +1,76 @@
 <template>
   <AppLayout>
     <div class="space-y-6">
-      <!-- 页头：标题 + §7.4 判定原理一句话版 -->
+      <!-- In-content page header -->
+      <div class="page-header">
+        <h1 class="page-title">{{ t('admin.fingerprint.title') }}</h1>
+        <p class="page-description">{{ t('admin.fingerprint.description') }}</p>
+      </div>
+
+      <!-- §7.4 判定原理一句话版 -->
       <div class="card">
-        <h1 class="text-lg font-semibold text-gray-900 dark:text-white">
-          {{ t('admin.fingerprint.title') }}
-        </h1>
-        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-          {{ t('admin.fingerprint.description') }}
-        </p>
-        <p class="mt-3 rounded-lg bg-gray-50 p-3 text-xs leading-5 text-gray-500 dark:bg-dark-800 dark:text-gray-400">
-          {{ t('admin.fingerprint.help') }}
-        </p>
+        <div class="card-body">
+          <p class="text-xs leading-5 text-muted-foreground">
+            {{ t('admin.fingerprint.help') }}
+          </p>
+        </div>
       </div>
 
       <!-- 区块一：发起检测（测账号 / 测外部端点） -->
       <div class="card">
-        <h2 class="mb-4 text-base font-semibold text-gray-900 dark:text-white">
-          {{ t('admin.fingerprint.create.sectionTitle') }}
-        </h2>
-        <FingerprintAuditForm
-          :accounts="accounts"
-          :references="references"
-          @created="handleAuditCreated"
-        />
+        <div class="card-header">
+          <h2 class="text-base font-semibold text-foreground">
+            {{ t('admin.fingerprint.create.sectionTitle') }}
+          </h2>
+        </div>
+        <div class="card-body">
+          <FingerprintAuditForm
+            :accounts="accounts"
+            :references="references"
+            @created="handleAuditCreated"
+          />
+        </div>
       </div>
 
       <!-- 区块二：参考基准管理 -->
       <div class="card">
-        <h2 class="mb-1 text-base font-semibold text-gray-900 dark:text-white">
-          {{ t('admin.fingerprint.references.sectionTitle') }}
-        </h2>
-        <p class="mb-4 text-xs text-gray-400">
-          {{ t('admin.fingerprint.references.sectionDesc') }}
-        </p>
-        <FingerprintReferencePanel
-          :references="references"
-          :accounts="accounts"
-          :loading="referencesLoading"
-          @changed="loadReferences"
-        />
+        <div class="card-header">
+          <h2 class="text-base font-semibold text-foreground">
+            {{ t('admin.fingerprint.references.sectionTitle') }}
+          </h2>
+          <p class="mt-0.5 text-xs text-muted-foreground">
+            {{ t('admin.fingerprint.references.sectionDesc') }}
+          </p>
+        </div>
+        <div class="card-body">
+          <FingerprintReferencePanel
+            :references="references"
+            :accounts="accounts"
+            :loading="referencesLoading"
+            @changed="loadReferences"
+          />
+        </div>
       </div>
 
       <!-- 区块三：检测记录 -->
       <div class="card">
-        <div class="mb-4 flex items-center justify-between">
-          <h2 class="text-base font-semibold text-gray-900 dark:text-white">
+        <div class="card-header flex items-center justify-between">
+          <h2 class="text-base font-semibold text-foreground">
             {{ t('admin.fingerprint.records.sectionTitle') }}
           </h2>
           <button type="button" class="btn btn-secondary px-2.5 py-1 text-xs" @click="loadAudits">
             {{ t('common.refresh') }}
           </button>
         </div>
-        <FingerprintAuditTable
-          :audits="audits"
-          :accounts="accounts"
-          :loading="auditsLoading"
-          @select="openReport"
-          @remove="askDeleteAudit"
-        />
+        <div class="card-body">
+          <FingerprintAuditTable
+            :audits="audits"
+            :accounts="accounts"
+            :loading="auditsLoading"
+            @select="openReport"
+            @remove="askDeleteAudit"
+          />
+        </div>
       </div>
     </div>
 

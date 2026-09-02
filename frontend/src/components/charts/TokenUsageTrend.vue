@@ -34,6 +34,7 @@ import {
 } from 'chart.js'
 import { Line } from 'vue-chartjs'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
+import { getChartTheme, useChartDarkMode } from '@/utils/chartColors'
 import type { TrendDataPoint } from '@/types'
 
 ChartJS.register(
@@ -58,19 +59,20 @@ const props = defineProps<{
 const embedded = computed(() => props.embedded ?? false)
 const chartHeightClass = computed(() => embedded.value ? 'h-[250px]' : 'h-48')
 
-const isDarkMode = computed(() => {
-  return document.documentElement.classList.contains('dark')
-})
+const isDarkMode = useChartDarkMode()
 
-const chartColors = computed(() => ({
-  text: isDarkMode.value ? '#c7c7bd' : '#4b4b45',
-  grid: isDarkMode.value ? '#34342f' : '#ddddd6',
-  input: '#0f766e',
-  output: '#111111',
-  cacheCreation: '#9a6700',
-  cacheRead: '#315f88',
-  cacheHitRate: '#77776f'
-}))
+const chartColors = computed(() => {
+  const theme = getChartTheme(isDarkMode.value)
+  return {
+    text: theme.text,
+    grid: theme.grid,
+    input: theme.primary,
+    output: theme.blue,
+    cacheCreation: theme.amber,
+    cacheRead: theme.green,
+    cacheHitRate: theme.pink
+  }
+})
 
 const chartData = computed(() => {
   if (!props.trendData?.length) return null

@@ -7,6 +7,7 @@ import type { OpsErrorDistributionResponse } from '@/api/admin/ops'
 import type { ChartState } from '../types'
 import HelpTooltip from '@/components/common/HelpTooltip.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
+import { getChartTheme, useChartDarkMode } from '@/utils/chartColors'
 
 ChartJS.register(ArcElement, Tooltip, Legend)
 
@@ -21,14 +22,17 @@ const emit = defineEmits<{
 }>()
 const { t } = useI18n()
 
-const isDarkMode = computed(() => document.documentElement.classList.contains('dark'))
-const colors = computed(() => ({
-  blue: '#2d4055',
-  red: '#b4232a',
-  orange: '#9a6700',
-  gray: '#9fb2ad',
-  text: isDarkMode.value ? '#aab8b3' : '#52616f'
-}))
+const isDarkMode = useChartDarkMode()
+const colors = computed(() => {
+  const theme = getChartTheme(isDarkMode.value)
+  return {
+    blue: theme.blue,
+    red: theme.danger,
+    orange: theme.amber,
+    gray: theme.muted,
+    text: theme.text
+  }
+})
 
 const totalSlaErrors = computed(() =>
   (props.data?.items ?? []).reduce((total, item) => total + Number(item.sla || 0), 0)
@@ -94,25 +98,28 @@ const chartData = computed(() => {
   }
 })
 
-const options = computed(() => ({
-  responsive: true,
-  maintainAspectRatio: false,
-  plugins: {
-    legend: { display: false },
-    tooltip: {
-      backgroundColor: isDarkMode.value ? '#111a18' : '#fffefb',
-      titleColor: isDarkMode.value ? '#ecf3f0' : '#17212b',
-      bodyColor: isDarkMode.value ? '#aab8b3' : '#52616f'
+const options = computed(() => {
+  const theme = getChartTheme(isDarkMode.value)
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: theme.surface,
+        titleColor: theme.tooltipTitle,
+        bodyColor: theme.tooltipBody
+      }
     }
   }
-}))
+})
 </script>
 
 <template>
-  <div class="flex h-full flex-col rounded-3xl bg-white p-6 shadow-sm ring-1 ring-gray-900/5 dark:bg-dark-800 dark:ring-dark-700">
+  <div class="card flex h-full flex-col p-6">
     <div class="mb-4 flex items-center justify-between">
-      <h3 class="flex items-center gap-2 text-sm font-bold text-gray-900 dark:text-white">
-        <svg class="h-4 w-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <h3 class="flex items-center gap-2 text-sm font-semibold text-foreground">
+        <svg class="h-4 w-4 text-semantic-danger" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path
             stroke-linecap="round"
             stroke-linejoin="round"
@@ -125,7 +132,7 @@ const options = computed(() => ({
       </h3>
       <button
         type="button"
-        class="inline-flex items-center rounded-lg border border-gray-200 bg-white px-2 py-1 text-[11px] font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-50 dark:border-dark-700 dark:bg-dark-900 dark:text-gray-300 dark:hover:bg-dark-800"
+        class="swiss-action shrink-0 text-xs"
         :disabled="state !== 'ready'"
         :title="t('admin.ops.errorTrend')"
         @click="emit('openDetails')"
@@ -140,20 +147,20 @@ const options = computed(() => ({
           <Doughnut :data="chartData" :options="{ ...options, cutout: '65%' }" />
         </div>
         <div class="mt-4 flex flex-col items-center gap-2">
-          <div v-if="topReason" class="text-xs font-bold text-gray-900 dark:text-white">
+          <div v-if="topReason" class="text-xs font-semibold text-foreground">
             {{ t('admin.ops.top') }}: <span :style="{ color: topReason.color }">{{ topReason.label }}</span>
           </div>
           <div class="flex flex-wrap justify-center gap-3">
             <div v-for="item in categories" :key="item.label" class="flex items-center gap-1.5 text-xs">
               <span class="h-2 w-2 rounded-full" :style="{ backgroundColor: item.color }"></span>
-              <span class="text-gray-500 dark:text-gray-400">{{ item.label }} {{ item.count }}</span>
+              <span class="text-muted-foreground">{{ item.label }} {{ item.count }}</span>
             </div>
           </div>
         </div>
       </div>
 
       <div v-else class="flex h-full items-center justify-center">
-        <div v-if="state === 'loading'" class="animate-pulse text-sm text-gray-400">{{ t('common.loading') }}</div>
+        <div v-if="state === 'loading'" class="animate-pulse text-sm text-muted-foreground">{{ t('common.loading') }}</div>
         <EmptyState v-else :title="t('common.noData')" :description="t('admin.ops.charts.emptyError')" />
       </div>
     </div>

@@ -434,6 +434,7 @@ import ModelDistributionChart from '@/components/charts/ModelDistributionChart.v
 import EndpointDistributionChart from '@/components/charts/EndpointDistributionChart.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { adminAPI } from '@/api/admin'
+import { getChartTheme, useChartDarkMode, withAlpha } from '@/utils/chartColors'
 import type { Account, AccountUsageStatsResponse } from '@/types'
 
 ChartJS.register(
@@ -462,19 +463,22 @@ const loading = ref(false)
 const stats = ref<AccountUsageStatsResponse | null>(null)
 
 // Dark mode detection
-const isDarkMode = computed(() => {
-  return document.documentElement.classList.contains('dark')
-})
+const isDarkMode = useChartDarkMode()
 
 // Chart colors
-const chartColors = computed(() => ({
-  text: isDarkMode.value ? '#aab8b3' : '#52616f',
-  grid: isDarkMode.value ? '#304540' : '#cfd8d5'
-}))
+const chartColors = computed(() => {
+  const theme = getChartTheme(isDarkMode.value)
+  return {
+    text: theme.text,
+    grid: theme.grid
+  }
+})
 
 // Line chart data
 const trendChartData = computed(() => {
   if (!stats.value?.history?.length) return null
+
+  const theme = getChartTheme(isDarkMode.value)
 
   return {
     labels: stats.value.history.map((h) => h.label),
@@ -482,8 +486,8 @@ const trendChartData = computed(() => {
       {
         label: t('usage.accountBilled') + ' (USD)',
         data: stats.value.history.map((h) => h.actual_cost),
-        borderColor: '#236b66',
-        backgroundColor: 'rgba(35, 107, 102, 0.1)',
+        borderColor: theme.primary,
+        backgroundColor: withAlpha(theme.primary, 0.1),
         fill: true,
         tension: 0.3,
         yAxisID: 'y'
@@ -491,8 +495,8 @@ const trendChartData = computed(() => {
       {
         label: t('usage.userBilled') + ' (USD)',
         data: stats.value.history.map((h) => h.user_cost),
-        borderColor: '#2d6a4f',
-        backgroundColor: 'rgba(45, 106, 79, 0.08)',
+        borderColor: theme.green,
+        backgroundColor: withAlpha(theme.green, 0.08),
         fill: false,
         tension: 0.3,
         borderDash: [5, 5],
@@ -501,8 +505,8 @@ const trendChartData = computed(() => {
       {
         label: t('admin.accounts.stats.requests'),
         data: stats.value.history.map((h) => h.requests),
-        borderColor: '#9a6700',
-        backgroundColor: 'rgba(154, 103, 0, 0.1)',
+        borderColor: theme.amber,
+        backgroundColor: withAlpha(theme.amber, 0.1),
         fill: false,
         tension: 0.3,
         yAxisID: 'y1'
@@ -512,101 +516,104 @@ const trendChartData = computed(() => {
 })
 
 // Line chart options with dual Y-axis
-const lineChartOptions = computed(() => ({
-  responsive: true,
-  maintainAspectRatio: false,
-  interaction: {
-    intersect: false,
-    mode: 'index' as const
-  },
-  plugins: {
-    legend: {
-      position: 'top' as const,
-      labels: {
-        color: chartColors.value.text,
-        usePointStyle: true,
-        pointStyle: 'circle',
-        padding: 15,
-        font: {
-          size: 11
-        }
-      }
+const lineChartOptions = computed(() => {
+  const theme = getChartTheme(isDarkMode.value)
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: {
+      intersect: false,
+      mode: 'index' as const
     },
-    tooltip: {
-      callbacks: {
-        label: (context: any) => {
-          const label = context.dataset.label || ''
-          const value = context.raw
-          if (label.includes('USD')) {
-            return `${label}: $${formatCost(value)}`
+    plugins: {
+      legend: {
+        position: 'top' as const,
+        labels: {
+          color: chartColors.value.text,
+          usePointStyle: true,
+          pointStyle: 'circle',
+          padding: 15,
+          font: {
+            size: 11
           }
-          return `${label}: ${formatNumber(value)}`
         }
-      }
-    }
-  },
-  scales: {
-    x: {
-      grid: {
-        color: chartColors.value.grid
       },
-      ticks: {
-        color: chartColors.value.text,
-        font: {
-          size: 10
-        },
-        maxRotation: 45,
-        minRotation: 0
-      }
-    },
-    y: {
-      type: 'linear' as const,
-      display: true,
-      position: 'left' as const,
-      grid: {
-        color: chartColors.value.grid
-      },
-      ticks: {
-        color: '#236b66',
-        font: {
-          size: 10
-        },
-        callback: (value: string | number) => '$' + formatCost(Number(value))
-      },
-      title: {
-        display: true,
-        text: t('usage.accountBilled') + ' (USD)',
-        color: '#236b66',
-        font: {
-          size: 11
+      tooltip: {
+        callbacks: {
+          label: (context: any) => {
+            const label = context.dataset.label || ''
+            const value = context.raw
+            if (label.includes('USD')) {
+              return `${label}: $${formatCost(value)}`
+            }
+            return `${label}: ${formatNumber(value)}`
+          }
         }
       }
     },
-    y1: {
-      type: 'linear' as const,
-      display: true,
-      position: 'right' as const,
-      grid: {
-        drawOnChartArea: false
-      },
-      ticks: {
-        color: '#9a6700',
-        font: {
-          size: 10
+    scales: {
+      x: {
+        grid: {
+          color: chartColors.value.grid
         },
-        callback: (value: string | number) => formatNumber(Number(value))
+        ticks: {
+          color: chartColors.value.text,
+          font: {
+            size: 10
+          },
+          maxRotation: 45,
+          minRotation: 0
+        }
       },
-      title: {
+      y: {
+        type: 'linear' as const,
         display: true,
-        text: t('admin.accounts.stats.requests'),
-        color: '#9a6700',
-        font: {
-          size: 11
+        position: 'left' as const,
+        grid: {
+          color: chartColors.value.grid
+        },
+        ticks: {
+          color: theme.primary,
+          font: {
+            size: 10
+          },
+          callback: (value: string | number) => '$' + formatCost(Number(value))
+        },
+        title: {
+          display: true,
+          text: t('usage.accountBilled') + ' (USD)',
+          color: theme.primary,
+          font: {
+            size: 11
+          }
+        }
+      },
+      y1: {
+        type: 'linear' as const,
+        display: true,
+        position: 'right' as const,
+        grid: {
+          drawOnChartArea: false
+        },
+        ticks: {
+          color: theme.amber,
+          font: {
+            size: 10
+          },
+          callback: (value: string | number) => formatNumber(Number(value))
+        },
+        title: {
+          display: true,
+          text: t('admin.accounts.stats.requests'),
+          color: theme.amber,
+          font: {
+            size: 11
+          }
         }
       }
     }
   }
-}))
+})
 
 // Load stats when modal opens
 watch(

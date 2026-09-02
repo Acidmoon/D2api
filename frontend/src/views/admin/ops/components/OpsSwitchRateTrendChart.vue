@@ -18,6 +18,7 @@ import type { ChartState } from '../types'
 import { formatHistoryLabel, sumNumbers } from '../utils/opsFormatters'
 import HelpTooltip from '@/components/common/HelpTooltip.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
+import { getChartTheme, useChartDarkMode, withAlpha } from '@/utils/chartColors'
 
 ChartJS.register(Title, Tooltip, Legend, LineElement, LinearScale, PointElement, CategoryScale, Filler)
 
@@ -31,13 +32,16 @@ interface Props {
 const props = defineProps<Props>()
 const { t } = useI18n()
 
-const isDarkMode = computed(() => document.documentElement.classList.contains('dark'))
-const colors = computed(() => ({
-  teal: '#236b66',
-  tealAlpha: '#236b6620',
-  grid: isDarkMode.value ? '#304540' : '#cfd8d5',
-  text: isDarkMode.value ? '#aab8b3' : '#52616f'
-}))
+const isDarkMode = useChartDarkMode()
+const colors = computed(() => {
+  const theme = getChartTheme(isDarkMode.value)
+  return {
+    teal: theme.primary,
+    tealAlpha: withAlpha(theme.primary, 0.125),
+    grid: theme.grid,
+    text: theme.text
+  }
+})
 
 const totalRequests = computed(() => sumNumbers(props.points.map((p) => p.request_count)))
 
@@ -73,6 +77,7 @@ const state = computed<ChartState>(() => {
 
 const options = computed(() => {
   const c = colors.value
+  const theme = getChartTheme(isDarkMode.value)
   return {
     responsive: true,
     maintainAspectRatio: false,
@@ -84,9 +89,9 @@ const options = computed(() => {
         labels: { color: c.text, usePointStyle: true, boxWidth: 6, font: { size: 10 } }
       },
       tooltip: {
-        backgroundColor: isDarkMode.value ? '#111a18' : '#fffefb',
-        titleColor: isDarkMode.value ? '#ecf3f0' : '#17212b',
-        bodyColor: isDarkMode.value ? '#aab8b3' : '#52616f',
+        backgroundColor: theme.surface,
+        titleColor: theme.tooltipTitle,
+        bodyColor: theme.tooltipBody,
         borderColor: c.grid,
         borderWidth: 1,
         padding: 10,
@@ -128,10 +133,10 @@ const options = computed(() => {
 </script>
 
 <template>
-  <div class="flex h-full flex-col rounded-3xl bg-white p-6 shadow-sm ring-1 ring-gray-900/5 dark:bg-dark-800 dark:ring-dark-700">
+  <div class="card flex h-full flex-col p-6">
     <div class="mb-4 flex shrink-0 items-center justify-between">
-      <h3 class="flex items-center gap-2 text-sm font-bold text-gray-900 dark:text-white">
-        <svg class="h-4 w-4 text-teal-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <h3 class="flex items-center gap-2 text-sm font-semibold text-foreground">
+        <svg class="h-4 w-4 text-brand" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h10M7 12h6m-6 5h3" />
         </svg>
         {{ t('admin.ops.switchRateTrend') }}
@@ -142,7 +147,7 @@ const options = computed(() => {
     <div class="min-h-0 flex-1">
       <Line v-if="state === 'ready' && chartData" :data="chartData" :options="options" />
       <div v-else class="flex h-full items-center justify-center">
-        <div v-if="state === 'loading'" class="animate-pulse text-sm text-gray-400">{{ t('common.loading') }}</div>
+        <div v-if="state === 'loading'" class="animate-pulse text-sm text-muted-foreground">{{ t('common.loading') }}</div>
         <EmptyState v-else :title="t('common.noData')" :description="t('admin.ops.charts.emptyRequest')" />
       </div>
     </div>
