@@ -158,6 +158,9 @@ export default {
   // Navigation
   nav: {
     dashboard: 'Dashboard',
+    groupModels: 'Models',
+    groupAnalytics: 'Usage',
+    groupBilling: 'Billing',
     announcements: 'Announcements',
     apiKeys: 'API Keys',
     batchImage: 'Batch Images',
@@ -225,6 +228,7 @@ export default {
     unavailable: 'The leaderboard is currently disabled.',
     loadFailed: 'Failed to load the leaderboard.',
     rows: 'Rows',
+    topN: 'Top {n}',
     privacy: 'User identity is anonymized. Only usage totals are shown.',
   },
   // Auth

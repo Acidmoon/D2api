@@ -158,6 +158,9 @@ export default {
   // Navigation
   nav: {
     dashboard: '仪表盘',
+    groupModels: '模型',
+    groupAnalytics: '用量分析',
+    groupBilling: '账单',
     announcements: '公告',
     apiKeys: 'API 密钥',
     batchImage: '批量生图',
@@ -225,6 +228,7 @@ export default {
     unavailable: '排行榜当前未开启。',
     loadFailed: '加载排行榜失败。',
     rows: '行数',
+    topN: '前 {n} 名',
     privacy: '用户身份已脱敏，仅展示用量汇总。',
   },
   // Auth

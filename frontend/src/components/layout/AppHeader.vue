@@ -1,5 +1,5 @@
 <template>
-  <header class="sticky top-0 z-30 border-b border-border bg-background">
+  <header class="sticky top-0 z-30 border-b border-transparent bg-background/85 backdrop-blur">
     <div class="flex h-16 items-center justify-between gap-2 px-2 sm:px-4 md:px-6">
       <!-- Left: Mobile Menu Toggle + Page Title -->
       <div class="flex shrink-0 items-center gap-2 sm:gap-4">
@@ -11,7 +11,7 @@
           <Icon name="menu" size="md" />
         </button>
 
-        <div class="hidden lg:block">
+        <div v-if="showHeaderTitle" class="hidden lg:block">
           <h1 class="text-lg font-semibold text-foreground">
             {{ pageTitle }}
           </h1>
@@ -51,7 +51,7 @@
           class="relative hidden sm:block"
         >
           <button
-            class="flex min-h-11 items-center gap-2 rounded-md border border-border bg-card px-3 py-1.5 transition-colors"
+            class="flex min-h-11 items-center gap-2 rounded-full border border-border bg-card px-3.5 py-1.5 transition-colors"
             :title="t('subscriptionProgress.walletTitle')"
             @click="toggleWalletPanel"
           >
@@ -399,6 +399,9 @@ const pageDescription = computed(() => {
   }
   return (route.meta.description as string) || ''
 })
+
+// 迁移后的页面在内容区自带大标题页头（route.meta.inPageHeader），顶栏不再重复渲染。
+const showHeaderTitle = computed(() => route.meta.inPageHeader !== true)
 
 function toggleMobileSidebar() {
   appStore.toggleMobileSidebar()

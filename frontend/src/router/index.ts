@@ -190,7 +190,8 @@ const routes: RouteRecordRaw[] = [
       requiresAdmin: false,
       title: 'Dashboard',
       titleKey: 'dashboard.title',
-      descriptionKey: 'dashboard.welcomeMessage'
+      descriptionKey: 'dashboard.welcomeMessage',
+      inPageHeader: true
     }
   },
   {
@@ -202,7 +203,8 @@ const routes: RouteRecordRaw[] = [
       requiresAdmin: false,
       title: 'API Keys',
       titleKey: 'keys.title',
-      descriptionKey: 'keys.description'
+      descriptionKey: 'keys.description',
+      inPageHeader: true
     }
   },
   {
@@ -215,7 +217,8 @@ const routes: RouteRecordRaw[] = [
       requiresAdmin: false,
       title: 'Batch Image Guide',
       titleKey: 'batchImageGuide.title',
-      descriptionKey: 'batchImageGuide.description'
+      descriptionKey: 'batchImageGuide.description',
+      inPageHeader: true
     }
   },
   {
@@ -227,7 +230,8 @@ const routes: RouteRecordRaw[] = [
       requiresAdmin: false,
       title: 'Usage Records',
       titleKey: 'usage.title',
-      descriptionKey: 'usage.description'
+      descriptionKey: 'usage.description',
+      inPageHeader: true
     }
   },
   {
@@ -239,7 +243,8 @@ const routes: RouteRecordRaw[] = [
       requiresAdmin: false,
       title: 'Redeem Code',
       titleKey: 'redeem.title',
-      descriptionKey: 'redeem.description'
+      descriptionKey: 'redeem.description',
+      inPageHeader: true
     }
   },
   {
@@ -251,7 +256,8 @@ const routes: RouteRecordRaw[] = [
       requiresAdmin: false,
       title: 'Affiliate',
       titleKey: 'affiliate.title',
-      descriptionKey: 'affiliate.description'
+      descriptionKey: 'affiliate.description',
+      inPageHeader: true
     }
   },
   {
@@ -263,7 +269,8 @@ const routes: RouteRecordRaw[] = [
       requiresAdmin: false,
       title: 'Available Channels',
       titleKey: 'availableChannels.title',
-      descriptionKey: 'availableChannels.description'
+      descriptionKey: 'availableChannels.description',
+      inPageHeader: true
     }
   },
   {
@@ -275,7 +282,8 @@ const routes: RouteRecordRaw[] = [
       requiresAdmin: false,
       title: 'Leaderboard',
       titleKey: 'leaderboard.title',
-      descriptionKey: 'leaderboard.subtitle'
+      descriptionKey: 'leaderboard.subtitle',
+      inPageHeader: true
     }
   },
   {
@@ -287,7 +295,8 @@ const routes: RouteRecordRaw[] = [
       requiresAdmin: false,
       title: 'Profile',
       titleKey: 'profile.title',
-      descriptionKey: 'profile.description'
+      descriptionKey: 'profile.description',
+      inPageHeader: true
     }
   },
   {
@@ -299,7 +308,8 @@ const routes: RouteRecordRaw[] = [
       requiresAdmin: false,
       title: 'My Subscriptions',
       titleKey: 'userSubscriptions.title',
-      descriptionKey: 'userSubscriptions.description'
+      descriptionKey: 'userSubscriptions.description',
+      inPageHeader: true
     }
   },
   {
@@ -312,6 +322,7 @@ const routes: RouteRecordRaw[] = [
       title: 'Purchase Subscription',
       titleKey: 'nav.buySubscription',
       descriptionKey: 'purchase.description',
+      inPageHeader: true,
       requiresPayment: true
     }
   },
@@ -324,7 +335,8 @@ const routes: RouteRecordRaw[] = [
       requiresAdmin: false,
       title: 'My Orders',
       titleKey: 'nav.myOrders',
-      requiresPayment: true
+      requiresPayment: true,
+      inPageHeader: true
     }
   },
   {
@@ -412,7 +424,8 @@ const routes: RouteRecordRaw[] = [
       requiresAdmin: true,
       title: 'Admin Dashboard',
       titleKey: 'admin.dashboard.title',
-      descriptionKey: 'admin.dashboard.description'
+      descriptionKey: 'admin.dashboard.description',
+      inPageHeader: true
     }
   },
   {
@@ -424,7 +437,8 @@ const routes: RouteRecordRaw[] = [
       requiresAdmin: true,
       title: 'Ops Monitoring',
       titleKey: 'admin.ops.title',
-      descriptionKey: 'admin.ops.description'
+      descriptionKey: 'admin.ops.description',
+      inPageHeader: true
     }
   },
   {
@@ -436,7 +450,8 @@ const routes: RouteRecordRaw[] = [
       requiresAdmin: true,
       title: 'Audit Logs',
       titleKey: 'admin.audit.title',
-      descriptionKey: 'admin.audit.description'
+      descriptionKey: 'admin.audit.description',
+      inPageHeader: true
     }
   },
   {
@@ -448,7 +463,8 @@ const routes: RouteRecordRaw[] = [
       requiresAdmin: true,
       title: 'User Management',
       titleKey: 'admin.users.title',
-      descriptionKey: 'admin.users.description'
+      descriptionKey: 'admin.users.description',
+      inPageHeader: true
     }
   },
   {
@@ -460,7 +476,8 @@ const routes: RouteRecordRaw[] = [
       requiresAdmin: true,
       title: 'Group Management',
       titleKey: 'admin.groups.title',
-      descriptionKey: 'admin.groups.description'
+      descriptionKey: 'admin.groups.description',
+      inPageHeader: true
     }
   },
   {
@@ -476,7 +493,8 @@ const routes: RouteRecordRaw[] = [
       requiresAdmin: true,
       title: 'Channel Management',
       titleKey: 'admin.channels.title',
-      descriptionKey: 'admin.channels.description'
+      descriptionKey: 'admin.channels.description',
+      inPageHeader: true
     }
   },
   {
@@ -488,7 +506,8 @@ const routes: RouteRecordRaw[] = [
       requiresAdmin: true,
       title: 'Channel Monitor',
       titleKey: 'admin.channelMonitor.title',
-      descriptionKey: 'admin.channelMonitor.description'
+      descriptionKey: 'admin.channelMonitor.description',
+      inPageHeader: true
     }
   },
   {
@@ -500,7 +519,8 @@ const routes: RouteRecordRaw[] = [
       requiresAdmin: true,
       title: 'Model Fingerprint Audit',
       titleKey: 'admin.fingerprint.title',
-      descriptionKey: 'admin.fingerprint.description'
+      descriptionKey: 'admin.fingerprint.description',
+      inPageHeader: true
     }
   },
   {
@@ -511,7 +531,8 @@ const routes: RouteRecordRaw[] = [
       requiresAuth: true,
       requiresAdmin: false,
       title: 'Channel Status',
-      titleKey: 'nav.channelStatus'
+      titleKey: 'nav.channelStatus',
+      inPageHeader: true
     }
   },
   {
@@ -535,7 +556,8 @@ const routes: RouteRecordRaw[] = [
       requiresAdmin: true,
       title: 'Account Management',
       titleKey: 'admin.accounts.title',
-      descriptionKey: 'admin.accounts.description'
+      descriptionKey: 'admin.accounts.description',
+      inPageHeader: true
     }
   },
   {
@@ -547,7 +569,8 @@ const routes: RouteRecordRaw[] = [
       requiresAdmin: true,
       title: 'Plugin Management',
       titleKey: 'admin.plugins.title',
-      descriptionKey: 'admin.plugins.description'
+      descriptionKey: 'admin.plugins.description',
+      inPageHeader: true
     }
   },
   {
@@ -559,7 +582,8 @@ const routes: RouteRecordRaw[] = [
       requiresAdmin: true,
       title: 'Announcements',
       titleKey: 'admin.announcements.title',
-      descriptionKey: 'admin.announcements.description'
+      descriptionKey: 'admin.announcements.description',
+      inPageHeader: true
     }
   },
   {
@@ -571,7 +595,8 @@ const routes: RouteRecordRaw[] = [
       requiresAdmin: true,
       title: 'Proxy Management',
       titleKey: 'admin.proxies.title',
-      descriptionKey: 'admin.proxies.description'
+      descriptionKey: 'admin.proxies.description',
+      inPageHeader: true
     }
   },
   {
@@ -583,7 +608,8 @@ const routes: RouteRecordRaw[] = [
       requiresAdmin: true,
       title: 'Redeem Code Management',
       titleKey: 'admin.redeem.title',
-      descriptionKey: 'admin.redeem.description'
+      descriptionKey: 'admin.redeem.description',
+      inPageHeader: true
     }
   },
   {
@@ -595,7 +621,8 @@ const routes: RouteRecordRaw[] = [
       requiresAdmin: true,
       title: 'Promo Code Management',
       titleKey: 'admin.promo.title',
-      descriptionKey: 'admin.promo.description'
+      descriptionKey: 'admin.promo.description',
+      inPageHeader: true
     }
   },
   {
@@ -607,7 +634,8 @@ const routes: RouteRecordRaw[] = [
       requiresAdmin: true,
       title: 'System Settings',
       titleKey: 'admin.settings.title',
-      descriptionKey: 'admin.settings.description'
+      descriptionKey: 'admin.settings.description',
+      inPageHeader: true
     }
   },
   {
@@ -620,7 +648,8 @@ const routes: RouteRecordRaw[] = [
       title: 'Risk Control',
       titleKey: 'admin.riskControl.title',
       descriptionKey: 'admin.riskControl.description',
-      requiresRiskControl: true
+      requiresRiskControl: true,
+      inPageHeader: true
     }
   },
   {
@@ -645,7 +674,8 @@ const routes: RouteRecordRaw[] = [
       requiresAdmin: true,
       title: 'Usage Records',
       titleKey: 'admin.usage.title',
-      descriptionKey: 'admin.usage.description'
+      descriptionKey: 'admin.usage.description',
+      inPageHeader: true
     }
   },
   {
@@ -661,7 +691,8 @@ const routes: RouteRecordRaw[] = [
       requiresAdmin: true,
       title: 'Affiliate Invite Records',
       titleKey: 'nav.affiliateInviteRecords',
-      descriptionKey: 'admin.affiliates.invitesDescription'
+      descriptionKey: 'admin.affiliates.invitesDescription',
+      inPageHeader: true
     }
   },
   {
@@ -673,7 +704,8 @@ const routes: RouteRecordRaw[] = [
       requiresAdmin: true,
       title: 'Affiliate Rebate Records',
       titleKey: 'nav.affiliateRebateRecords',
-      descriptionKey: 'admin.affiliates.rebatesDescription'
+      descriptionKey: 'admin.affiliates.rebatesDescription',
+      inPageHeader: true
     }
   },
   {
@@ -685,7 +717,8 @@ const routes: RouteRecordRaw[] = [
       requiresAdmin: true,
       title: 'Affiliate Transfer Records',
       titleKey: 'nav.affiliateTransferRecords',
-      descriptionKey: 'admin.affiliates.transfersDescription'
+      descriptionKey: 'admin.affiliates.transfersDescription',
+      inPageHeader: true
     }
   },
 
@@ -700,7 +733,8 @@ const routes: RouteRecordRaw[] = [
       requiresAdmin: true,
       title: 'Payment Dashboard',
       titleKey: 'nav.paymentDashboard',
-      requiresPayment: true
+      requiresPayment: true,
+      inPageHeader: true
     }
   },
   {
@@ -712,7 +746,8 @@ const routes: RouteRecordRaw[] = [
       requiresAdmin: true,
       title: 'Order Management',
       titleKey: 'nav.orderManagement',
-      requiresPayment: true
+      requiresPayment: true,
+      inPageHeader: true
     }
   },
   {
@@ -724,7 +759,8 @@ const routes: RouteRecordRaw[] = [
       requiresAdmin: true,
       title: 'Subscription Plans',
       titleKey: 'nav.paymentPlans',
-      requiresPayment: true
+      requiresPayment: true,
+      inPageHeader: true
     }
   },
 

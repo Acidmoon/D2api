@@ -1,5 +1,5 @@
 <template>
-  <div class="auth-layout relative flex min-h-screen items-center justify-center overflow-hidden p-4">
+  <div class="auth-layout relative flex min-h-screen flex-col items-center justify-center overflow-hidden p-4">
     <!-- Content Container -->
     <div class="relative z-10 w-full max-w-md">
       <!-- Logo/Brand -->
@@ -9,7 +9,7 @@
           <div class="auth-logo mb-4 inline-flex h-16 w-16 items-center justify-center overflow-hidden">
             <img :src="siteLogo || '/logo.svg'" alt="Logo" class="h-full w-full object-contain" />
           </div>
-          <h1 class="auth-title mb-2 text-3xl font-bold">
+          <h1 class="auth-title mb-2 text-3xl font-bold tracking-tight">
             {{ siteName }}
           </h1>
           <p class="auth-subtitle text-sm">
@@ -19,7 +19,7 @@
       </div>
 
       <!-- Card Container -->
-      <div class="card rounded-xl bg-card p-8 shadow-sm">
+      <div class="card rounded-3xl p-6 sm:p-8">
         <slot />
       </div>
 
@@ -61,14 +61,14 @@ onMounted(() => {
 }
 
 .auth-logo {
-  border-radius: var(--radius);
+  border-radius: var(--nm-radius-lg);
   background: hsl(var(--card));
   border: 1px solid hsl(var(--border));
-  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  box-shadow: none;
 }
 
 .auth-title {
-  color: hsl(var(--brand));
+  color: hsl(var(--foreground));
 }
 
 .auth-subtitle {

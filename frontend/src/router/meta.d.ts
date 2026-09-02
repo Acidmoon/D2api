@@ -64,5 +64,11 @@ declare module 'vue-router' {
      * i18n key for the page description
      */
     descriptionKey?: string
+
+    /**
+     * 页面在内容区自带大标题页头（AppHeader 据此隐藏顶栏重复标题）
+     * @default false
+     */
+    inPageHeader?: boolean
   }
 }
