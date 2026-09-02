@@ -22,6 +22,7 @@ export default {
     platformBreakdownEmpty: 'No platform usage yet',
     platformCount: '{count} platforms',
     platformOther: 'Other',
+    platformBenefits: 'Platform Benefits',
     platformQuota: {
       title: 'Quota Usage',
       daily: 'Daily',
@@ -56,7 +57,17 @@ export default {
     viewUsage: 'View Usage',
     checkDetailedLogs: 'Check detailed usage logs',
     redeemCode: 'Redeem Code',
-    addBalanceWithCode: 'Add balance with a code'
+    addBalanceWithCode: 'Add balance with a code',
+    today: 'Today',
+    totalRequests: 'Total Requests',
+    topUp: 'Top Up',
+    viewOrders: 'View Orders',
+    orders: 'Orders',
+    channels: 'Channels',
+    totalSpend: 'Total Spend',
+    usageSummary: 'Usage Overview',
+    rpm: 'Requests / min',
+    tpm: 'Tokens / min'
   },
 
   // Groups (shared)
@@ -71,11 +82,13 @@ export default {
     searchPlaceholder: 'Search name or key...',
     endpoints: {
       title: 'API Endpoints',
+      description: 'Base URLs for API calls. Click the copy icon to copy.',
       default: 'Default',
       copied: 'Copied',
       copiedHint: 'Copied to clipboard',
       clickToCopy: 'Click to copy this endpoint',
       speedTest: 'Speed Test',
+      learnMore: 'Learn more',
     },
     allGroups: 'All Groups',
     allStatus: 'All Status',
@@ -539,6 +552,11 @@ export default {
     public: 'Public',
     exclusiveTooltip: 'Exclusive groups granted to you by an admin',
     publicTooltip: 'Groups open to all users',
+    stats: {
+      channels: 'Channels',
+      platforms: 'Platforms',
+      models: 'Models'
+    },
     columns: {
       name: 'Channel',
       description: 'Description',
@@ -659,6 +677,7 @@ export default {
   profile: {
     title: 'Profile Settings',
     description: 'Manage your account information and settings',
+    quickSettings: 'Quick Settings',
     accountBalance: 'Account Balance',
     concurrencyLimit: 'Concurrency Limit',
     rpmLimit: 'RPM Limit',
@@ -686,6 +705,7 @@ export default {
     updateFailed: 'Failed to update profile',
     usernameRequired: 'Username is required',
     changePassword: 'Change Password',
+    passwordDescription: 'Update your password regularly to keep your account secure.',
     currentPassword: 'Current Password',
     newPassword: 'New Password',
     confirmNewPassword: 'Confirm New Password',
@@ -856,6 +876,10 @@ export default {
   errors: {
     somethingWentWrong: 'Something went wrong',
     pageNotFound: 'Page not found',
+    pageNotFoundDescription: "The page you are looking for doesn't exist or has been moved.",
+    goBack: 'Go Back',
+    backToDashboard: 'Go to Dashboard',
+    needHelp: 'Need help?',
     unauthorized: 'Unauthorized',
     forbidden: 'Forbidden',
     serverError: 'Server error',

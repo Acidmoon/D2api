@@ -6,7 +6,7 @@
     <input
       :value="modelValue"
       type="text"
-      class="flex h-9 w-full rounded-md border border-input bg-transparent py-1 pl-9 pr-3 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+      :class="inputClass"
       :placeholder="placeholder"
       @input="handleInput"
     />
@@ -14,6 +14,7 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useDebounceFn } from '@vueuse/core'
 import { Search } from 'lucide-vue-next'
 
@@ -21,10 +22,18 @@ const props = withDefaults(defineProps<{
   modelValue: string
   placeholder?: string
   debounceMs?: number
+  /** 药丸形填充变体（控制台风格：圆角、无边框、浅灰底） */
+  pills?: boolean
 }>(), {
   placeholder: 'Search...',
   debounceMs: 300
 })
+
+const inputClass = computed(() =>
+  props.pills
+    ? 'flex h-9 w-full rounded-full border border-transparent bg-secondary py-1 pl-9 pr-3 text-sm shadow-none transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50'
+    : 'flex h-9 w-full rounded-md border border-input bg-transparent py-1 pl-9 pr-3 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50'
+)
 
 const emit = defineEmits<{
   (e: 'update:modelValue', value: string): void

@@ -14,7 +14,9 @@ const routerReplace = vi.hoisted(() => vi.fn())
 const routerPush = vi.hoisted(() => vi.fn())
 const routerResolve = vi.hoisted(() => vi.fn(() => ({ href: '/payment/stripe?mock=1' })))
 const createOrder = vi.hoisted(() => vi.fn())
-const refreshUser = vi.hoisted(() => vi.fn())
+const refreshUser = vi.hoisted(() =>
+  vi.fn(() => Promise.resolve({ username: 'demo-user', balance: 0 }))
+)
 const fetchActiveSubscriptions = vi.hoisted(() => vi.fn().mockResolvedValue(undefined))
 const showError = vi.hoisted(() => vi.fn())
 const showInfo = vi.hoisted(() => vi.fn())
@@ -210,7 +212,7 @@ async function mountSubscriptionConfirm(options: Parameters<typeof checkoutInfoW
   routerPush.mockReset().mockResolvedValue(undefined)
   routerResolve.mockClear()
   createOrder.mockReset()
-  refreshUser.mockReset()
+  refreshUser.mockClear()
   fetchActiveSubscriptions.mockReset().mockResolvedValue(undefined)
   showError.mockReset()
   showInfo.mockReset()
@@ -226,6 +228,7 @@ async function mountSubscriptionConfirm(options: Parameters<typeof checkoutInfoW
         AppLayout: {
           template: '<div><slot /></div>',
         },
+        RouterLink: true,
         Teleport: true,
         Transition: false,
       },
@@ -335,7 +338,7 @@ describe('PaymentView payment recovery', () => {
     routerPush.mockReset().mockResolvedValue(undefined)
     routerResolve.mockClear()
     createOrder.mockReset()
-    refreshUser.mockReset()
+    refreshUser.mockClear()
     fetchActiveSubscriptions.mockReset().mockResolvedValue(undefined)
     showError.mockReset()
     showInfo.mockReset()
@@ -394,6 +397,7 @@ describe('PaymentView payment recovery', () => {
             props: ['selected'],
             template: '<div data-test="method-selector">{{ selected }}</div>',
           },
+          RouterLink: true,
           Teleport: true,
           Transition: false,
         },
@@ -419,7 +423,7 @@ describe('PaymentView WeChat JSAPI flow', () => {
     routerPush.mockReset().mockResolvedValue(undefined)
     routerResolve.mockClear()
     createOrder.mockReset()
-    refreshUser.mockReset()
+    refreshUser.mockClear()
     fetchActiveSubscriptions.mockReset().mockResolvedValue(undefined)
     showError.mockReset()
     showInfo.mockReset()
@@ -441,6 +445,7 @@ describe('PaymentView WeChat JSAPI flow', () => {
     shallowMount(PaymentView, {
       global: {
         stubs: {
+          RouterLink: true,
           Teleport: true,
           Transition: false,
         },
@@ -470,6 +475,7 @@ describe('PaymentView WeChat JSAPI flow', () => {
     shallowMount(PaymentView, {
       global: {
         stubs: {
+          RouterLink: true,
           Teleport: true,
           Transition: false,
         },
@@ -491,6 +497,7 @@ describe('PaymentView WeChat JSAPI flow', () => {
     const wrapper = shallowMount(PaymentView, {
       global: {
         stubs: {
+          RouterLink: true,
           Teleport: true,
           Transition: false,
         },
@@ -535,6 +542,7 @@ describe('PaymentView WeChat JSAPI flow', () => {
     shallowMount(PaymentView, {
       global: {
         stubs: {
+          RouterLink: true,
           Teleport: true,
           Transition: false,
         },
@@ -573,6 +581,7 @@ describe('PaymentView WeChat JSAPI flow', () => {
     shallowMount(PaymentView, {
       global: {
         stubs: {
+          RouterLink: true,
           Teleport: true,
           Transition: false,
         },
@@ -621,6 +630,7 @@ describe('PaymentView WeChat JSAPI flow', () => {
     shallowMount(PaymentView, {
       global: {
         stubs: {
+          RouterLink: true,
           Teleport: true,
           Transition: false,
         },

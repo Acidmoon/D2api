@@ -67,7 +67,7 @@
           <td class="align-top px-4 py-3">
             <span
               :class="[
-                'inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-medium uppercase',
+                'inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] font-medium uppercase',
                 platformBadgeClass(section.platform),
               ]"
             >
@@ -203,7 +203,7 @@
           >
             <span
               :class="[
-                'inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-medium uppercase',
+                'inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] font-medium uppercase',
                 platformBadgeClass(section.platform),
               ]"
             >

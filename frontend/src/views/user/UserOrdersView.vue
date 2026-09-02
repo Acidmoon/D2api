@@ -1,34 +1,52 @@
 <template>
   <AppLayout>
-    <div class="space-y-4">
-      <!-- Filters -->
-      <div class="card p-4">
-        <div class="flex flex-wrap items-center gap-3">
-          <Select v-model="currentFilter" :options="statusFilters" class="w-36" @change="fetchOrders" />
-          <div class="flex flex-1 items-center justify-end gap-2">
-            <button @click="fetchOrders" :disabled="loading" class="btn btn-secondary" :title="t('common.refresh')">
-              <Icon name="refresh" size="md" :class="loading ? 'animate-spin' : ''" />
-            </button>
-            <button class="btn btn-primary" @click="router.push('/purchase')">{{ t('payment.result.backToRecharge') }}</button>
-          </div>
-        </div>
+    <div class="space-y-5">
+      <!-- In-content page header (route meta inPageHeader keeps the top bar quiet) -->
+      <div class="page-header">
+        <h1 class="page-title">{{ t('nav.myOrders') }}</h1>
+        <p class="page-description">{{ t('payment.orders.description') }}</p>
       </div>
 
-      <!-- Table -->
-      <OrderTable :orders="orders" :loading="loading">
-        <template #actions="{ row }">
-          <div class="flex items-center gap-2">
-            <button v-if="row.status === 'PENDING'" @click="handleCancel(row.id)" class="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-yellow-600 hover:bg-yellow-50 dark:text-yellow-400 dark:hover:bg-yellow-900/20">
-              <Icon name="x" size="sm" />
-              <span>{{ t('payment.orders.cancel') }}</span>
+      <!-- Order history card: toolbar row + clean table -->
+      <section class="card p-4 sm:p-5">
+        <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
+          <h2 class="text-sm font-semibold text-foreground">{{ t('payment.orders.historyTitle') }}</h2>
+          <div class="flex flex-wrap items-center gap-2">
+            <Select v-model="currentFilter" :options="statusFilters" class="w-36" @change="fetchOrders" />
+            <button
+              type="button"
+              class="btn btn-ghost btn-sm"
+              :disabled="loading"
+              :title="t('common.refresh')"
+              :aria-label="t('common.refresh')"
+              @click="fetchOrders"
+            >
+              <Icon name="refresh" size="md" :class="loading ? 'animate-spin' : ''" />
             </button>
-            <button v-if="canRequestRefund(row)" @click="openRefundDialog(row)" class="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-purple-600 hover:bg-purple-50 dark:text-purple-400 dark:hover:bg-purple-900/20">
-              <Icon name="dollar" size="sm" />
-              <span>{{ t('payment.orders.requestRefund') }}</span>
-            </button>
+            <button type="button" class="btn btn-primary btn-sm" @click="router.push('/purchase')">{{ t('payment.result.backToRecharge') }}</button>
           </div>
-        </template>
-      </OrderTable>
+        </div>
+
+        <!-- Table -->
+        <OrderTable :orders="orders" :loading="loading">
+          <template #actions="{ row }">
+            <div class="flex items-center gap-3 whitespace-nowrap text-sm">
+              <button v-if="row.status === 'PENDING'" type="button" class="font-medium text-semantic-danger transition-opacity hover:underline hover:opacity-80" @click="handleCancel(row.id)">
+                {{ t('payment.orders.cancel') }}
+              </button>
+              <button v-if="canRequestRefund(row)" type="button" class="font-medium text-brand transition-opacity hover:underline hover:opacity-80" @click="openRefundDialog(row)">
+                {{ t('payment.orders.requestRefund') }}
+              </button>
+            </div>
+          </template>
+          <template #empty>
+            <div class="empty-state">
+              <Icon name="document" size="xl" class="mb-3 text-muted-foreground/40" />
+              <p class="text-sm text-muted-foreground">{{ t('payment.orders.empty') }}</p>
+            </div>
+          </template>
+        </OrderTable>
+      </section>
 
       <!-- Pagination -->
       <Pagination
@@ -43,7 +61,7 @@
 
     <!-- Cancel Confirm Dialog -->
     <BaseDialog :show="!!cancelTargetId" :title="t('payment.orders.cancel')" width="narrow" @close="cancelTargetId = null">
-      <p class="text-sm text-gray-600 dark:text-gray-300">{{ t('payment.confirmCancel') }}</p>
+      <p class="text-sm text-muted-foreground">{{ t('payment.confirmCancel') }}</p>
       <template #footer>
         <div class="flex justify-end gap-3">
           <button class="btn btn-secondary" @click="cancelTargetId = null">{{ t('common.cancel') }}</button>
@@ -55,14 +73,14 @@
     <!-- Refund Dialog -->
     <BaseDialog :show="!!refundTarget" :title="t('payment.orders.requestRefund')" @close="refundTarget = null">
       <div v-if="refundTarget" class="space-y-4">
-        <div class="rounded-xl bg-gray-50 p-4 dark:bg-dark-800">
+        <div class="rounded-xl bg-secondary px-4 py-3">
           <div class="flex justify-between text-sm">
-            <span class="text-gray-500 dark:text-gray-400">{{ t('payment.orders.orderId') }}</span>
-            <span class="font-mono text-gray-900 dark:text-white">#{{ refundTarget.id }}</span>
+            <span class="text-muted-foreground">{{ t('payment.orders.orderId') }}</span>
+            <span class="font-mono text-foreground">#{{ refundTarget.id }}</span>
           </div>
           <div class="mt-2 flex justify-between text-sm">
-            <span class="text-gray-500 dark:text-gray-400">{{ t('payment.orders.amount') }}</span>
-            <span class="text-gray-900 dark:text-white">${{ refundTarget.amount.toFixed(2) }}</span>
+            <span class="text-muted-foreground">{{ t('payment.orders.amount') }}</span>
+            <span class="text-foreground">${{ refundTarget.amount.toFixed(2) }}</span>
           </div>
         </div>
         <div>

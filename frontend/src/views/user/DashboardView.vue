@@ -3,7 +3,18 @@
     <div class="space-y-6">
       <div v-if="loading" class="flex items-center justify-center py-12"><LoadingSpinner /></div>
       <template v-else-if="stats">
-        <UserDashboardStats :stats="stats" :balance="user?.balance || 0" :is-simple="authStore.isSimpleMode" />
+        <div class="page-header">
+          <h1 class="page-title">{{ t('dashboard.title') }}</h1>
+          <p class="page-description">{{ t('dashboard.welcomeMessage') }}</p>
+        </div>
+        <UserDashboardQuickActions />
+        <UserDashboardStats
+          :stats="stats"
+          :balance="user?.balance || 0"
+          :is-simple="authStore.isSimpleMode"
+          :trend="trendData"
+          :platform-quotas="platformQuotas"
+        />
         <UserDashboardCharts
           v-model:startDate="startDate"
           v-model:endDate="endDate"
@@ -26,14 +37,18 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import { usageAPI, type UserDashboardStats as UserStatsType } from '@/api/usage'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
+import UserDashboardQuickActions from '@/components/user/dashboard/UserDashboardQuickActions.vue'
 import UserDashboardStats from '@/components/user/dashboard/UserDashboardStats.vue'
 import UserDashboardCharts from '@/components/user/dashboard/UserDashboardCharts.vue'
-import type { TrendDataPoint, ModelStat } from '@/types'
+import type { TrendDataPoint, ModelStat, PlatformQuotaItem } from '@/types'
+import { getMyPlatformQuotas } from '@/api/user'
 
+const { t } = useI18n()
 const authStore = useAuthStore()
 const user = computed(() => authStore.user)
 const stats = ref<UserStatsType | null>(null)
@@ -43,6 +58,7 @@ const loadingMonthHeatmap = ref(false)
 const trendData = ref<TrendDataPoint[]>([])
 const monthTrendData = ref<TrendDataPoint[]>([])
 const modelStats = ref<ModelStat[]>([])
+const platformQuotas = ref<PlatformQuotaItem[] | null>(null)
 const heatmapMonth = ref(new Date())
 
 const formatLD = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
@@ -106,6 +122,16 @@ const loadMonthHeatmap = async () => {
   }
 }
 
+const loadPlatformQuotas = async () => {
+  try {
+    const data = await getMyPlatformQuotas()
+    platformQuotas.value = data.platform_quotas ?? []
+  } catch (error) {
+    console.warn('Failed to load platform quotas:', error)
+    platformQuotas.value = []
+  }
+}
+
 const onHeatmapMonthChange = (month: Date) => {
   heatmapMonth.value = month
   loadMonthHeatmap()
@@ -115,6 +141,7 @@ const refreshAll = () => {
   loadStats()
   loadCharts()
   loadMonthHeatmap()
+  loadPlatformQuotas()
 }
 
 onMounted(() => { refreshAll() })

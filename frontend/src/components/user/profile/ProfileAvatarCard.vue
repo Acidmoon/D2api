@@ -1,23 +1,23 @@
 <template>
-  <div :class="props.embedded ? 'space-y-4' : 'card'">
+  <div :class="props.embedded ? 'space-y-4' : 'card p-6'">
     <div
       v-if="!props.embedded"
-      class="border-b border-gray-100 px-6 py-4 dark:border-dark-700"
+      class="mb-5"
     >
-      <h2 class="text-lg font-medium text-gray-900 dark:text-white">
+      <h2 class="text-sm font-semibold text-foreground">
         {{ t('profile.avatar.title') }}
       </h2>
-      <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+      <p class="mt-0.5 text-xs text-muted-foreground">
         {{ t('profile.avatar.description') }}
       </p>
     </div>
 
-    <div :class="props.embedded ? 'space-y-3' : 'flex flex-col gap-5 px-6 py-6 sm:flex-row sm:items-start'">
+    <div :class="props.embedded ? 'space-y-3' : 'flex flex-col gap-5 sm:flex-row sm:items-start'">
       <div
         :class="props.embedded
-          ? 'flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl text-xl font-bold'
-          : 'flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-2xl text-3xl font-bold'"
-        style="background: var(--nm-accent); color: var(--nm-on-accent); box-shadow: var(--nm-shadow-raised-sm)"
+          ? 'flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full text-xl font-bold'
+          : 'flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-full text-3xl font-bold'"
+        class="bg-gradient-to-br from-brand to-primary-400 text-white"
       >
         <img
           v-if="avatarPreviewUrl"
@@ -31,13 +31,13 @@
 
       <div :class="props.embedded ? 'space-y-3' : 'min-w-0 flex-1 space-y-4'">
         <div class="space-y-1">
-          <p v-if="props.embedded" class="text-sm font-semibold text-gray-900 dark:text-white">
+          <p v-if="props.embedded" class="text-sm font-semibold text-foreground">
             {{ t('profile.avatar.title') }}
           </p>
-          <p v-else class="text-sm font-medium text-gray-900 dark:text-white">
+          <p v-else class="text-sm font-medium text-foreground">
             {{ displayName }}
           </p>
-          <p class="text-sm text-gray-500 dark:text-gray-400">
+          <p class="text-sm text-muted-foreground">
             {{ t('profile.avatar.uploadHint') }}
           </p>
         </div>

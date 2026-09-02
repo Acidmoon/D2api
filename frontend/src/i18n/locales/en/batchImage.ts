@@ -76,6 +76,8 @@ export default {
       cost: 'Cost',
       downloadStatus: 'Download status',
       items: 'Items',
+      customIdColumn: 'Custom ID',
+      promptColumn: 'Prompt',
       preview: 'Preview',
       previewZoom: 'Zoom compressed preview {id}',
       previewReload: 'Reload compressed preview',
@@ -106,6 +108,8 @@ export default {
     create: {
       title: 'Create batch job',
       taskName: 'Task name',
+      apiKeyLabel: 'API Key',
+      promptLabel: 'Prompt',
       taskNamePlaceholder: 'Defaults to the current time if left empty',
       loadingKeys: 'Loading API keys...',
       selectKeyPlaceholder: 'Select a Gemini API key',

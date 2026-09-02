@@ -4,6 +4,11 @@
       data-testid="profile-shell"
       class="mx-auto max-w-[950px] space-y-6"
     >
+      <div class="page-header">
+        <h1 class="page-title">{{ t('profile.title') }}</h1>
+        <p class="page-description">{{ t('profile.description') }}</p>
+      </div>
+
       <ProfileInfoCard
         :user="user"
         :linuxdo-enabled="linuxdoOAuthEnabled"
@@ -15,22 +20,24 @@
         :wechat-mp-enabled="wechatOAuthMPEnabled"
       />
 
-      <div
+      <section
         v-if="contactInfo"
-        class="card border-primary-200 bg-primary-50 p-6 dark:bg-primary-900/20"
+        class="card p-6"
       >
         <div class="flex items-center gap-4">
-          <div class="rounded-xl bg-primary-100 p-3 text-primary-600">
-            <Icon name="chat" size="lg" />
-          </div>
-          <div>
-            <h3 class="font-semibold text-primary-800 dark:text-primary-200">
+          <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-secondary text-brand">
+            <Icon name="chat" size="md" />
+          </span>
+          <div class="min-w-0">
+            <h3 class="text-sm font-semibold text-foreground">
               {{ t('common.contactSupport') }}
             </h3>
-            <p class="text-sm font-medium">{{ contactInfo }}</p>
+            <p class="mt-0.5 break-all text-sm text-muted-foreground">
+              {{ contactInfo }}
+            </p>
           </div>
         </div>
-      </div>
+      </section>
 
       <ProfilePasswordForm />
 

@@ -62,7 +62,7 @@ export default {
   // Recharge / Subscription Page
   purchase: {
     title: 'Recharge / Subscription',
-    description: 'Recharge balance or purchase subscription via the embedded page',
+    description: 'Top up your balance or subscribe to a plan',
     openInNewTab: 'Open in new tab',
     notEnabledTitle: 'Feature not enabled',
     notEnabledDesc: 'The administrator has not enabled the recharge/subscription entry. Please contact admin.',
@@ -351,6 +351,8 @@ export default {
     },
     orders: {
       title: 'My Orders',
+      description: 'View your top-up and subscription orders and payment status',
+      historyTitle: 'Order History',
       empty: 'No orders yet',
       orderId: 'Order ID',
       orderNo: 'Order No.',

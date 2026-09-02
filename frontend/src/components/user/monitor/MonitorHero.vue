@@ -1,10 +1,12 @@
 <template>
-  <section class="py-3 md:py-4">
-    <div class="flex items-center justify-end gap-3 flex-wrap">
-      <div
-        role="tablist"
-        class="inline-flex p-0.5 rounded-xl bg-gray-100 dark:bg-dark-800 border border-gray-200/60 dark:border-dark-700/60 text-xs"
-      >
+  <!-- Console toolbar surface: matches the V2 monitor shell elevation -->
+  <section
+    class="card flex flex-wrap items-center justify-end gap-3 !rounded-3xl !border-0 px-4 py-3 shadow-sm ring-1 ring-gray-900/5 dark:!bg-dark-800 dark:ring-dark-700"
+  >
+    <div
+      role="tablist"
+      class="inline-flex p-0.5 rounded-xl bg-gray-100 dark:bg-dark-800 border border-gray-200/60 dark:border-dark-700/60 text-xs"
+    >
         <button
           v-for="opt in windowOptions"
           :key="opt.value"
@@ -51,7 +53,6 @@
         @update:enabled="autoRefresh.setEnabled"
         @update:interval="autoRefresh.setInterval"
       />
-    </div>
   </section>
 </template>
 

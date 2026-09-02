@@ -76,6 +76,8 @@ export default {
       cost: '费用',
       downloadStatus: '下载状态',
       items: '明细',
+      customIdColumn: '自定义 ID',
+      promptColumn: 'Prompt',
       preview: '预览',
       previewZoom: '放大压缩预览 {id}',
       previewReload: '重新加载压缩预览',
@@ -106,6 +108,8 @@ export default {
     create: {
       title: '创建批量任务',
       taskName: '任务名称',
+      apiKeyLabel: 'API Key',
+      promptLabel: 'Prompt',
       taskNamePlaceholder: '不填写则默认使用当前时间',
       loadingKeys: '加载 API Key 中...',
       selectKeyPlaceholder: '请选择 Gemini API Key',

@@ -22,6 +22,7 @@ export default {
     platformBreakdownEmpty: '暂无平台用量',
     platformCount: '{count} 个平台',
     platformOther: '其他',
+    platformBenefits: '平台权益',
     platformQuota: {
       title: '配额用量',
       daily: '日',
@@ -56,7 +57,17 @@ export default {
     viewUsage: '查看使用记录',
     checkDetailedLogs: '查看详细的使用日志',
     redeemCode: '兑换码',
-    addBalanceWithCode: '使用兑换码充值'
+    addBalanceWithCode: '使用兑换码充值',
+    today: '今日',
+    totalRequests: '累计请求',
+    topUp: '充值',
+    viewOrders: '查看订单',
+    orders: '订单',
+    channels: '可用渠道',
+    totalSpend: '累计消费',
+    usageSummary: '用量概览',
+    rpm: '每分钟请求',
+    tpm: '每分钟 Token'
   },
 
   // Groups (shared)
@@ -71,11 +82,13 @@ export default {
     searchPlaceholder: '搜索名称或Key...',
     endpoints: {
       title: 'API 端点',
+      description: '调用 API 时使用的接入地址，点击复制图标即可复制。',
       default: '默认',
       copied: '已复制',
       copiedHint: '已复制到剪贴板',
       clickToCopy: '点击可复制此端点',
       speedTest: '测速',
+      learnMore: '了解更多',
     },
     allGroups: '全部分组',
     allStatus: '全部状态',
@@ -544,6 +557,11 @@ export default {
     public: '公开',
     exclusiveTooltip: '管理员授权给你的专属分组',
     publicTooltip: '对所有用户公开的分组',
+    stats: {
+      channels: '渠道数',
+      platforms: '平台数',
+      models: '模型数'
+    },
     columns: {
       name: '渠道名',
       description: '描述',
@@ -664,6 +682,7 @@ export default {
   profile: {
     title: '个人设置',
     description: '管理您的账户信息和设置',
+    quickSettings: '快捷设置',
     accountBalance: '账户余额',
     concurrencyLimit: '并发限制',
     rpmLimit: 'RPM 限制',
@@ -691,6 +710,7 @@ export default {
     updateFailed: '资料更新失败',
     usernameRequired: '用户名不能为空',
     changePassword: '修改密码',
+    passwordDescription: '定期更新密码，保障账户安全。',
     currentPassword: '当前密码',
     newPassword: '新密码',
     confirmNewPassword: '确认新密码',
@@ -861,6 +881,10 @@ export default {
   errors: {
     somethingWentWrong: '出错了',
     pageNotFound: '页面未找到',
+    pageNotFoundDescription: '你访问的页面不存在或已被移动。',
+    goBack: '返回上一页',
+    backToDashboard: '前往控制台',
+    needHelp: '需要帮助？',
     unauthorized: '未授权',
     forbidden: '禁止访问',
     serverError: '服务器错误',

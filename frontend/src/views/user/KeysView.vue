@@ -2,77 +2,166 @@
   <AppLayout>
     <TablePageLayout>
       <template #filters>
-        <div class="flex flex-col gap-3 rounded-lg border border-border bg-card p-3">
-          <div class="flex flex-wrap items-center gap-3">
-            <SearchInput
-              v-model="filterSearch"
-              :placeholder="t('keys.searchPlaceholder')"
-              class="w-full sm:w-64"
-              @search="onFilterChange"
-            />
-            <Select
-              :model-value="filterGroupId"
-              class="w-40"
-              :options="groupFilterOptions"
-              @update:model-value="onGroupFilterChange"
-            />
-            <Select
-              :model-value="filterStatus"
-              class="w-40"
-              :options="statusFilterOptions"
-              @update:model-value="onStatusFilterChange"
-            />
+        <div>
+          <!-- In-content page header -->
+          <div class="page-header">
+            <h1 class="page-title">{{ t('keys.title') }}</h1>
+            <p class="page-description">{{ t('keys.description') }}</p>
           </div>
-          <EndpointPopover
-            v-if="publicSettings?.api_base_url || (publicSettings?.custom_endpoints?.length ?? 0) > 0"
-            :api-base-url="publicSettings?.api_base_url || ''"
-            :custom-endpoints="publicSettings?.custom_endpoints || []"
-          />
-        </div>
-      </template>
 
-      <template #actions>
-        <div class="flex justify-end gap-3">
-          <Button
-            @click="loadApiKeys"
-            :disabled="loading"
-            variant="outline"
-            size="icon"
-            :title="t('common.refresh')"
-          >
-            <RefreshCw :class="loading ? 'animate-spin' : ''" />
-          </Button>
-          <div class="relative" ref="columnDropdownRef">
-            <Button
-              @click="showColumnDropdown = !showColumnDropdown"
-              variant="outline"
-              :title="t('keys.columnSettings')"
-            >
-              <Columns3 class="h-4 w-4 md:mr-1.5" />
-              <span class="hidden md:inline">{{ t('keys.columnSettings') }}</span>
-            </Button>
-            <div
-              v-if="showColumnDropdown"
-              class="absolute right-0 top-full z-50 mt-1 max-h-80 w-48 overflow-y-auto rounded-lg border border-border bg-card py-1 shadow-lg"
-            >
-              <button
-                v-for="col in toggleableColumns"
-                :key="col.key"
-                @click="toggleColumn(col.key)"
-                class="flex w-full items-center justify-between px-4 py-2 text-left text-sm text-foreground hover:bg-muted"
+          <!-- Endpoint info card -->
+          <section v-if="endpointRows.length > 0" class="card mb-5">
+            <div class="card-body">
+              <div class="flex flex-wrap items-start justify-between gap-2">
+                <div>
+                  <h2 class="text-sm font-semibold text-foreground">
+                    {{ t('keys.endpoints.title') }}
+                  </h2>
+                  <p class="mt-0.5 text-xs text-muted-foreground">
+                    {{ t('keys.endpoints.description') }}
+                  </p>
+                </div>
+                <a
+                  v-if="sanitizedDocUrl"
+                  :href="sanitizedDocUrl"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="inline-flex items-center gap-1 text-xs font-medium text-brand hover:underline"
+                >
+                  {{ t('keys.endpoints.learnMore') }}
+                  <ExternalLink class="h-3 w-3" />
+                </a>
+              </div>
+              <div class="mt-4 space-y-3">
+                <div
+                  v-for="(item, index) in endpointRows"
+                  :key="index"
+                  class="flex flex-col gap-2 sm:flex-row sm:items-center"
+                >
+                  <div class="flex w-full shrink-0 items-center gap-1.5 sm:w-44">
+                    <span
+                      class="truncate text-xs font-medium text-muted-foreground"
+                      :title="item.description || item.name"
+                    >{{ item.name }}</span>
+                    <span
+                      v-if="item.isDefault"
+                      class="badge badge-primary shrink-0 px-1.5 py-px text-[10px] leading-tight"
+                    >{{ t('keys.endpoints.default') }}</span>
+                  </div>
+                  <div class="flex min-w-0 flex-1 items-center gap-1.5">
+                    <div
+                      class="min-w-0 flex-1 truncate rounded-xl bg-secondary px-3.5 py-2 font-mono text-sm text-foreground"
+                      :title="item.endpoint"
+                    >{{ item.endpoint }}</div>
+                    <button
+                      type="button"
+                      class="rounded-full p-2 transition-colors"
+                      :class="
+                        copiedEndpoint === item.endpoint
+                          ? 'text-semantic-success'
+                          : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
+                      "
+                      :title="
+                        copiedEndpoint === item.endpoint
+                          ? t('keys.endpoints.copiedHint')
+                          : t('keys.endpoints.clickToCopy')
+                      "
+                      :aria-label="
+                        copiedEndpoint === item.endpoint
+                          ? t('keys.endpoints.copiedHint')
+                          : t('keys.endpoints.clickToCopy')
+                      "
+                      @click="copyEndpoint(item.endpoint)"
+                    >
+                      <Check v-if="copiedEndpoint === item.endpoint" class="h-4 w-4" />
+                      <Clipboard v-else class="h-4 w-4" />
+                    </button>
+                    <a
+                      :href="endpointSpeedTestUrl(item.endpoint)"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="rounded-full p-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                      :title="t('keys.endpoints.speedTest')"
+                      :aria-label="t('keys.endpoints.speedTest')"
+                    >
+                      <Zap class="h-4 w-4" />
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Toolbar: filters left, actions right -->
+          <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div class="flex flex-1 flex-wrap items-center gap-2">
+              <SearchInput
+                v-model="filterSearch"
+                :placeholder="t('keys.searchPlaceholder')"
+                class="w-full sm:w-64"
+                pills
+                @search="onFilterChange"
+              />
+              <Select
+                :model-value="filterGroupId"
+                class="w-40"
+                :options="groupFilterOptions"
+                @update:model-value="onGroupFilterChange"
+              />
+              <Select
+                :model-value="filterStatus"
+                class="w-40"
+                :options="statusFilterOptions"
+                @update:model-value="onStatusFilterChange"
+              />
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                class="rounded-full"
+                :disabled="loading"
+                :title="t('common.refresh')"
+                :aria-label="t('common.refresh')"
+                @click="loadApiKeys"
               >
-                <span>{{ col.label }}</span>
-                <Check
-                  v-if="isColumnVisible(col.key)"
-                  class="h-4 w-4 text-brand"
-                />
-              </button>
+                <RefreshCw :class="loading ? 'animate-spin' : ''" />
+              </Button>
+              <div class="relative" ref="columnDropdownRef">
+                <Button
+                  variant="ghost"
+                  class="rounded-full"
+                  :title="t('keys.columnSettings')"
+                  @click="showColumnDropdown = !showColumnDropdown"
+                >
+                  <Columns3 class="h-4 w-4 md:mr-1.5" />
+                  <span class="hidden md:inline">{{ t('keys.columnSettings') }}</span>
+                </Button>
+                <div
+                  v-if="showColumnDropdown"
+                  class="dropdown right-0 top-full mt-1.5 max-h-80 w-52 overflow-y-auto"
+                >
+                  <button
+                    v-for="col in toggleableColumns"
+                    :key="col.key"
+                    type="button"
+                    class="dropdown-item justify-between"
+                    @click="toggleColumn(col.key)"
+                  >
+                    <span>{{ col.label }}</span>
+                    <Check
+                      v-if="isColumnVisible(col.key)"
+                      class="h-4 w-4 shrink-0 text-brand"
+                    />
+                  </button>
+                </div>
+              </div>
+              <Button class="rounded-full" data-tour="keys-create-btn" @click="showCreateModal = true">
+                <Plus />
+                {{ t('keys.createKey') }}
+              </Button>
             </div>
           </div>
-          <Button @click="showCreateModal = true" data-tour="keys-create-btn">
-            <Plus />
-            {{ t('keys.createKey') }}
-          </Button>
         </div>
       </template>
 
@@ -97,7 +186,7 @@
               </code>
               <button
                 @click="copyToClipboard(value, row.id)"
-                class="rounded-md p-1.5 transition-colors hover:bg-muted"
+                class="rounded-full p-1.5 transition-colors hover:bg-muted"
                 :class="
                   copiedKeyId === row.id
                     ? 'text-semantic-success'
@@ -127,7 +216,7 @@
               <button
                 :ref="(el) => setGroupButtonRef(row.id, 'primary', el)"
                 @click="openGroupSelector(row, 'primary')"
-                class="-mx-2 -my-1 flex max-w-full cursor-pointer items-center gap-2 overflow-hidden rounded-lg px-2 py-1 transition-all duration-200 hover:bg-muted"
+                class="-mx-2 -my-1 flex max-w-full cursor-pointer items-center gap-2 overflow-hidden rounded-full px-2 py-1 transition-all duration-200 hover:bg-muted"
                 :title="t('keys.clickToChangeGroup')"
               >
                 <GroupBadge
@@ -166,7 +255,7 @@
               <button
                 :ref="(el) => setGroupButtonRef(row.id, 'secondary', el)"
                 @click="openGroupSelector(row, 'secondary')"
-                class="-mx-2 -my-1 flex max-w-full cursor-pointer items-center gap-2 overflow-hidden rounded-lg px-2 py-1 transition-all duration-200 hover:bg-muted"
+                class="-mx-2 -my-1 flex max-w-full cursor-pointer items-center gap-2 overflow-hidden rounded-full px-2 py-1 transition-all duration-200 hover:bg-muted"
                 :title="t('keys.clickToChangeGroup')"
               >
                 <GroupBadge
@@ -309,7 +398,7 @@
               <button
                 v-if="row.usage_5h > 0 || row.usage_1d > 0 || row.usage_7d > 0"
                 @click.stop="confirmResetRateLimitFromTable(row)"
-                class="mt-0.5 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-brand"
+                class="mt-0.5 inline-flex w-fit items-center gap-1 rounded-full px-1.5 py-0.5 text-xs font-medium text-brand transition-opacity hover:opacity-80 hover:underline"
                 :title="t('keys.resetRateLimitUsage')"
               >
                 <Icon name="refresh" size="xs" />
@@ -329,16 +418,38 @@
             <span v-else class="text-sm text-muted-foreground">{{ t('keys.noExpiration') }}</span>
           </template>
 
-          <template #cell-status="{ value }">
-            <span :class="[
-              'badge',
-              value === 'active' ? 'badge-success' :
-              value === 'quota_exhausted' ? 'badge-warning' :
-              value === 'expired' ? 'badge-danger' :
-              'badge-gray'
-            ]">
-              {{ t('keys.status.' + value) }}
-            </span>
+          <template #cell-status="{ value, row }">
+            <div class="flex items-center gap-2">
+              <button
+                type="button"
+                role="switch"
+                :aria-checked="value === 'active'"
+                :aria-label="value === 'active' ? t('keys.disable') : t('keys.enable')"
+                :title="value === 'active' ? t('keys.disable') : t('keys.enable')"
+                class="switch"
+                :class="{ 'switch-active': value === 'active' }"
+                @click="toggleKeyStatus(row)"
+              >
+                <span class="switch-thumb" />
+              </button>
+              <span
+                v-if="value === 'active' || value === 'inactive'"
+                class="text-xs text-muted-foreground"
+              >
+                {{ t('keys.status.' + value) }}
+              </span>
+              <span
+                v-else
+                :class="[
+                  'badge',
+                  value === 'quota_exhausted' ? 'badge-warning' :
+                  value === 'expired' ? 'badge-danger' :
+                  'badge-gray'
+                ]"
+              >
+                {{ t('keys.status.' + value) }}
+              </span>
+            </div>
           </template>
 
           <template #cell-last_used_at="{ value }">
@@ -360,69 +471,44 @@
           </template>
 
           <template #cell-actions="{ row }">
-            <div class="flex items-center gap-0.5">
-              <!-- Use Key Button -->
-              <Button
-                @click="openUseKeyModal(row)"
-                variant="ghost"
-                size="sm"
-                class="h-8 w-8 p-0"
+            <div class="flex items-center gap-3 whitespace-nowrap text-sm">
+              <!-- Use Key link -->
+              <button
+                type="button"
+                class="font-medium text-brand transition-opacity hover:underline hover:opacity-80"
                 :title="t('keys.useKey')"
-                :aria-label="t('keys.useKey')"
+                @click="openUseKeyModal(row)"
               >
-                <Terminal class="h-4 w-4" />
-              </Button>
-              <!-- Import to CC Switch Button -->
-              <Button
+                {{ t('keys.useKey') }}
+              </button>
+              <!-- Import to CC Switch link -->
+              <button
                 v-if="!publicSettings?.hide_ccs_import_button"
-                @click="importToCcswitch(row)"
-                variant="ghost"
-                size="sm"
-                class="h-8 w-8 p-0"
+                type="button"
+                class="font-medium text-brand transition-opacity hover:underline hover:opacity-80"
                 :title="t('keys.importToCcSwitch')"
-                :aria-label="t('keys.importToCcSwitch')"
+                @click="importToCcswitch(row)"
               >
-                <Upload class="h-4 w-4" />
-              </Button>
-              <!-- Toggle Status Button -->
-              <Button
-                @click="toggleKeyStatus(row)"
-                variant="ghost"
-                size="sm"
-                :class="[
-                  'h-8 w-8 p-0',
-                  row.status === 'active'
-                    ? 'hover:!text-[var(--nm-warning-text)]'
-                    : 'hover:!text-[var(--nm-success-text)]'
-                ]"
-                :title="row.status === 'active' ? t('keys.disable') : t('keys.enable')"
-                :aria-label="row.status === 'active' ? t('keys.disable') : t('keys.enable')"
-              >
-                <Ban v-if="row.status === 'active'" class="h-4 w-4" />
-                <CheckCircle2 v-else class="h-4 w-4" />
-              </Button>
-              <!-- Edit Button -->
-              <Button
-                @click="editKey(row)"
-                variant="ghost"
-                size="sm"
-                class="h-8 w-8 p-0"
+                {{ t('keys.importToCcSwitch') }}
+              </button>
+              <!-- Edit link -->
+              <button
+                type="button"
+                class="font-medium text-brand transition-opacity hover:underline hover:opacity-80"
                 :title="t('common.edit')"
-                :aria-label="t('common.edit')"
+                @click="editKey(row)"
               >
-                <Pencil class="h-4 w-4" />
-              </Button>
-              <!-- Delete Button -->
-              <Button
-                @click="confirmDelete(row)"
-                variant="ghost"
-                size="sm"
-                class="h-8 w-8 p-0 hover:!text-[var(--nm-danger-text)]"
+                {{ t('common.edit') }}
+              </button>
+              <!-- Delete link -->
+              <button
+                type="button"
+                class="font-medium text-destructive transition-opacity hover:underline hover:opacity-80"
                 :title="t('common.delete')"
-                :aria-label="t('common.delete')"
+                @click="confirmDelete(row)"
               >
-                <Trash2 class="h-4 w-4" />
-              </Button>
+                {{ t('common.delete') }}
+              </button>
             </div>
           </template>
 
@@ -1069,7 +1155,6 @@ import TablePageLayout from '@/components/layout/TablePageLayout.vue'
 	import SearchInput from '@/components/common/SearchInput.vue'
 	import Icon from '@/components/icons/Icon.vue'
 	import UseKeyModal from '@/components/keys/UseKeyModal.vue'
-	import EndpointPopover from '@/components/keys/EndpointPopover.vue'
 	import GroupBadge from '@/components/common/GroupBadge.vue'
 	import GroupOptionItem from '@/components/common/GroupOptionItem.vue'
 	import { Button } from '@/components/ui/button'
@@ -1082,22 +1167,20 @@ import TablePageLayout from '@/components/layout/TablePageLayout.vue'
 	  Columns3,
 	  Plus,
 	  Terminal,
-	  Upload,
-	  Ban,
-	  CheckCircle2,
-	  Pencil,
-	  Trash2,
 	  Loader2,
 	  Check,
 	  Clipboard,
 	  Shield,
-	  Sparkles
+	  Sparkles,
+	  ExternalLink,
+	  Zap
 	} from 'lucide-vue-next'
 	import type { ApiKey, Group, PublicSettings, SubscriptionType, GroupPlatform, UpdateApiKeyRequest } from '@/types'
 import type { Column } from '@/components/common/types'
 import type { BatchApiKeyUsageStats } from '@/api/usage'
 import { formatDateTime } from '@/utils/format'
 import { maskApiKey } from '@/utils/maskApiKey'
+import { sanitizeUrl } from '@/utils/url'
 import {
   buildCcSwitchImportDeeplink,
   type CcSwitchClientType
@@ -1272,6 +1355,7 @@ const copiedKeyId = ref<number | null>(null)
 const groupSelectorKeyId = ref<number | null>(null)
 const groupSelectorSlot = ref<'primary' | 'secondary' | null>(null)
 const publicSettings = ref<PublicSettings | null>(null)
+const sanitizedDocUrl = computed(() => sanitizeUrl(publicSettings.value?.doc_url ?? ''))
 const dropdownRef = ref<HTMLElement | null>(null)
 const columnDropdownRef = ref<HTMLElement | null>(null)
 const dropdownPosition = ref<{ top?: number; bottom?: number; left: number } | null>(null)
@@ -1504,6 +1588,43 @@ const loadPublicSettings = async () => {
     console.error('Failed to load public settings:', error)
   }
 }
+
+// Endpoint info card rows (default base URL + custom endpoints)
+const endpointRows = computed(() => {
+  const rows: Array<{ name: string; endpoint: string; description: string; isDefault: boolean }> = []
+  if (publicSettings.value?.api_base_url) {
+    rows.push({
+      name: t('keys.endpoints.title'),
+      endpoint: publicSettings.value.api_base_url,
+      description: '',
+      isDefault: true
+    })
+  }
+  for (const ep of publicSettings.value?.custom_endpoints ?? []) {
+    rows.push({ name: ep.name, endpoint: ep.endpoint, description: ep.description, isDefault: false })
+  }
+  return rows
+})
+
+const copiedEndpoint = ref<string | null>(null)
+let endpointCopyTimer: ReturnType<typeof setTimeout> | undefined
+
+const copyEndpoint = async (endpoint: string) => {
+  const success = await clipboardCopy(endpoint, t('keys.endpoints.copied'))
+  if (!success) return
+  copiedEndpoint.value = endpoint
+  if (endpointCopyTimer !== undefined) {
+    clearTimeout(endpointCopyTimer)
+  }
+  endpointCopyTimer = setTimeout(() => {
+    if (copiedEndpoint.value === endpoint) {
+      copiedEndpoint.value = null
+    }
+  }, 1800)
+}
+
+const endpointSpeedTestUrl = (endpoint: string) =>
+  `https://www.tcptest.cn/http/${encodeURIComponent(endpoint)}`
 
 const openUseKeyModal = (key: ApiKey) => {
   selectedKey.value = key
@@ -1981,5 +2102,6 @@ onMounted(() => {
 onUnmounted(() => {
   document.removeEventListener('click', closeGroupSelector)
   if (resetTimer) clearInterval(resetTimer)
+  if (endpointCopyTimer !== undefined) clearTimeout(endpointCopyTimer)
 })
 </script>

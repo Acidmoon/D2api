@@ -61,7 +61,7 @@ export default {
   // Recharge / Subscription Page
   purchase: {
     title: '充值/订阅',
-    description: '通过内嵌页面完成充值/订阅',
+    description: '为账户充值或开通订阅套餐',
     openInNewTab: '新窗口打开',
     notEnabledTitle: '该功能未开启',
     notEnabledDesc: '管理员暂未开启充值/订阅入口，请联系管理员。',
@@ -375,6 +375,8 @@ export default {
     },
     orders: {
       title: '我的订单',
+      description: '查看您的充值与订阅订单及支付状态',
+      historyTitle: '订单历史',
       empty: '暂无订单',
       orderId: '订单 ID',
       orderNo: '订单编号',

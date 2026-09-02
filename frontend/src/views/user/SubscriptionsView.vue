@@ -1,50 +1,53 @@
 <template>
   <AppLayout>
     <div class="space-y-6">
+      <!-- In-content page header (route meta inPageHeader keeps the top bar quiet) -->
+      <div class="page-header">
+        <h1 class="page-title">{{ t('userSubscriptions.title') }}</h1>
+        <p class="page-description">{{ t('userSubscriptions.description') }}</p>
+      </div>
+
       <!-- Loading State -->
-      <div v-if="loading" class="flex justify-center py-12">
-        <div class="spinner text-primary-500"></div>
+      <div v-if="loading" class="flex items-center justify-center py-12">
+        <div class="h-8 w-8 animate-spin rounded-full border-4 border-brand border-t-transparent"></div>
       </div>
 
       <!-- Empty State -->
-      <div v-else-if="subscriptions.length === 0" class="card p-12 text-center">
-        <div
-          class="swiss-stat-icon mx-auto mb-4 h-16 w-16"
-        >
-          <Icon name="creditCard" size="xl" class="text-muted-foreground" />
+      <div v-else-if="subscriptions.length === 0" class="card">
+        <div class="empty-state">
+          <Icon name="creditCard" size="xl" class="empty-state-icon" />
+          <h3 class="empty-state-title">
+            {{ t('userSubscriptions.noActiveSubscriptions') }}
+          </h3>
+          <p class="empty-state-description">
+            {{ t('userSubscriptions.noActiveSubscriptionsDesc') }}
+          </p>
         </div>
-        <h3 class="mb-2 text-lg font-semibold text-foreground">
-          {{ t('userSubscriptions.noActiveSubscriptions') }}
-        </h3>
-        <p class="text-muted-foreground">
-          {{ t('userSubscriptions.noActiveSubscriptionsDesc') }}
-        </p>
       </div>
 
       <!-- Subscriptions Grid -->
-      <div v-else class="grid gap-6 lg:grid-cols-2">
+      <div v-else class="grid gap-5 lg:grid-cols-2">
         <div
           v-for="subscription in subscriptions"
           :key="subscription.id"
-          class="swiss-panel overflow-hidden"
-          :class="platformBorderClass(subscription.group?.platform || '')"
+          class="card overflow-hidden"
         >
           <!-- Header -->
           <div
-            class="flex items-center justify-between border-b border-border p-4"
+            class="flex flex-wrap items-center justify-between gap-3 border-b border-border p-4 sm:p-5"
           >
-            <div class="flex items-center gap-3">
-              <div :class="['h-2 w-2 shrink-0', platformAccentDotClass(subscription.group?.platform || '')]" />
-              <div>
-                <div class="flex items-center gap-2">
-                  <h3 class="font-semibold text-foreground">
+            <div class="flex min-w-0 items-center gap-3">
+              <div :class="['h-2 w-2 shrink-0 rounded-full', platformAccentDotClass(subscription.group?.platform || '')]" />
+              <div class="min-w-0">
+                <div class="flex flex-wrap items-center gap-2">
+                  <h3 class="min-w-0 truncate font-semibold text-foreground">
                     {{ subscription.group?.name || `Group #${subscription.group_id}` }}
                   </h3>
-                  <span :class="['rounded-md border px-2 py-0.5 text-[11px] font-medium', platformBadgeClass(subscription.group?.platform || '')]">
+                  <span :class="['shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-medium', platformBadgeClass(subscription.group?.platform || '')]">
                     {{ platformLabel(subscription.group?.platform || '') }}
                   </span>
                 </div>
-                <p v-if="subscription.group?.description" class="mt-0.5 text-xs text-muted-foreground">
+                <p v-if="subscription.group?.description" class="mt-0.5 truncate text-xs text-muted-foreground">
                   {{ subscription.group.description }}
                 </p>
                 <div class="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
@@ -55,7 +58,7 @@
                 </div>
               </div>
             </div>
-            <div class="flex items-center gap-2">
+            <div class="flex shrink-0 items-center gap-2">
               <span
                 :class="['badge', getSubscriptionStatusClass(subscription.status)]"
               >
@@ -72,7 +75,7 @@
           </div>
 
           <!-- Usage Progress -->
-          <div class="space-y-4 p-4">
+          <div class="space-y-4 p-4 sm:p-5">
             <!-- Expiration Info -->
             <div v-if="subscription.expires_at" class="flex items-center justify-between text-sm">
               <span class="text-muted-foreground">{{
@@ -217,7 +220,7 @@
                 !subscription.group?.weekly_limit_usd &&
                 !subscription.group?.monthly_limit_usd
               "
-              class="flex items-center justify-center border py-6"
+              class="flex items-center justify-center rounded-xl py-6"
               style="background: var(--nm-success-soft)"
             >
               <div class="flex items-center gap-3">
@@ -249,7 +252,7 @@ import type { UserSubscription } from '@/types'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { formatDateTimeToMinute } from '@/utils/format'
-import { platformBorderClass, platformBadgeClass, platformLabel } from '@/utils/platformColors'
+import { platformBadgeClass, platformLabel } from '@/utils/platformColors'
 import { getRemainingDurationParts, isOneTimeDailyQuota, type RemainingDurationParts } from '@/utils/subscriptionQuota'
 import { formatPeakRateWindow, hasPeakRate, serverTimezoneLabel } from '@/utils/peak-rate'
 

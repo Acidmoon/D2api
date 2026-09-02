@@ -1,6 +1,22 @@
 <template>
   <AppLayout>
     <div class="space-y-6">
+      <!-- In-content page header -->
+      <div class="page-header">
+        <h1 class="page-title">{{ t('usage.title') }}</h1>
+        <p class="page-description">{{ t('usage.description') }}</p>
+      </div>
+
+      <!-- Segmented tabs (usage / error requests) -->
+      <div v-if="errorViewEnabled" class="tabs w-fit" role="tablist">
+        <button type="button" role="tab" :aria-selected="activeTab === 'usage'" class="tab" :class="{ 'tab-active': activeTab === 'usage' }" @click="activeTab = 'usage'">
+          {{ t('usage.tabs.usage') }}
+        </button>
+        <button type="button" role="tab" :aria-selected="activeTab === 'errors'" class="tab" :class="{ 'tab-active': activeTab === 'errors' }" @click="switchToErrors">
+          {{ t('usage.tabs.errors') }}
+        </button>
+      </div>
+
       <UsageStatsCards :stats="usageStats" :show-account-cost="false" :strike-standard-cost="true" />
 
       <div class="space-y-4">
@@ -140,14 +156,14 @@
               </button>
               <div
                 v-if="showColumnDropdown"
-                class="absolute right-0 top-full z-50 mt-1 max-h-80 w-48 overflow-y-auto rounded-lg border border-border bg-popover py-1 text-popover-foreground shadow-lg"
+                class="dropdown right-0 top-full mt-1.5 max-h-80 w-52 overflow-y-auto"
               >
                 <button
                   v-for="col in currentToggleableColumns"
                   :key="col.key"
                   type="button"
                   @click="toggleCurrentColumn(col.key)"
-                  class="flex w-full items-center justify-between px-4 py-2 text-left text-sm hover:bg-muted"
+                  class="dropdown-item justify-between"
                 >
                   <span>{{ col.label }}</span>
                   <Icon v-if="isCurrentColumnVisible(col.key)" name="check" size="sm" class="text-brand" />
@@ -159,15 +175,6 @@
             </button>
           </div>
         </div>
-      </div>
-
-      <div v-if="errorViewEnabled" class="flex gap-2 border-b border-gray-200 dark:border-dark-700">
-        <button class="tab" :class="{ 'tab-active': activeTab === 'usage' }" @click="activeTab = 'usage'">
-          {{ t('usage.tabs.usage') }}
-        </button>
-        <button class="tab" :class="{ 'tab-active': activeTab === 'errors' }" @click="switchToErrors">
-          {{ t('usage.tabs.errors') }}
-        </button>
       </div>
 
       <template v-if="activeTab === 'usage'">
