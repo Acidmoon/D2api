@@ -65,9 +65,36 @@ export default {
     orders: '订单',
     channels: '可用渠道',
     totalSpend: '累计消费',
-    usageSummary: '用量概览',
+    usageAnalysis: '用量分析',
+    payAsYouGo: '按量付费',
+    prev: '上一项',
+    next: '下一项',
     rpm: '每分钟请求',
-    tpm: '每分钟 Token'
+    tpm: '每分钟 Token',
+    promo: {
+      title: '充值与套餐',
+      desc: '充值余额或订阅分组，即刻开始调用模型'
+    },
+    learn: {
+      title: '学习与快捷开始',
+      docs: '查看文档',
+      batchImage: {
+        title: '批量生图指南',
+        desc: '用 Agent 按清单批量生图的完整流程'
+      },
+      channels: {
+        title: '可用渠道',
+        desc: '浏览可用渠道、模型与定价'
+      },
+      leaderboard: {
+        title: '排行榜',
+        desc: '查看用量与消费排行'
+      },
+      redeem: {
+        title: '兑换码',
+        desc: '兑换码充值余额或增加并发'
+      }
+    }
   },
 
   // Groups (shared)

@@ -65,9 +65,36 @@ export default {
     orders: 'Orders',
     channels: 'Channels',
     totalSpend: 'Total Spend',
-    usageSummary: 'Usage Overview',
+    usageAnalysis: 'Usage Analytics',
+    payAsYouGo: 'Pay-as-you-go',
+    prev: 'Previous',
+    next: 'Next',
     rpm: 'Requests / min',
-    tpm: 'Tokens / min'
+    tpm: 'Tokens / min',
+    promo: {
+      title: 'Top up & plans',
+      desc: 'Add balance or subscribe to a group to start calling models'
+    },
+    learn: {
+      title: 'Learn & quick start',
+      docs: 'View docs',
+      batchImage: {
+        title: 'Batch image guide',
+        desc: 'Generate images in bulk with agents, step by step'
+      },
+      channels: {
+        title: 'Available channels',
+        desc: 'Browse channels, models and pricing'
+      },
+      leaderboard: {
+        title: 'Leaderboard',
+        desc: 'See usage and spend rankings'
+      },
+      redeem: {
+        title: 'Redeem code',
+        desc: 'Redeem codes for balance or concurrency'
+      }
+    }
   },
 
   // Groups (shared)

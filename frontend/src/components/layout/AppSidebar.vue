@@ -45,6 +45,8 @@
 
         <!-- Personal Section for Admin (hidden in simple mode) -->
         <div v-if="!authStore.isSimpleMode" class="sidebar-section">
+          <!-- Hairline separator between the admin section and the personal group -->
+          <div v-if="!sidebarCollapsed" class="mx-2 my-2 h-px flex-shrink-0 bg-border/70"></div>
           <div class="sidebar-section-title" :class="{ 'sidebar-section-title-collapsed': sidebarCollapsed }" :aria-hidden="sidebarCollapsed ? 'true' : 'false'">
             <span class="sidebar-section-title-text" :class="{ 'sidebar-section-title-text-collapsed': sidebarCollapsed }">
               {{ t('nav.myAccount') }}
@@ -74,7 +76,7 @@
     </nav>
 
     <!-- Bottom Section -->
-    <div class="mt-auto border-t border-border p-3">
+    <div class="mt-auto border-t border-border/70 p-3">
       <!-- Theme Toggle -->
       <button
         @click="toggleTheme"

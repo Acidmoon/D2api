@@ -1,6 +1,6 @@
 <template>
   <AppLayout>
-    <div class="space-y-6">
+    <div class="mx-auto max-w-7xl space-y-6">
       <div v-if="loading" class="flex items-center justify-center py-12"><LoadingSpinner /></div>
       <template v-else-if="stats">
         <div class="page-header">
@@ -15,21 +15,7 @@
           :trend="trendData"
           :platform-quotas="platformQuotas"
         />
-        <UserDashboardCharts
-          v-model:startDate="startDate"
-          v-model:endDate="endDate"
-          v-model:granularity="granularity"
-          :loading="loadingCharts"
-          :trend="trendData"
-          :heatmap-trend="monthTrendData"
-          :heatmap-loading="loadingMonthHeatmap"
-          :heatmap-month="heatmapMonth"
-          :models="modelStats"
-          @dateRangeChange="loadCharts"
-          @granularityChange="loadCharts"
-          @heatmapMonthChange="onHeatmapMonthChange"
-          @refresh="refreshAll"
-        />
+        <UserDashboardLearn />
       </template>
     </div>
   </AppLayout>
@@ -44,8 +30,8 @@ import AppLayout from '@/components/layout/AppLayout.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import UserDashboardQuickActions from '@/components/user/dashboard/UserDashboardQuickActions.vue'
 import UserDashboardStats from '@/components/user/dashboard/UserDashboardStats.vue'
-import UserDashboardCharts from '@/components/user/dashboard/UserDashboardCharts.vue'
-import type { TrendDataPoint, ModelStat, PlatformQuotaItem } from '@/types'
+import UserDashboardLearn from '@/components/user/dashboard/UserDashboardLearn.vue'
+import type { TrendDataPoint, PlatformQuotaItem } from '@/types'
 import { getMyPlatformQuotas } from '@/api/user'
 
 const { t } = useI18n()
@@ -53,24 +39,11 @@ const authStore = useAuthStore()
 const user = computed(() => authStore.user)
 const stats = ref<UserStatsType | null>(null)
 const loading = ref(false)
-const loadingCharts = ref(false)
-const loadingMonthHeatmap = ref(false)
+// 仅消费卡的 7 天迷你柱状图在用；完整趋势图/热力图/模型排行已统一收敛到 /usage。
 const trendData = ref<TrendDataPoint[]>([])
-const monthTrendData = ref<TrendDataPoint[]>([])
-const modelStats = ref<ModelStat[]>([])
 const platformQuotas = ref<PlatformQuotaItem[] | null>(null)
-const heatmapMonth = ref(new Date())
 
 const formatLD = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-const startDate = ref(formatLD(new Date(Date.now() - 6 * 86400000)))
-const endDate = ref(formatLD(new Date()))
-const granularity = ref('day')
-const getMonthRange = (month: Date) => {
-  return {
-    start: formatLD(new Date(month.getFullYear(), month.getMonth(), 1)),
-    end: formatLD(new Date(month.getFullYear(), month.getMonth() + 1, 0))
-  }
-}
 
 const loadStats = async () => {
   loading.value = true
@@ -84,41 +57,18 @@ const loadStats = async () => {
   }
 }
 
-const loadCharts = async () => {
-  loadingCharts.value = true
+// 消费卡迷你趋势：固定近 7 天、按天，不再提供时间范围/粒度工具栏。
+const loadSpendTrend = async () => {
   try {
-    const res = await Promise.all([
-      usageAPI.getDashboardTrend({
-        start_date: startDate.value,
-        end_date: endDate.value,
-        granularity: granularity.value as any
-      }),
-      usageAPI.getDashboardModels({ start_date: startDate.value, end_date: endDate.value })
-    ])
-    trendData.value = res[0].trend || []
-    modelStats.value = res[1].models || []
-  } catch (error) {
-    console.error('Failed to load charts:', error)
-  } finally {
-    loadingCharts.value = false
-  }
-}
-
-const loadMonthHeatmap = async () => {
-  loadingMonthHeatmap.value = true
-  try {
-    const range = getMonthRange(heatmapMonth.value)
     const res = await usageAPI.getDashboardTrend({
-      start_date: range.start,
-      end_date: range.end,
+      start_date: formatLD(new Date(Date.now() - 6 * 86400000)),
+      end_date: formatLD(new Date()),
       granularity: 'day'
     })
-    monthTrendData.value = res.trend || []
+    trendData.value = res.trend || []
   } catch (error) {
-    console.error('Failed to load month heatmap:', error)
-    monthTrendData.value = []
-  } finally {
-    loadingMonthHeatmap.value = false
+    console.error('Failed to load spend trend:', error)
+    trendData.value = []
   }
 }
 
@@ -132,17 +82,9 @@ const loadPlatformQuotas = async () => {
   }
 }
 
-const onHeatmapMonthChange = (month: Date) => {
-  heatmapMonth.value = month
-  loadMonthHeatmap()
-}
-
-const refreshAll = () => {
+onMounted(() => {
   loadStats()
-  loadCharts()
-  loadMonthHeatmap()
+  loadSpendTrend()
   loadPlatformQuotas()
-}
-
-onMounted(() => { refreshAll() })
+})
 </script>

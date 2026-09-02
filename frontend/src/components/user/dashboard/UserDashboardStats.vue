@@ -1,18 +1,18 @@
 <template>
-  <section class="grid gap-4 xl:grid-cols-3" data-testid="dashboard-stats">
-    <!-- Left 2/3: balance / requests / spend / tokens -->
-    <div class="grid gap-4 sm:grid-cols-2 xl:col-span-2">
+  <section class="grid gap-5 xl:grid-cols-3" data-testid="dashboard-stats">
+    <!-- Left 2/3: balance / requests / spend / tokens + platform benefits -->
+    <div class="grid content-start gap-4 sm:grid-cols-2 xl:col-span-2">
       <!-- Balance (hidden in simple mode) -->
       <div v-if="!isSimple" class="card flex flex-col p-5" data-testid="dashboard-balance-card">
-        <div class="flex items-center justify-between">
+        <div class="flex items-start justify-between gap-2">
           <span class="stat-label">{{ t('dashboard.balance') }}</span>
           <span class="stat-icon stat-icon-success"><Icon name="dollar" size="sm" /></span>
         </div>
-        <p class="stat-value mt-3 text-3xl" style="color: var(--nm-success-text)">
+        <p class="mt-4 text-3xl font-semibold tabular-nums sm:text-4xl" style="color: var(--nm-success-text)">
           ${{ formatBalance(balance) }}
         </p>
         <p class="mt-1 text-xs text-muted-foreground">{{ t('common.available') }}</p>
-        <div class="mt-4 flex flex-wrap items-center gap-2">
+        <div class="mt-auto flex flex-wrap items-center gap-2 pt-5">
           <RouterLink v-if="showPaymentLinks" to="/purchase" class="swiss-action text-brand">
             <Icon name="plus" size="xs" />
             {{ t('dashboard.topUp') }}
@@ -25,28 +25,32 @@
       </div>
 
       <!-- Requests -->
-      <div class="card p-5" data-testid="dashboard-requests-card">
-        <div class="flex items-center justify-between">
+      <div class="card flex flex-col p-5" data-testid="dashboard-requests-card">
+        <div class="flex items-start justify-between gap-2">
           <span class="stat-label">{{ t('dashboard.totalRequests') }}</span>
           <span class="stat-icon stat-icon-primary"><Icon name="bolt" size="sm" /></span>
         </div>
-        <p class="stat-value mt-3">{{ formatNumber(stats.total_requests) }}</p>
+        <p class="mt-4 text-3xl font-semibold tabular-nums text-foreground sm:text-4xl">
+          {{ formatNumber(stats.total_requests) }}
+        </p>
         <p class="mt-1 text-xs text-muted-foreground">
           {{ t('dashboard.todayRequests') }}: {{ formatNumber(stats.today_requests) }}
         </p>
       </div>
 
       <!-- Spend with 7-day mini trend -->
-      <div class="card p-5" data-testid="dashboard-spend-card">
-        <div class="flex items-center justify-between">
+      <div class="card flex flex-col p-5" data-testid="dashboard-spend-card">
+        <div class="flex items-start justify-between gap-2">
           <span class="stat-label">{{ t('dashboard.totalSpend') }}</span>
           <span class="stat-icon stat-icon-warning"><Icon name="trendingUp" size="sm" /></span>
         </div>
-        <p class="stat-value mt-3">${{ formatCost(stats.total_actual_cost) }}</p>
+        <p class="mt-4 text-3xl font-semibold tabular-nums text-foreground sm:text-4xl">
+          ${{ formatCost(stats.total_actual_cost) }}
+        </p>
         <p class="mt-1 text-xs text-muted-foreground">
           {{ t('dashboard.todayCost') }}: ${{ formatCost(stats.today_actual_cost) }}
         </p>
-        <div v-if="spendBars.length > 0" class="mt-4 flex h-10 items-end gap-1" aria-hidden="true">
+        <div v-if="spendBars.length > 0" class="mt-5 flex h-10 items-end gap-1" aria-hidden="true">
           <div
             v-for="bar in spendBars"
             :key="bar.date"
@@ -55,19 +59,27 @@
             :title="bar.title"
           />
         </div>
+        <div v-if="showPaymentLinks" class="mt-auto flex flex-wrap items-center gap-2 pt-5">
+          <RouterLink to="/orders" class="swiss-action">
+            <Icon name="document" size="xs" />
+            {{ t('dashboard.viewOrders') }}
+          </RouterLink>
+        </div>
       </div>
 
       <!-- Tokens -->
-      <div class="card p-5" data-testid="dashboard-tokens-card">
-        <div class="flex items-center justify-between">
+      <div class="card flex flex-col p-5" data-testid="dashboard-tokens-card">
+        <div class="flex items-start justify-between gap-2">
           <span class="stat-label">{{ t('dashboard.totalTokens') }}</span>
           <span class="stat-icon"><Icon name="database" size="sm" /></span>
         </div>
-        <p class="stat-value mt-3">{{ formatTokens(stats.total_tokens) }}</p>
+        <p class="mt-4 text-3xl font-semibold tabular-nums text-foreground sm:text-4xl">
+          {{ formatTokens(stats.total_tokens) }}
+        </p>
         <p class="mt-1 text-xs text-muted-foreground">
           {{ t('dashboard.todayTokens') }}: {{ formatTokens(stats.today_tokens) }}
         </p>
-        <dl class="mt-3 space-y-1.5 text-xs">
+        <dl class="mt-5 space-y-1.5 text-xs">
           <div class="flex items-center justify-between gap-2">
             <dt class="shrink-0 text-muted-foreground">{{ t('dashboard.input') }}</dt>
             <dd class="truncate font-medium tabular-nums text-foreground">
@@ -96,14 +108,14 @@
            least one platform has quota limits configured (same condition as before). -->
       <div
         v-if="!isSimple && quotaCards.length > 0"
-        class="card p-5 sm:col-span-2"
+        class="card p-6 sm:col-span-2"
         data-testid="dashboard-benefits-card"
       >
-        <div class="flex items-center justify-between">
+        <div class="flex items-start justify-between gap-2">
           <span class="stat-label">{{ t('dashboard.platformBenefits') }}</span>
           <span class="stat-icon"><Icon name="gift" size="sm" /></span>
         </div>
-        <div class="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        <div class="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           <div
             v-for="quotaCard in quotaCards"
             :key="quotaCard.platform"
@@ -138,16 +150,59 @@
       </div>
     </div>
 
-    <!-- Right 1/3: usage summary -->
-    <div class="card flex flex-col p-5" data-testid="dashboard-usage-summary">
-      <div class="flex items-center justify-between gap-2">
-        <span class="stat-label">{{ t('dashboard.usageSummary') }}</span>
-        <RouterLink to="/usage" class="swiss-action">
-          {{ t('dashboard.viewAllUsage') }}
-          <Icon name="arrowRight" size="xs" />
-        </RouterLink>
+    <!-- Right 1/3: usage analysis -->
+    <div class="card flex flex-col gap-5 p-6" data-testid="dashboard-usage-summary">
+      <span class="stat-label">{{ t('dashboard.usageAnalysis') }}</span>
+
+      <!-- Gradient promo banner (payment enabled only) -->
+      <RouterLink
+        v-if="showPaymentLinks"
+        to="/purchase"
+        class="promo-banner group flex items-center justify-between gap-3 rounded-2xl p-4"
+        data-testid="dashboard-promo-banner"
+      >
+        <span class="min-w-0">
+          <span class="block text-sm font-semibold text-foreground">{{ t('dashboard.promo.title') }}</span>
+          <span class="mt-0.5 block truncate text-xs text-muted-foreground">{{ t('dashboard.promo.desc') }}</span>
+        </span>
+        <Icon name="arrowRight" size="sm" class="shrink-0 text-brand transition-transform group-hover:translate-x-0.5" />
+      </RouterLink>
+
+      <!-- Pay-as-you-go big number with prev/next pager -->
+      <div data-testid="dashboard-paygo">
+        <div class="flex items-center justify-between gap-2">
+          <span class="stat-label">{{ t('dashboard.payAsYouGo') }}</span>
+          <div class="flex items-center gap-1">
+            <button
+              type="button"
+              class="inline-flex h-6 w-6 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+              :disabled="spendPageIndex === 0"
+              :aria-label="t('dashboard.prev')"
+              data-testid="dashboard-paygo-prev"
+              @click="spendPageIndex = Math.max(0, spendPageIndex - 1)"
+            >
+              <Icon name="chevronLeft" size="xs" />
+            </button>
+            <button
+              type="button"
+              class="inline-flex h-6 w-6 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+              :disabled="spendPageIndex >= spendPages.length - 1"
+              :aria-label="t('dashboard.next')"
+              data-testid="dashboard-paygo-next"
+              @click="spendPageIndex = Math.min(spendPages.length - 1, spendPageIndex + 1)"
+            >
+              <Icon name="chevronRight" size="xs" />
+            </button>
+          </div>
+        </div>
+        <p class="mt-2 text-3xl font-semibold tabular-nums text-foreground sm:text-4xl">
+          ${{ formatCost(currentSpendPage.value) }}
+        </p>
+        <p class="mt-1 text-xs text-muted-foreground">{{ currentSpendPage.label }}</p>
       </div>
-      <dl class="mt-4 grid flex-1 grid-cols-2 gap-3">
+
+      <!-- Secondary summary -->
+      <dl class="grid flex-1 grid-cols-2 gap-3">
         <div class="rounded-xl bg-secondary p-3">
           <dt class="text-xs text-muted-foreground">{{ t('dashboard.todayRequests') }}</dt>
           <dd class="mt-1 text-lg font-semibold tabular-nums text-foreground">
@@ -179,7 +234,8 @@
           </dd>
         </div>
       </dl>
-      <RouterLink to="/usage" class="btn btn-secondary btn-sm mt-4">
+
+      <RouterLink to="/usage" class="btn btn-secondary btn-sm">
         {{ t('dashboard.viewUsage') }}
       </RouterLink>
     </div>
@@ -187,7 +243,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Icon from '@/components/icons/Icon.vue'
 import { useAuthStore } from '@/stores'
@@ -213,6 +269,16 @@ const showPaymentLinks = computed(
   () => !authStore.isSimpleMode && isFeatureFlagEnabled(FeatureFlags.payment)
 )
 
+// 按量付费大数字翻页：累计消费 ↔ 今日消费。
+const spendPages = computed(() => [
+  { label: t('dashboard.totalSpend'), value: props.stats?.total_actual_cost ?? 0 },
+  { label: t('dashboard.todayCost'), value: props.stats?.today_actual_cost ?? 0 }
+])
+const spendPageIndex = ref(0)
+const currentSpendPage = computed(
+  () => spendPages.value[Math.min(spendPageIndex.value, spendPages.value.length - 1)]
+)
+
 const cacheTotal = computed(
   () => (props.stats?.total_cache_creation_tokens || 0) + (props.stats?.total_cache_read_tokens || 0)
 )
@@ -220,8 +286,8 @@ const cacheToday = computed(
   () => (props.stats?.today_cache_creation_tokens || 0) + (props.stats?.today_cache_read_tokens || 0)
 )
 
-// Mini bar trend of actual spend: the last 7 points of the trend selection
-// driving the charts below (range/granularity follow that control).
+// Mini bar trend of actual spend: the last 7 points of the fixed
+// 7-day/day-granularity trend loaded by the dashboard view.
 const spendBars = computed(() => {
   const points = (props.trend || []).slice(-7)
   if (points.length === 0) return []
@@ -359,3 +425,15 @@ const formatTokens = (t: number) => {
   return (t || 0).toString()
 }
 </script>
+
+<style scoped>
+/* Tailwind 的 /透明度修饰符对 hsl(var(--x)) 颜色不生效，渐变与 hover 态用
+   var token + color alpha 直接表达，随亮/暗主题自动适配。 */
+.promo-banner {
+  background: linear-gradient(90deg, hsl(var(--brand) / 0.12), hsl(var(--primary) / 0.18));
+}
+
+.promo-banner:hover {
+  background: linear-gradient(90deg, hsl(var(--brand) / 0.17), hsl(var(--primary) / 0.25));
+}
+</style>

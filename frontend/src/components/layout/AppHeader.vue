@@ -1,6 +1,7 @@
 <template>
-  <header class="sticky top-0 z-30 border-b border-transparent bg-background/85 backdrop-blur">
-    <div class="flex h-16 items-center justify-between gap-2 px-2 sm:px-4 md:px-6">
+  <!-- QW-style shell: borderless bar inline on the canvas, compact height. -->
+  <header class="sticky top-0 z-30 bg-background">
+    <div class="flex h-14 items-center justify-between gap-2 px-2 sm:px-4 md:px-6">
       <!-- Left: Mobile Menu Toggle + Page Title -->
       <div class="flex shrink-0 items-center gap-2 sm:gap-4">
         <button
@@ -21,153 +22,31 @@
         </div>
       </div>
 
-      <!-- Right: Announcements + Docs + Language + Subscriptions + Balance + User Dropdown -->
-      <div class="flex min-w-0 items-center gap-1 sm:gap-3">
-        <!-- Announcement Bell -->
-        <AnnouncementBell v-if="user" />
+      <!-- Right: Announcements + Docs + Language + User Dropdown -->
+      <div class="flex min-w-0 items-center gap-1">
+        <!-- Announcement Bell (quiet icon button) -->
+        <AnnouncementBell v-if="user" class="header-quiet" />
 
-        <!-- Docs Link -->
+        <!-- Docs Link (quiet) -->
         <a
           v-if="docUrl"
           :href="docUrl"
           target="_blank"
           rel="noopener noreferrer"
-          class="btn btn-ghost btn-sm hidden sm:inline-flex"
+          class="hidden h-9 items-center gap-1.5 rounded-full px-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground sm:inline-flex"
         >
           <Icon name="book" size="sm" />
-          <span class="hidden sm:inline">{{ t('nav.docs') }}</span>
+          <span>{{ t('nav.docs') }}</span>
         </a>
 
-        <!-- Language Switcher -->
-        <LocaleSwitcher />
-
-        <!-- Subscription Progress (for users with active subscriptions) -->
-        <SubscriptionProgressMini v-if="user" />
-
-        <!-- Balance Display -->
-        <div
-          v-if="user"
-          ref="walletRef"
-          class="relative hidden sm:block"
-        >
-          <button
-            class="flex min-h-11 items-center gap-2 rounded-full border border-border bg-card px-3.5 py-1.5 transition-colors"
-            :title="t('subscriptionProgress.walletTitle')"
-            @click="toggleWalletPanel"
-          >
-            <Icon name="dollar" size="sm" class="text-brand" />
-            <span class="text-sm font-semibold text-foreground">
-              {{ formatHeaderMoney(availableBalance) }}
-            </span>
-            <span
-              v-if="frozenBalance > 0"
-              class="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800 dark:bg-amber-900/40 dark:text-amber-300"
-            >
-              {{ t('common.frozenBalance') }} {{ formatHeaderMoney(frozenBalance) }}
-            </span>
-          </button>
-
-          <transition name="dropdown">
-            <div v-if="walletOpen" class="dropdown right-0 mt-2 w-[360px] overflow-hidden">
-              <div class="border-b border-border p-4">
-                <div class="flex items-center justify-between gap-3">
-                  <div>
-                    <h3 class="text-sm font-semibold text-foreground">
-                      {{ t('subscriptionProgress.walletTitle') }}
-                    </h3>
-                    <p class="mt-1 text-xs leading-5 text-muted-foreground">
-                      {{ t('subscriptionProgress.walletHint') }}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    class="btn-ghost btn-icon"
-                    :title="t('common.refresh')"
-                    :disabled="subscriptionStore.loading"
-                    @click="refreshWallet"
-                  >
-                    <Icon name="refresh" size="sm" :class="subscriptionStore.loading ? 'animate-spin' : ''" />
-                  </button>
-                </div>
-              </div>
-
-              <div class="grid grid-cols-2 gap-2 p-3">
-                <div class="wallet-metric">
-                  <span>{{ t('subscriptionProgress.subscriptionQuota') }}</span>
-                  <strong>{{ subscriptionQuotaLabel }}</strong>
-                </div>
-                <div class="wallet-metric">
-                  <span>{{ t('subscriptionProgress.accountBalance') }}</span>
-                  <strong>{{ formatHeaderMoney(availableBalance) }}</strong>
-                  <small v-if="frozenBalance > 0">
-                    {{ t('common.frozenBalance') }} {{ formatHeaderMoney(frozenBalance) }}
-                  </small>
-                </div>
-              </div>
-
-              <div class="max-h-64 overflow-y-auto border-t border-border">
-                <div
-                  v-if="activeSubscriptions.length === 0"
-                  class="px-4 py-5 text-center text-sm text-muted-foreground"
-                >
-                  {{ t('subscriptionProgress.noActiveWallets') }}
-                </div>
-                <div
-                  v-for="subscription in activeSubscriptions.slice(0, 5)"
-                  :key="subscription.id"
-                  class="border-b border-border px-4 py-3 last:border-b-0"
-                >
-                  <div class="flex items-center justify-between gap-3">
-                    <span class="truncate text-sm font-medium text-foreground">
-                      {{ subscription.plan_name || subscription.group?.name || `Subscription #${subscription.id}` }}
-                    </span>
-                    <span class="shrink-0 text-xs text-muted-foreground">
-                      {{ formatSubscriptionExpiry(subscription.expires_at) }}
-                    </span>
-                  </div>
-                  <div class="mt-2 space-y-1">
-                    <div
-                      v-for="period in walletPeriods(subscription)"
-                      :key="period.label"
-                      class="flex items-center gap-2 text-xs text-muted-foreground"
-                    >
-                      <span class="w-10 shrink-0">{{ period.label }}</span>
-                      <div class="metric-progress h-1.5 min-w-0 flex-1">
-                        <div
-                          class="metric-progress-bar h-full"
-                          :class="period.percent >= 90 ? 'metric-progress-bar-danger' : period.percent >= 70 ? 'metric-progress-bar-warning' : 'metric-progress-bar-success'"
-                          :style="{ width: `${period.percent}%` }"
-                        />
-                      </div>
-                      <span class="w-24 shrink-0 text-right">{{ period.text }}</span>
-                    </div>
-                    <div
-                      v-if="walletPeriods(subscription).length === 0"
-                      class="text-xs font-medium text-emerald-600 dark:text-emerald-400"
-                    >
-                      {{ t('subscriptionProgress.quotaUnlimited') }}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div class="grid grid-cols-2 gap-2 border-t border-border p-2">
-                <router-link to="/subscriptions" class="subscription-link py-1.5 text-center text-xs" @click="closeWalletPanel">
-                  {{ t('subscriptionProgress.viewAll') }}
-                </router-link>
-                <router-link to="/purchase" class="subscription-link py-1.5 text-center text-xs" @click="closeWalletPanel">
-                  {{ t('subscriptionProgress.viewRecharge') }}
-                </router-link>
-              </div>
-            </div>
-          </transition>
-        </div>
+        <!-- Language Switcher (quiet) -->
+        <LocaleSwitcher class="header-quiet" />
 
         <!-- User Dropdown -->
         <div v-if="user" class="relative" ref="dropdownRef">
           <button
             @click="toggleDropdown"
-            class="user-menu-trigger flex min-h-11 items-center gap-2 rounded-md p-1.5 transition-colors"
+            class="user-menu-trigger flex min-h-11 items-center gap-2 rounded-full p-1.5 transition-colors"
             :aria-label="t('common.userMenu')"
           >
             <div class="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-primary text-sm font-semibold text-primary-foreground">
@@ -192,7 +71,11 @@
 
           <!-- Dropdown Menu -->
           <transition name="dropdown">
-            <div v-if="dropdownOpen" class="dropdown right-0 mt-2 w-56">
+            <div
+              v-if="dropdownOpen"
+              class="dropdown right-0 mt-2"
+              :class="walletOpen ? 'w-80' : 'w-56'"
+            >
               <!-- User Info -->
               <div class="border-b border-border px-4 py-3">
                 <div class="text-sm font-medium text-foreground">
@@ -201,18 +84,132 @@
                 <div class="text-xs text-muted-foreground">{{ user.email }}</div>
               </div>
 
-              <!-- Balance (mobile only) -->
-              <button class="block w-full border-b border-border px-4 py-2 text-left sm:hidden" @click="openWalletFromUserMenu">
-                <div class="text-xs text-muted-foreground">
-                  {{ t('common.balance') }}
+              <!-- Wallet entry: balance + subscription quota (moved from the header row) -->
+              <div class="border-b border-border px-1.5 py-1.5">
+                <!-- Subscription progress mini (self-hides without active subscriptions) -->
+                <div class="mb-0.5 flex justify-center" @click="handleMiniClick">
+                  <SubscriptionProgressMini />
                 </div>
-                <div class="text-sm font-semibold text-brand">
-                  {{ formatHeaderMoney(availableBalance) }}
-                </div>
-                <div v-if="frozenBalance > 0" class="mt-1 text-xs text-amber-600 dark:text-amber-400">
+
+                <button
+                  type="button"
+                  class="dropdown-item w-full"
+                  :aria-expanded="walletOpen"
+                  @click="toggleWalletPanel"
+                >
+                  <Icon name="dollar" size="sm" />
+                  <span class="min-w-0 flex-1 truncate text-left">
+                    {{ t('subscriptionProgress.walletTitle') }}
+                  </span>
+                  <span class="shrink-0 text-xs font-semibold text-brand">
+                    {{ formatHeaderMoney(availableBalance) }}
+                  </span>
+                  <Icon
+                    name="chevronDown"
+                    size="xs"
+                    class="shrink-0 text-muted-foreground transition-transform duration-200"
+                    :class="walletOpen ? 'rotate-180' : ''"
+                  />
+                </button>
+
+                <div v-if="frozenBalance > 0" class="px-2.5 pb-1 pt-0.5 text-xs text-amber-600 dark:text-amber-400">
                   {{ t('common.frozenBalance') }} {{ formatHeaderMoney(frozenBalance) }}
                 </div>
-              </button>
+              </div>
+
+              <!-- Wallet Panel (inline, opened from the entry above) -->
+              <div v-if="walletOpen" ref="walletRef" class="border-b border-border">
+                <div class="border-b border-border p-4">
+                  <div class="flex items-center justify-between gap-3">
+                    <div>
+                      <h3 class="text-sm font-semibold text-foreground">
+                        {{ t('subscriptionProgress.walletTitle') }}
+                      </h3>
+                      <p class="mt-1 text-xs leading-5 text-muted-foreground">
+                        {{ t('subscriptionProgress.walletHint') }}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      class="btn-ghost btn-icon"
+                      :title="t('common.refresh')"
+                      :disabled="subscriptionStore.loading"
+                      @click="refreshWallet"
+                    >
+                      <Icon name="refresh" size="sm" :class="subscriptionStore.loading ? 'animate-spin' : ''" />
+                    </button>
+                  </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2 p-3">
+                  <div class="wallet-metric">
+                    <span>{{ t('subscriptionProgress.subscriptionQuota') }}</span>
+                    <strong>{{ subscriptionQuotaLabel }}</strong>
+                  </div>
+                  <div class="wallet-metric">
+                    <span>{{ t('subscriptionProgress.accountBalance') }}</span>
+                    <strong>{{ formatHeaderMoney(availableBalance) }}</strong>
+                    <small v-if="frozenBalance > 0">
+                      {{ t('common.frozenBalance') }} {{ formatHeaderMoney(frozenBalance) }}
+                    </small>
+                  </div>
+                </div>
+
+                <div class="max-h-64 overflow-y-auto border-t border-border">
+                  <div
+                    v-if="activeSubscriptions.length === 0"
+                    class="px-4 py-5 text-center text-sm text-muted-foreground"
+                  >
+                    {{ t('subscriptionProgress.noActiveWallets') }}
+                  </div>
+                  <div
+                    v-for="subscription in activeSubscriptions.slice(0, 5)"
+                    :key="subscription.id"
+                    class="border-b border-border px-4 py-3 last:border-b-0"
+                  >
+                    <div class="flex items-center justify-between gap-3">
+                      <span class="truncate text-sm font-medium text-foreground">
+                        {{ subscription.plan_name || subscription.group?.name || `Subscription #${subscription.id}` }}
+                      </span>
+                      <span class="shrink-0 text-xs text-muted-foreground">
+                        {{ formatSubscriptionExpiry(subscription.expires_at) }}
+                      </span>
+                    </div>
+                    <div class="mt-2 space-y-1">
+                      <div
+                        v-for="period in walletPeriods(subscription)"
+                        :key="period.label"
+                        class="flex items-center gap-2 text-xs text-muted-foreground"
+                      >
+                        <span class="w-10 shrink-0">{{ period.label }}</span>
+                        <div class="metric-progress h-1.5 min-w-0 flex-1">
+                          <div
+                            class="metric-progress-bar h-full"
+                            :class="period.percent >= 90 ? 'metric-progress-bar-danger' : period.percent >= 70 ? 'metric-progress-bar-warning' : 'metric-progress-bar-success'"
+                            :style="{ width: `${period.percent}%` }"
+                          />
+                        </div>
+                        <span class="w-24 shrink-0 text-right">{{ period.text }}</span>
+                      </div>
+                      <div
+                        v-if="walletPeriods(subscription).length === 0"
+                        class="text-xs font-medium text-emerald-600 dark:text-emerald-400"
+                      >
+                        {{ t('subscriptionProgress.quotaUnlimited') }}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2 border-t border-border p-2">
+                  <router-link to="/subscriptions" class="subscription-link py-1.5 text-center text-xs" @click="closeDropdown">
+                    {{ t('subscriptionProgress.viewAll') }}
+                  </router-link>
+                  <router-link to="/purchase" class="subscription-link py-1.5 text-center text-xs" @click="closeDropdown">
+                    {{ t('subscriptionProgress.viewRecharge') }}
+                  </router-link>
+                </div>
+              </div>
 
               <div class="py-1">
                 <router-link to="/profile" @click="closeDropdown" class="dropdown-item">
@@ -409,16 +406,19 @@ function toggleMobileSidebar() {
 
 function toggleDropdown() {
   dropdownOpen.value = !dropdownOpen.value
+  if (!dropdownOpen.value) {
+    walletOpen.value = false
+  }
 }
 
 function closeDropdown() {
   dropdownOpen.value = false
+  walletOpen.value = false
 }
 
 async function toggleWalletPanel() {
   walletOpen.value = !walletOpen.value
   if (walletOpen.value) {
-    closeDropdown()
     await refreshWallet()
   }
 }
@@ -427,9 +427,13 @@ function closeWalletPanel() {
   walletOpen.value = false
 }
 
-async function openWalletFromUserMenu() {
-  closeDropdown()
-  await router.push('/subscriptions')
+// The subscription mini widget carries its own internal links (e.g. 查看全部);
+// keep the dropdown's "navigation closes the menu" invariant when they are used.
+function handleMiniClick(event: MouseEvent) {
+  const target = event.target as HTMLElement | null
+  if (target && target.closest('a')) {
+    closeDropdown()
+  }
 }
 
 async function refreshWallet() {
@@ -540,11 +544,37 @@ onBeforeUnmount(() => {
 }
 
 .user-menu-trigger:hover {
-  background: hsl(var(--accent));
+  background: hsl(var(--secondary));
+}
+
+/* QW-style quiet icon controls: pill hover, no chrome. Applied to the
+   announcement bell and locale switcher triggers rendered in this header. */
+.header-quiet :deep(.announcement-trigger),
+.header-quiet :deep(.locale-trigger) {
+  border-color: transparent;
+  border-radius: 9999px;
+}
+
+.header-quiet :deep(.announcement-trigger:hover:not(.announcement-trigger-active)),
+.header-quiet :deep(.locale-trigger:hover) {
+  background-color: hsl(var(--secondary));
+  color: hsl(var(--foreground));
+  border-color: transparent;
 }
 
 .logout-item:hover {
   background: hsl(var(--destructive) / 0.1);
+}
+
+/* Wallet panel quick links (scoped here so they style inside the dropdown). */
+.subscription-link {
+  border-radius: 9999px;
+  color: hsl(var(--brand));
+  transition: background-color 160ms ease;
+}
+
+.subscription-link:hover {
+  background-color: hsl(var(--secondary));
 }
 
 .wallet-metric {

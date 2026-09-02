@@ -1,9 +1,10 @@
 <template>
   <template v-for="item in items" :key="item.path">
-    <!-- Hairline divider above groups that opt in (expanded sidebar only) -->
+    <!-- Hairline divider above groups that opt in (expanded sidebar only).
+         Rendered for the first group too (QW: 首页/API Keys | 模型…). -->
     <div
       v-if="item.dividerBefore && !collapsed"
-      class="mx-4 my-2 h-px flex-shrink-0 bg-border/70"
+      class="mx-2 my-2 h-px flex-shrink-0 bg-border/70"
     ></div>
     <!-- Collapsible group (has children) -->
     <template v-if="item.children?.length">
