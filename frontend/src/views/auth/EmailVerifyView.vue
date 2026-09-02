@@ -3,19 +3,19 @@
     <div class="space-y-6">
       <!-- Title -->
       <div class="text-center">
-        <h2 class="text-2xl font-bold text-gray-900 dark:text-white">
+        <h2 class="text-2xl font-bold text-foreground">
           {{ t('auth.verifyYourEmail') }}
         </h2>
-        <p class="mt-2 text-sm text-gray-500 dark:text-dark-400">
+        <p class="mt-2 text-sm text-muted-foreground">
           {{ t('auth.sendCodeDesc') }}
-          <span class="font-medium text-gray-700 dark:text-gray-300">{{ email }}</span>
+          <span class="font-medium text-foreground">{{ email }}</span>
         </p>
       </div>
 
       <!-- No Data Warning -->
       <div
         v-if="!hasRegisterData"
-        class="swiss-panel p-4"
+        class="rounded-2xl p-4"
         style="background: var(--nm-warning-soft)"
       >
         <div class="flex items-start gap-3">
@@ -55,7 +55,7 @@
         <!-- Code Status -->
         <div
           v-if="codeSent"
-          class="swiss-panel p-4"
+          class="rounded-2xl p-4"
           style="background: var(--nm-success-soft)"
         >
           <div class="flex items-start gap-3">
@@ -143,7 +143,7 @@
             v-if="countdown > 0"
             type="button"
             disabled
-            class="cursor-not-allowed text-sm text-gray-400 dark:text-dark-500"
+            class="cursor-not-allowed text-sm text-muted-foreground"
           >
             {{ t('auth.resendCountdown', { countdown }) }}
           </button>
@@ -154,7 +154,7 @@
             :disabled="
               isSendingCode || (turnstileEnabled && showResendTurnstile && !resendTurnstileToken)
             "
-            class="text-sm text-primary-600 transition-colors hover:text-primary-500 disabled:cursor-not-allowed disabled:opacity-50 dark:text-primary-400 dark:hover:text-primary-300"
+            class="text-sm text-brand transition-colors hover:text-[color:var(--nm-accent-strong)] disabled:cursor-not-allowed disabled:opacity-50"
           >
             <span v-if="isSendingCode">{{ t('auth.sendingCode') }}</span>
             <span v-else-if="captchaEnabled && !showResendTurnstile">
@@ -170,7 +170,7 @@
     <template #footer>
       <button
         @click="handleBack"
-        class="flex items-center gap-2 text-gray-500 transition-colors hover:text-gray-700 dark:text-dark-400 dark:hover:text-gray-300"
+        class="flex items-center gap-2 text-muted-foreground transition-colors hover:text-foreground"
       >
         <Icon name="arrowLeft" size="sm" />
         {{ t('auth.backToRegistration') }}

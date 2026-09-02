@@ -15,15 +15,20 @@
   <!-- Default Home Page -->
   <div
     v-else
-    class="relative flex min-h-screen flex-col overflow-hidden"
-    style="background-color: var(--nm-bg)"
+    class="relative flex min-h-screen flex-col overflow-hidden bg-background text-foreground"
   >
+    <!-- Soft brand glow behind the hero -->
+    <div
+      class="pointer-events-none absolute -top-40 left-1/2 h-96 w-[48rem] -translate-x-1/2 rounded-full bg-brand/10 blur-3xl"
+      aria-hidden="true"
+    ></div>
+
     <!-- Header -->
     <header class="relative z-20 px-6 py-4">
       <nav class="mx-auto flex max-w-6xl items-center justify-between">
         <!-- Logo -->
         <div class="flex items-center">
-          <div class="h-10 w-10 overflow-hidden border p-1" style="border-color: var(--nm-border); border-radius: var(--nm-radius)">
+          <div class="h-10 w-10 overflow-hidden rounded-xl border border-border bg-card p-1">
             <img :src="siteLogo || '/logo.svg'" alt="Logo" class="h-full w-full object-contain" />
           </div>
         </div>
@@ -62,14 +67,13 @@
             class="btn btn-primary btn-sm"
           >
             <span
-              class="flex h-5 w-5 items-center justify-center text-[10px] font-semibold"
-              style="background: var(--nm-on-accent); color: var(--nm-accent); border-radius: var(--nm-radius-sm)"
+              class="flex h-5 w-5 items-center justify-center rounded-lg bg-card text-[10px] font-semibold text-brand"
             >
               {{ userInitial }}
             </span>
-            <span class="text-xs font-medium text-white">{{ t('home.dashboard') }}</span>
+            <span class="text-xs font-medium text-primary-foreground">{{ t('home.dashboard') }}</span>
             <svg
-              class="h-3 w-3 text-gray-400"
+              class="h-3 w-3 opacity-60"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -97,11 +101,11 @@
           <!-- Left: Text Content -->
           <div class="flex-1 text-center lg:text-left">
             <h1
-              class="mb-4 text-4xl font-bold text-gray-900 dark:text-white md:text-5xl lg:text-6xl"
+              class="mb-4 text-4xl font-bold tracking-tight text-foreground md:text-5xl lg:text-6xl"
             >
               {{ siteName }}
             </h1>
-            <p class="mb-8 text-lg text-gray-600 dark:text-dark-300 md:text-xl">
+            <p class="mb-8 max-w-xl text-lg text-muted-foreground md:text-xl mx-auto lg:mx-0">
               {{ siteSubtitle }}
             </p>
 
@@ -160,24 +164,24 @@
           <div
             class="swiss-panel inline-flex items-center gap-2.5 px-4 py-2"
           >
-            <Icon name="swap" size="sm" style="color: var(--nm-accent-text)" />
-            <span class="text-sm font-medium" style="color: var(--nm-ink)">{{
+            <Icon name="swap" size="sm" class="text-brand" />
+            <span class="text-sm font-medium text-foreground">{{
               t('home.tags.subscriptionToApi')
             }}</span>
           </div>
           <div
             class="swiss-panel inline-flex items-center gap-2.5 px-4 py-2"
           >
-            <Icon name="shield" size="sm" style="color: var(--nm-accent-text)" />
-            <span class="text-sm font-medium" style="color: var(--nm-ink)">{{
+            <Icon name="shield" size="sm" class="text-brand" />
+            <span class="text-sm font-medium text-foreground">{{
               t('home.tags.stickySession')
             }}</span>
           </div>
           <div
             class="swiss-panel inline-flex items-center gap-2.5 px-4 py-2"
           >
-            <Icon name="chart" size="sm" style="color: var(--nm-accent-text)" />
-            <span class="text-sm font-medium" style="color: var(--nm-ink)">{{
+            <Icon name="chart" size="sm" class="text-brand" />
+            <span class="text-sm font-medium text-foreground">{{
               t('home.tags.realtimeBilling')
             }}</span>
           </div>
@@ -186,32 +190,23 @@
         <!-- Features Grid -->
         <div class="mb-12 grid gap-6 md:grid-cols-3">
           <!-- Feature 1: Unified Gateway -->
-          <div
-            class="card group p-6 transition-all duration-300"
-          >
-            <div
-              class="swiss-stat-icon mb-4"
-            >
-              <Icon name="server" size="lg" style="color: var(--nm-accent-text)" />
+          <div class="card card-hover group p-6 transition-all duration-300">
+            <div class="swiss-stat-icon mb-4">
+              <Icon name="server" size="lg" class="text-brand" />
             </div>
-            <h3 class="mb-2 text-lg font-semibold text-gray-900 dark:text-white">
+            <h3 class="mb-2 text-lg font-semibold text-foreground">
               {{ t('home.features.unifiedGateway') }}
             </h3>
-            <p class="text-sm leading-relaxed text-gray-600 dark:text-dark-400">
+            <p class="text-sm leading-relaxed text-muted-foreground">
               {{ t('home.features.unifiedGatewayDesc') }}
             </p>
           </div>
 
           <!-- Feature 2: Account Pool -->
-          <div
-            class="card group p-6 transition-all duration-300"
-          >
-            <div
-              class="swiss-stat-icon mb-4"
-            >
+          <div class="card card-hover group p-6 transition-all duration-300">
+            <div class="swiss-stat-icon mb-4">
               <svg
-                class="h-6 w-6"
-                style="color: var(--nm-accent-text)"
+                class="h-6 w-6 text-brand"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -224,24 +219,19 @@
                 />
               </svg>
             </div>
-            <h3 class="mb-2 text-lg font-semibold text-gray-900 dark:text-white">
+            <h3 class="mb-2 text-lg font-semibold text-foreground">
               {{ t('home.features.multiAccount') }}
             </h3>
-            <p class="text-sm leading-relaxed text-gray-600 dark:text-dark-400">
+            <p class="text-sm leading-relaxed text-muted-foreground">
               {{ t('home.features.multiAccountDesc') }}
             </p>
           </div>
 
           <!-- Feature 3: Billing & Quota -->
-          <div
-            class="card group p-6 transition-all duration-300"
-          >
-            <div
-              class="swiss-stat-icon mb-4"
-            >
+          <div class="card card-hover group p-6 transition-all duration-300">
+            <div class="swiss-stat-icon mb-4">
               <svg
-                class="h-6 w-6"
-                style="color: var(--nm-accent-text)"
+                class="h-6 w-6 text-brand"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -254,10 +244,10 @@
                 />
               </svg>
             </div>
-            <h3 class="mb-2 text-lg font-semibold text-gray-900 dark:text-white">
+            <h3 class="mb-2 text-lg font-semibold text-foreground">
               {{ t('home.features.balanceQuota') }}
             </h3>
-            <p class="text-sm leading-relaxed text-gray-600 dark:text-dark-400">
+            <p class="text-sm leading-relaxed text-muted-foreground">
               {{ t('home.features.balanceQuotaDesc') }}
             </p>
           </div>
@@ -265,110 +255,77 @@
 
         <!-- Supported Providers -->
         <div class="mb-8 text-center">
-          <h2 class="mb-3 text-2xl font-bold text-gray-900 dark:text-white">
+          <h2 class="mb-3 text-2xl font-bold text-foreground">
             {{ t('home.providers.title') }}
           </h2>
-          <p class="text-sm text-gray-600 dark:text-dark-400">
+          <p class="text-sm text-muted-foreground">
             {{ t('home.providers.description') }}
           </p>
         </div>
 
         <div class="mb-16 flex flex-wrap items-center justify-center gap-4">
           <!-- Claude - Supported -->
-          <div
-            class="swiss-panel flex items-center gap-2 px-4 py-3"
-          >
-            <div
-              class="flex h-8 w-8 items-center justify-center rounded-lg"
-              style="background: var(--nm-accent)"
-            >
-              <span class="text-xs font-bold" style="color: var(--nm-on-accent)">C</span>
+          <div class="swiss-panel flex items-center gap-2 px-4 py-3">
+            <div class="flex h-8 w-8 items-center justify-center rounded-xl bg-brand">
+              <span class="text-xs font-bold text-brand-foreground">C</span>
             </div>
-            <span class="text-sm font-medium" style="color: var(--nm-ink)">{{ t('home.providers.claude') }}</span>
-            <span
-              class="rounded px-1.5 py-0.5 text-[10px] font-medium"
-              style="background: var(--nm-accent-soft); color: var(--nm-accent-text)"
-              >{{ t('home.providers.supported') }}</span
-            >
+            <span class="text-sm font-medium text-foreground">{{ t('home.providers.claude') }}</span>
+            <span class="badge badge-primary px-1.5 py-0.5 text-[10px]">{{
+              t('home.providers.supported')
+            }}</span>
           </div>
           <!-- GPT - Supported -->
-          <div
-            class="swiss-panel flex items-center gap-2 px-4 py-3"
-          >
-            <div
-              class="flex h-8 w-8 items-center justify-center rounded-lg"
-              style="background: var(--nm-accent)"
-            >
-              <span class="text-xs font-bold" style="color: var(--nm-on-accent)">G</span>
+          <div class="swiss-panel flex items-center gap-2 px-4 py-3">
+            <div class="flex h-8 w-8 items-center justify-center rounded-xl bg-brand">
+              <span class="text-xs font-bold text-brand-foreground">G</span>
             </div>
-            <span class="text-sm font-medium" style="color: var(--nm-ink)">GPT</span>
-            <span
-              class="rounded px-1.5 py-0.5 text-[10px] font-medium"
-              style="background: var(--nm-accent-soft); color: var(--nm-accent-text)"
-              >{{ t('home.providers.supported') }}</span
-            >
+            <span class="text-sm font-medium text-foreground">GPT</span>
+            <span class="badge badge-primary px-1.5 py-0.5 text-[10px]">{{
+              t('home.providers.supported')
+            }}</span>
           </div>
           <!-- Gemini - Supported -->
-          <div
-            class="swiss-panel flex items-center gap-2 px-4 py-3"
-          >
-            <div
-              class="flex h-8 w-8 items-center justify-center rounded-lg"
-              style="background: var(--nm-accent)"
-            >
-              <span class="text-xs font-bold" style="color: var(--nm-on-accent)">G</span>
+          <div class="swiss-panel flex items-center gap-2 px-4 py-3">
+            <div class="flex h-8 w-8 items-center justify-center rounded-xl bg-brand">
+              <span class="text-xs font-bold text-brand-foreground">G</span>
             </div>
-            <span class="text-sm font-medium" style="color: var(--nm-ink)">{{ t('home.providers.gemini') }}</span>
-            <span
-              class="rounded px-1.5 py-0.5 text-[10px] font-medium"
-              style="background: var(--nm-accent-soft); color: var(--nm-accent-text)"
-              >{{ t('home.providers.supported') }}</span
-            >
+            <span class="text-sm font-medium text-foreground">{{ t('home.providers.gemini') }}</span>
+            <span class="badge badge-primary px-1.5 py-0.5 text-[10px]">{{
+              t('home.providers.supported')
+            }}</span>
           </div>
           <!-- Antigravity - Supported -->
-          <div
-            class="swiss-panel flex items-center gap-2 px-4 py-3"
-          >
-            <div
-              class="flex h-8 w-8 items-center justify-center rounded-lg"
-              style="background: var(--nm-accent)"
-            >
-              <span class="text-xs font-bold" style="color: var(--nm-on-accent)">A</span>
+          <div class="swiss-panel flex items-center gap-2 px-4 py-3">
+            <div class="flex h-8 w-8 items-center justify-center rounded-xl bg-brand">
+              <span class="text-xs font-bold text-brand-foreground">A</span>
             </div>
-            <span class="text-sm font-medium" style="color: var(--nm-ink)">{{ t('home.providers.antigravity') }}</span>
-            <span
-              class="rounded px-1.5 py-0.5 text-[10px] font-medium"
-              style="background: var(--nm-accent-soft); color: var(--nm-accent-text)"
-              >{{ t('home.providers.supported') }}</span
-            >
+            <span class="text-sm font-medium text-foreground">{{
+              t('home.providers.antigravity')
+            }}</span>
+            <span class="badge badge-primary px-1.5 py-0.5 text-[10px]">{{
+              t('home.providers.supported')
+            }}</span>
           </div>
           <!-- More - Coming Soon -->
-          <div
-            class="swiss-panel flex items-center gap-2 px-4 py-3 opacity-60"
-          >
-            <div
-              class="flex h-8 w-8 items-center justify-center rounded-lg"
-              style="background: var(--nm-surface-alt)"
-            >
-              <span class="text-xs font-bold" style="color: var(--nm-ink-muted)">+</span>
+          <div class="swiss-panel flex items-center gap-2 px-4 py-3 opacity-60">
+            <div class="flex h-8 w-8 items-center justify-center rounded-xl bg-secondary">
+              <span class="text-xs font-bold text-muted-foreground">+</span>
             </div>
-            <span class="text-sm font-medium" style="color: var(--nm-ink)">{{ t('home.providers.more') }}</span>
-            <span
-              class="rounded px-1.5 py-0.5 text-[10px] font-medium"
-              style="background: var(--nm-surface-alt); color: var(--nm-ink-muted)"
-              >{{ t('home.providers.soon') }}</span
-            >
+            <span class="text-sm font-medium text-foreground">{{ t('home.providers.more') }}</span>
+            <span class="badge badge-gray px-1.5 py-0.5 text-[10px]">{{
+              t('home.providers.soon')
+            }}</span>
           </div>
         </div>
       </div>
     </main>
 
     <!-- Footer -->
-    <footer class="relative z-10 border-t border-gray-200/50 px-6 py-8 dark:border-dark-800/50">
+    <footer class="relative z-10 border-t border-border px-6 py-8">
       <div
         class="mx-auto flex max-w-6xl flex-col items-center justify-center gap-4 text-center sm:flex-row sm:text-left"
       >
-        <p class="text-sm text-gray-500 dark:text-dark-400">
+        <p class="text-sm text-muted-foreground">
           &copy; {{ currentYear }} {{ siteName }}. {{ t('home.footer.allRightsReserved') }}
         </p>
         <div class="flex items-center gap-4">
@@ -377,7 +334,7 @@
             :href="docUrl"
             target="_blank"
             rel="noopener noreferrer"
-            class="text-sm text-gray-500 transition-colors hover:text-gray-700 dark:text-dark-400 dark:hover:text-white"
+            class="text-sm text-muted-foreground transition-colors hover:text-foreground"
           >
             {{ t('home.docs') }}
           </a>
@@ -385,7 +342,7 @@
             :href="githubUrl"
             target="_blank"
             rel="noopener noreferrer"
-            class="text-sm text-gray-500 transition-colors hover:text-gray-700 dark:text-dark-400 dark:hover:text-white"
+            class="text-sm text-muted-foreground transition-colors hover:text-foreground"
           >
             GitHub
           </a>
@@ -477,14 +434,16 @@ onMounted(() => {
 .terminal-container {
   position: relative;
   display: inline-block;
+  max-width: 100%;
 }
 
-/* Terminal Window */
+/* Terminal Window — always-dark code mockup; token ring keeps it visible
+   on both the light and the dark canvas. */
 .terminal-window {
-  width: 420px;
+  width: min(420px, 100%);
   background: #111111;
-  border: 1px solid var(--nm-border);
   border-radius: var(--nm-radius-xl);
+  box-shadow: var(--nm-shadow-raised-lg);
   overflow: hidden;
 }
 
@@ -494,7 +453,7 @@ onMounted(() => {
   align-items: center;
   padding: 12px 16px;
   background: #171717;
-  border-bottom: 1px solid #34342f;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .terminal-buttons {
@@ -523,7 +482,7 @@ onMounted(() => {
   text-align: center;
   font-size: 12px;
   font-family: ui-monospace, monospace;
-  color: #64748b;
+  color: rgba(255, 255, 255, 0.45);
   margin-right: 52px;
 }
 
@@ -615,5 +574,4 @@ onMounted(() => {
     opacity: 0;
   }
 }
-
 </style>

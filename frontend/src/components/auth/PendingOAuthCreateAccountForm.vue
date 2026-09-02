@@ -64,7 +64,7 @@
     <p v-if="emailVerifyEnabled && sendCodeSuccess" class="text-sm text-semantic-success">
       {{ t('auth.codeSentSuccess') }}
     </p>
-    <p v-else-if="emailVerifyEnabled" class="text-xs text-gray-500 dark:text-dark-400">
+    <p v-else-if="emailVerifyEnabled" class="text-xs text-muted-foreground">
       {{ t('auth.verificationCodeHint') }}
     </p>
     <input

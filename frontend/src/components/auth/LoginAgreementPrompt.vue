@@ -8,14 +8,15 @@
         id="login-agreement-consent"
         type="checkbox"
         :checked="accepted"
-        class="mt-[2px] h-4 w-4 flex-shrink-0 rounded border-gray-300 text-primary-600 focus:ring-primary-500 dark:border-dark-600 dark:bg-dark-900"
+        class="mt-[2px] h-4 w-4 flex-shrink-0 rounded border-border"
+        style="accent-color: var(--nm-accent)"
         @change="handleCheckboxChange"
       />
       <div class="min-w-0 flex-1">
-        <p class="text-[13px] leading-5 text-gray-600 dark:text-dark-300">
+        <p class="text-[13px] leading-5 text-muted-foreground">
           <label
             for="login-agreement-consent"
-            class="cursor-pointer text-gray-700 dark:text-dark-200"
+            class="cursor-pointer text-foreground"
           >
             {{ t('legal.loginAgreementPrompt.checkboxPrefix') }}
           </label>
@@ -24,7 +25,7 @@
               :to="documentRoute(doc)"
               target="_blank"
               rel="noopener noreferrer"
-              class="font-medium text-primary-600 underline-offset-4 transition hover:text-primary-700 hover:underline dark:text-primary-300 dark:hover:text-primary-200"
+              class="font-medium text-brand underline-offset-4 transition hover:text-[color:var(--nm-accent-strong)] hover:underline"
             >
               {{ doc.title }}
             </RouterLink>
@@ -37,14 +38,14 @@
 
   <div
     v-else-if="!accepted && documents.length > 0"
-    class="swiss-panel p-3 text-sm"
+    class="card rounded-2xl p-3 text-sm"
     style="color: var(--nm-ink)"
   >
     <div class="flex items-start gap-3">
       <Icon name="shield" size="sm" class="mt-0.5 flex-shrink-0" style="color: var(--nm-accent-text)" />
       <div class="min-w-0 flex-1">
         <p class="font-medium">{{ t('legal.loginAgreementPrompt.noticeTitle') }}</p>
-        <p class="mt-1 text-primary-700 dark:text-primary-200/80">
+        <p class="mt-1 text-[color:var(--nm-accent-text)]">
           {{ t('legal.loginAgreementPrompt.noticeDescription') }}
         </p>
       </div>
@@ -66,8 +67,7 @@
         style="background-color: rgba(28, 31, 38, 0.45)"
       >
         <div
-          class="swiss-panel w-full max-w-[600px] overflow-hidden"
-          style="background: var(--nm-bg)"
+          class="card w-full max-w-[600px] overflow-hidden rounded-2xl"
         >
           <div class="border-b px-6 py-6" style="border-color: var(--nm-border-light)">
             <div class="flex items-start gap-4">
@@ -79,7 +79,7 @@
               </span>
               <div class="min-w-0 flex-1">
                 <div class="flex flex-wrap items-center gap-2">
-                  <h2 class="text-xl font-bold tracking-normal text-gray-950 dark:text-white">
+                  <h2 class="text-xl font-bold tracking-normal text-foreground">
                     {{ t('legal.loginAgreementPrompt.dialogTitle') }}
                   </h2>
                   <span
@@ -90,7 +90,7 @@
                     {{ updatedAt }}
                   </span>
                 </div>
-                <p class="mt-2 text-sm leading-6 text-gray-600 dark:text-dark-300">
+                <p class="mt-2 text-sm leading-6 text-muted-foreground">
                   {{
                     t('legal.loginAgreementPrompt.dialogDescription', {
                       date: updatedAt || t('legal.loginAgreementPrompt.recently'),
@@ -103,7 +103,7 @@
 
           <div class="max-h-[58vh] overflow-y-auto px-6 py-5">
             <div class="mb-3 flex items-center justify-between gap-3">
-              <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('legal.loginAgreementPrompt.relatedDocuments') }}</p>
+              <p class="text-sm font-semibold text-foreground">{{ t('legal.loginAgreementPrompt.relatedDocuments') }}</p>
             </div>
             <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <RouterLink
@@ -142,7 +142,7 @@
               </button>
               <button
                 type="button"
-                class="btn px-4 py-3"
+                class="btn btn-primary px-4 py-3"
                 @click="emit('accept')"
               >
                 {{ t('legal.loginAgreementPrompt.accept') }}

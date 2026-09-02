@@ -1,21 +1,26 @@
 <template>
   <div
-    class="relative flex min-h-screen items-center justify-center overflow-hidden px-4"
-    style="background-color: var(--nm-bg)"
+    class="relative flex min-h-screen items-center justify-center overflow-hidden bg-background px-4 text-foreground"
   >
+    <!-- Soft brand glow -->
+    <div
+      class="pointer-events-none absolute -top-32 left-1/2 h-80 w-[36rem] -translate-x-1/2 rounded-full bg-brand/10 blur-3xl"
+      aria-hidden="true"
+    ></div>
+
     <div class="relative z-10 w-full max-w-md text-center">
       <!-- 404 Display -->
       <div class="mb-8">
         <div class="relative inline-block">
-          <span class="text-[12rem] font-bold leading-none" style="color: var(--nm-surface-alt)"
+          <span class="text-[7rem] font-bold leading-none text-brand/10 sm:text-[10rem] md:text-[12rem]"
             >404</span
           >
           <div class="absolute inset-0 flex items-center justify-center">
             <div
-              class="swiss-stat-icon flex h-24 w-24 items-center justify-center"
+              class="flex h-20 w-20 items-center justify-center rounded-3xl bg-card shadow-nm sm:h-24 sm:w-24"
             >
               <svg
-                class="h-12 w-12"
+                class="h-10 w-10 text-brand sm:h-12 sm:w-12"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -34,11 +39,11 @@
 
       <!-- Text Content -->
       <div class="mb-8">
-        <h1 class="mb-3 text-2xl font-bold" style="color: var(--nm-ink)">
+        <h1 class="mb-3 text-2xl font-bold text-foreground">
           {{ t('errors.pageNotFound') }}
         </h1>
-        <p style="color: var(--nm-ink-muted)">
-          The page you are looking for doesn't exist or has been moved.
+        <p class="empty-state-description mx-auto">
+          {{ t('errors.pageNotFoundDescription') }}
         </p>
       </div>
 
@@ -46,23 +51,22 @@
       <div class="flex flex-col justify-center gap-3 sm:flex-row">
         <button @click="goBack" class="btn btn-secondary">
           <Icon name="arrowLeft" size="md" class="mr-2" />
-          Go Back
+          {{ t('errors.goBack') }}
         </button>
         <router-link to="/dashboard" class="btn btn-primary">
           <Icon name="home" size="md" class="mr-2" />
-          Go to Dashboard
+          {{ t('errors.backToDashboard') }}
         </router-link>
       </div>
 
       <!-- Help Link -->
-        <p class="mt-8 text-sm" style="color: var(--nm-ink-faint)">
-        Need help?
+      <p class="mt-8 text-sm text-muted-foreground">
+        {{ t('errors.needHelp') }}
         <a
           href="#"
-          class="transition-colors hover:underline"
-          style="color: var(--nm-accent-text)"
+          class="font-medium text-brand transition-colors hover:underline"
         >
-          Contact support
+          {{ t('common.contactSupport') }}
         </a>
       </p>
     </div>

@@ -11,8 +11,8 @@
         >
           <Icon name="cog" size="xl" />
         </div>
-        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">{{ t('setup.title') }}</h1>
-        <p class="mt-2 text-gray-500 dark:text-dark-400">{{ t('setup.description') }}</p>
+        <h1 class="text-3xl font-bold text-foreground">{{ t('setup.title') }}</h1>
+        <p class="mt-2 text-muted-foreground">{{ t('setup.description') }}</p>
       </div>
 
       <!-- Progress Steps -->
@@ -22,12 +22,12 @@
             <div class="flex items-center">
               <div
                 :class="[
-                  'flex h-10 w-10 items-center justify-center border text-sm font-semibold transition-all',
+                  'flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold transition-colors',
                   currentStep > index
-                    ? 'border-[var(--nm-accent)] bg-[var(--nm-accent)] text-[var(--nm-on-accent)]'
+                    ? 'bg-[var(--nm-accent-soft)] text-[var(--nm-accent-text)]'
                     : currentStep === index
-                      ? 'border-[var(--nm-ink)] bg-[var(--nm-ink)] text-[var(--nm-bg)]'
-                      : 'border-[var(--nm-border)] bg-[var(--nm-surface)] text-[var(--nm-ink-muted)]'
+                      ? 'bg-brand text-brand-foreground'
+                      : 'border border-border bg-card text-muted-foreground'
                 ]"
               >
                 <Icon
@@ -42,8 +42,8 @@
                 class="ml-2 hidden text-sm font-medium sm:inline"
                 :class="
                   currentStep >= index
-                    ? 'text-gray-900 dark:text-white'
-                    : 'text-gray-400 dark:text-dark-500'
+                    ? 'text-foreground'
+                    : 'text-muted-foreground'
                 "
               >
                 {{ step.title }}
@@ -52,7 +52,7 @@
             <div
               v-if="index < steps.length - 1"
               class="mx-2 h-0.5 w-6 sm:mx-3 sm:w-12"
-              :class="currentStep > index ? 'bg-[var(--nm-accent)]' : 'bg-[var(--nm-border)]'"
+              :class="currentStep > index ? 'bg-brand' : 'bg-border'"
             ></div>
           </template>
         </div>
@@ -63,10 +63,10 @@
         <!-- Step 1: Database -->
         <div v-if="currentStep === 0" class="space-y-6">
           <div class="mb-6 text-center">
-            <h2 class="text-xl font-semibold text-gray-900 dark:text-white">
+            <h2 class="text-xl font-semibold text-foreground">
               {{ t('setup.database.title') }}
             </h2>
-            <p class="mt-1 text-sm text-gray-500 dark:text-dark-400">
+            <p class="mt-1 text-sm text-muted-foreground">
               {{ t('setup.database.description') }}
             </p>
           </div>
@@ -94,10 +94,10 @@
 
           <div class="swiss-panel flex items-center justify-between p-3">
             <div>
-              <p class="text-sm font-medium text-gray-900 dark:text-white">
+              <p class="text-sm font-medium text-foreground">
                 {{ t("setup.redis.enableTls") }}
               </p>
-              <p class="text-xs text-gray-500 dark:text-dark-400">
+              <p class="text-xs text-muted-foreground">
                 {{ t("setup.redis.enableTlsHint") }}
               </p>
             </div>
@@ -188,10 +188,10 @@
         <!-- Step 2: Redis -->
         <div v-if="currentStep === 1" class="space-y-6">
           <div class="mb-6 text-center">
-            <h2 class="text-xl font-semibold text-gray-900 dark:text-white">
+            <h2 class="text-xl font-semibold text-foreground">
               {{ t('setup.redis.title') }}
             </h2>
-            <p class="mt-1 text-sm text-gray-500 dark:text-dark-400">
+            <p class="mt-1 text-sm text-muted-foreground">
               {{ t('setup.redis.description') }}
             </p>
           </div>
@@ -249,10 +249,10 @@
 
           <div class="swiss-panel flex items-center justify-between p-3">
             <div>
-              <p class="text-sm font-medium text-gray-900 dark:text-white">
+              <p class="text-sm font-medium text-foreground">
                 {{ t("setup.redis.enableTls") }}
               </p>
-              <p class="text-xs text-gray-500 dark:text-dark-400">
+              <p class="text-xs text-muted-foreground">
                 {{ t("setup.redis.enableTlsHint") }}
               </p>
             </div>
@@ -304,10 +304,10 @@
         <!-- Step 3: Admin -->
         <div v-if="currentStep === 2" class="space-y-6">
           <div class="mb-6 text-center">
-            <h2 class="text-xl font-semibold text-gray-900 dark:text-white">
+            <h2 class="text-xl font-semibold text-foreground">
               {{ t('setup.admin.title') }}
             </h2>
-            <p class="mt-1 text-sm text-gray-500 dark:text-dark-400">
+            <p class="mt-1 text-sm text-muted-foreground">
               {{ t('setup.admin.description') }}
             </p>
           </div>
@@ -352,20 +352,20 @@
         <!-- Step 4: Complete -->
         <div v-if="currentStep === 3" class="space-y-6">
           <div class="mb-6 text-center">
-            <h2 class="text-xl font-semibold text-gray-900 dark:text-white">
+            <h2 class="text-xl font-semibold text-foreground">
               {{ t('setup.ready.title') }}
             </h2>
-            <p class="mt-1 text-sm text-gray-500 dark:text-dark-400">
+            <p class="mt-1 text-sm text-muted-foreground">
               {{ t('setup.ready.description') }}
             </p>
           </div>
 
           <div class="space-y-4">
             <div class="swiss-panel p-4">
-              <h3 class="mb-2 text-sm font-medium text-gray-500 dark:text-dark-400">
+              <h3 class="mb-2 text-sm font-medium text-muted-foreground">
                 {{ t('setup.ready.database') }}
               </h3>
-              <p class="text-gray-900 dark:text-white">
+              <p class="text-foreground">
                 {{ formData.database.user }}@{{ formData.database.host }}:{{
                   formData.database.port
                 }}/{{ formData.database.dbname }}
@@ -373,19 +373,19 @@
             </div>
 
             <div class="swiss-panel p-4">
-              <h3 class="mb-2 text-sm font-medium text-gray-500 dark:text-dark-400">
+              <h3 class="mb-2 text-sm font-medium text-muted-foreground">
                 {{ t('setup.ready.redis') }}
               </h3>
-              <p class="text-gray-900 dark:text-white">
+              <p class="text-foreground">
                 {{ formData.redis.host }}:{{ formData.redis.port }}
               </p>
             </div>
 
             <div class="swiss-panel p-4">
-              <h3 class="mb-2 text-sm font-medium text-gray-500 dark:text-dark-400">
+              <h3 class="mb-2 text-sm font-medium text-muted-foreground">
                 {{ t('setup.ready.adminEmail') }}
               </h3>
-              <p class="text-gray-900 dark:text-white">{{ formData.admin.email }}</p>
+              <p class="text-foreground">{{ formData.admin.email }}</p>
             </div>
           </div>
         </div>
@@ -393,7 +393,7 @@
         <!-- Error Message -->
         <div
           v-if="errorMessage"
-          class="mt-6 border p-4"
+          class="mt-6 rounded-xl border p-4"
           style="border-color: var(--nm-danger); background: var(--nm-danger-soft)"
         >
           <div class="flex items-start gap-3">
@@ -405,7 +405,7 @@
         <!-- Success Message -->
         <div
           v-if="installSuccess"
-          class="mt-6 border p-4"
+          class="mt-6 rounded-xl border p-4"
           style="border-color: var(--nm-success); background: var(--nm-success-soft)"
         >
           <div class="flex items-start gap-3">

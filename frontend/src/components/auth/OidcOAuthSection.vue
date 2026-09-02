@@ -1,6 +1,6 @@
 <template>
   <div class="space-y-4">
-    <button type="button" :disabled="disabled" class="btn btn-secondary w-full" @click="startLogin">
+    <button type="button" :disabled="disabled" class="btn h-12 w-full" @click="startLogin">
       <span
         class="mr-2 inline-flex h-5 w-5 items-center justify-center border text-xs font-semibold"
         style="border-color: var(--nm-border); background: var(--nm-surface-soft); color: var(--nm-ink); border-radius: var(--nm-radius-sm)"

@@ -4,8 +4,7 @@
       <div class="fixed inset-0 bg-black/50 transition-opacity"></div>
 
       <div
-        class="swiss-panel relative w-full max-w-md transform p-6 transition-all"
-        style="background: var(--nm-bg)"
+        class="card relative w-full max-w-md transform rounded-2xl p-6 transition-all"
       >
         <!-- Header -->
         <div class="mb-6 text-center">
@@ -53,7 +52,7 @@
               pattern="[0-9]"
               autocomplete="off"
               class="h-12 w-10 border text-center text-lg font-semibold"
-              style="border-color: var(--nm-border); background: var(--nm-bg); color: var(--nm-ink); border-radius: var(--nm-radius-sm)"
+              style="border-color: var(--nm-border); background: hsl(var(--card)); color: hsl(var(--foreground)); border-radius: var(--nm-radius-sm)"
               :disabled="verifying"
               @input="handleCodeInput($event, index)"
               @keydown="handleKeydown($event, index)"

@@ -2,20 +2,20 @@
   <div class="min-h-screen px-4 py-10" style="background: var(--nm-bg)">
     <div class="mx-auto max-w-2xl">
       <div v-if="isProcessing" class="card p-6 text-center">
-        <div class="oauth-spinner mx-auto"></div>
-        <h1 class="mt-4 text-lg font-semibold text-gray-900 dark:text-white">
+        <div class="spinner mx-auto h-8 w-8 border-brand" aria-hidden="true"></div>
+        <h1 class="mt-4 text-lg font-semibold text-foreground">
           {{ t('auth.oauth.callbackTitle') }}
         </h1>
-        <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+        <p class="mt-2 text-sm text-muted-foreground">
           {{ t('auth.oauth.callbackHint') }}
         </p>
       </div>
 
       <div v-else-if="needsRegistrationCompletion" class="card p-6">
-        <h1 class="text-lg font-semibold text-gray-900 dark:text-white">
+        <h1 class="text-lg font-semibold text-foreground">
           {{ t('auth.oidc.callbackTitle', { providerName }) }}
         </h1>
-        <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+        <p class="mt-2 text-sm text-muted-foreground">
           {{ registrationHint }}
         </p>
 
@@ -80,10 +80,10 @@
       </div>
 
       <div v-else-if="invalidCallback" class="card p-6 text-center">
-        <h1 class="text-lg font-semibold text-gray-900 dark:text-white">
+        <h1 class="text-lg font-semibold text-foreground">
           {{ t('auth.oauth.invalidCallbackTitle') }}
         </h1>
-        <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+        <p class="mt-2 text-sm text-muted-foreground">
           {{ t('auth.oauth.invalidCallbackHint') }}
         </p>
         <button class="btn btn-primary mt-6" type="button" @click="router.replace('/login')">
@@ -92,10 +92,10 @@
       </div>
 
       <div v-else class="card p-6">
-        <h1 class="text-lg font-semibold text-gray-900 dark:text-white">
+        <h1 class="text-lg font-semibold text-foreground">
           {{ t('auth.oauth.callbackTitle') }}
         </h1>
-        <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+        <p class="mt-2 text-sm text-muted-foreground">
           {{ t('auth.oauth.callbackHint') }}
         </p>
 
@@ -144,23 +144,6 @@
     </div>
   </div>
 </template>
-
-<style scoped>
-.oauth-spinner {
-  width: 2rem;
-  height: 2rem;
-  border: 2px solid var(--nm-border);
-  border-top-color: var(--nm-accent);
-  border-radius: 50%;
-  animation: oauth-spin 0.8s linear infinite;
-}
-
-@keyframes oauth-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-</style>
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
