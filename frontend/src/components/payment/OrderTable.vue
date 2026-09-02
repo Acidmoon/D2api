@@ -35,6 +35,9 @@
     <template #cell-actions="{ row }">
       <slot name="actions" :row="row" />
     </template>
+    <template v-if="$slots.empty" #empty>
+      <slot name="empty" />
+    </template>
   </DataTable>
 </template>
 
