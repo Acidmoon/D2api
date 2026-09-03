@@ -7,13 +7,13 @@
     <!-- Main Content Area -->
     <div
       class="relative min-h-screen bg-background transition-all duration-300"
-      :class="[sidebarCollapsed ? 'lg:ml-[76px]' : 'lg:ml-72']"
+      :class="[sidebarCollapsed ? 'lg:ml-[76px]' : 'lg:ml-[272px]']"
     >
       <!-- Header -->
       <AppHeader />
 
       <!-- Main Content -->
-      <main id="main-content" class="p-4 md:p-6" tabindex="-1">
+      <main id="main-content" class="px-4 pt-5 pb-10 md:px-6" tabindex="-1">
         <slot />
       </main>
     </div>

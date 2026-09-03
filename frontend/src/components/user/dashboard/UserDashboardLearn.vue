@@ -1,37 +1,50 @@
 <template>
-  <section v-if="cards.length > 0" data-testid="dashboard-learn">
+  <!-- QW 学习卡：全宽白卡，标题 + 描边药丸，4 列教程卡 -->
+  <section v-if="cards.length > 0" class="rounded-[24px] bg-card p-7 shadow-card" data-testid="dashboard-learn">
     <div class="flex items-center justify-between gap-3">
-      <h2 class="text-base font-semibold text-foreground">{{ t('dashboard.learn.title') }}</h2>
+      <h2 class="text-xl font-semibold text-foreground">{{ t('dashboard.learn.title') }}</h2>
       <a
         v-if="docUrl"
         :href="docUrl"
         target="_blank"
         rel="noopener noreferrer"
-        class="swiss-action"
+        class="qw-pill"
       >
         {{ t('dashboard.learn.docs') }}
-        <Icon name="externalLink" size="xs" />
+        <svg
+          class="h-3.5 w-3.5"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M7 17L17 7M7 7h10v10" />
+        </svg>
       </a>
     </div>
-    <div class="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div class="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
       <RouterLink
         v-for="card in cards"
         :key="card.key"
         :to="card.to"
-        class="card learn-card group flex flex-col p-5 transition-colors"
+        class="learn-card group flex min-h-[162px] flex-col rounded-[18px] border border-[color:var(--nm-border-light)] p-5 transition-colors"
       >
-        <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-secondary text-brand">
-          <Icon :name="card.icon" size="md" />
-        </span>
-        <p class="mt-4 flex items-center gap-1.5 text-sm font-semibold text-foreground">
-          {{ card.title }}
-          <Icon
-            name="arrowRight"
-            size="xs"
-            class="text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100"
-          />
+        <div class="flex items-start justify-between gap-3">
+          <p class="line-clamp-2 text-base font-semibold leading-6 text-foreground">
+            {{ card.title }}
+          </p>
+          <span
+            class="flex h-[58px] w-[58px] shrink-0 items-center justify-center rounded-full bg-[color:var(--nm-surface-soft)] text-foreground"
+          >
+            <Icon :name="card.icon" size="lg" />
+          </span>
+        </div>
+        <p class="mt-auto line-clamp-2 text-sm leading-5 text-[#7F8798] dark:text-[#B4BCC6]">
+          {{ card.desc }}
         </p>
-        <p class="mt-1 text-xs leading-5 text-muted-foreground">{{ card.desc }}</p>
       </RouterLink>
     </div>
   </section>
@@ -108,7 +121,34 @@ const cards = computed<LearnCard[]>(() => {
 </script>
 
 <style scoped>
-/* 同 UserDashboardStats：brand 透明度修饰符不可用，hover 边框用 var token。 */
+/* QW 描边药丸按钮：白底 1px #D1D7E2 描边，dark 下换用边框 token。 */
+.qw-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  flex-shrink: 0;
+  padding: 0 18px;
+  border-radius: 999px;
+  border: 1px solid #d1d7e2;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+  color: var(--nm-ink);
+  white-space: nowrap;
+  transition: background-color 150ms ease;
+}
+
+.qw-pill:hover {
+  background-color: var(--nm-surface-soft);
+}
+
+:global(.dark) .qw-pill {
+  border-color: var(--nm-border);
+}
+
+/* 教程卡 hover：描边由中性色过渡到 accent（brand 透明度修饰符对
+   hsl(var(--x)) 不可用，直接用 token 表达）。 */
 .learn-card:hover {
   border-color: hsl(var(--brand) / 0.45);
 }

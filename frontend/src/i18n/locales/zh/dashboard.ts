@@ -75,6 +75,17 @@ export default {
       title: '充值与套餐',
       desc: '充值余额或订阅分组，即刻开始调用模型'
     },
+    models: {
+      section: '最新模型',
+      tryNow: '立即体验',
+      callApi: '调用 API',
+      viewAll: '查看所有模型'
+    },
+    benefits: {
+      platforms: '个平台',
+      quotaWindows: '项限额',
+      viewBenefits: '查看权益'
+    },
     learn: {
       title: '学习与快捷开始',
       docs: '查看文档',
@@ -106,6 +117,10 @@ export default {
   keys: {
     title: 'API 密钥',
     description: '管理您的 API 密钥和访问令牌',
+    table: {
+      title: '密钥列表',
+      description: '展示用于模型调用身份鉴权的访问凭证',
+    },
     searchPlaceholder: '搜索名称或Key...',
     endpoints: {
       title: 'API 端点',
@@ -309,6 +324,15 @@ export default {
   usage: {
     title: '使用记录',
     description: '查看和分析您的 API 使用历史',
+    quickStart: '快速接入',
+    getApiKey: '获取专属 API Key',
+    overviewTitle: '用量概览',
+    summaryTitle: '账户概览',
+    detailTitle: '用量详情',
+    lastUpdated: '上次更新 {time}',
+    rpmLabel: '平均 RPM',
+    tpmLabel: '平均 TPM',
+    chartFailed: '用量数据加载失败，请稍后重试',
     costDetails: '费用明细',
     tokenDetails: 'Token 明细',
     cacheTtlOverriddenHint: '缓存 TTL Override 已启用',
@@ -709,6 +733,8 @@ export default {
   profile: {
     title: '个人设置',
     description: '管理您的账户信息和设置',
+    accountSectionTitle: '账号资料',
+    accountSectionDescription: '管理头像、用户名与第三方账号绑定',
     quickSettings: '快捷设置',
     accountBalance: '账户余额',
     concurrencyLimit: '并发限制',

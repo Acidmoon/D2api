@@ -1,30 +1,30 @@
 <template>
-  <section class="card p-2" data-testid="dashboard-quick-actions">
-    <nav class="grid grid-cols-3 gap-1 md:grid-cols-6" :aria-label="t('dashboard.quickActions')">
+  <!-- QW 快捷导航条：白卡 24px 圆角、高 120px、px-3，6 入口 justify-between -->
+  <section class="rounded-[24px] bg-card shadow-card" data-testid="dashboard-quick-actions">
+    <nav
+      class="flex h-[120px] items-center justify-between gap-2 overflow-x-auto px-3"
+      :aria-label="t('dashboard.quickActions')"
+    >
       <template v-for="action in actions" :key="action.key">
         <a
           v-if="action.external"
           :href="action.to"
           target="_blank"
           rel="noopener noreferrer"
-          class="group flex flex-col items-center gap-2 rounded-xl px-2 py-4 transition-colors hover:bg-secondary"
+          class="group flex h-24 min-w-0 flex-1 flex-col items-center rounded-xl pt-[18px] transition-colors hover:bg-[#F9FAFD] md:w-[202px] md:flex-none dark:hover:bg-[#1D2026]"
         >
-          <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-secondary text-brand">
-            <Icon :name="action.icon" size="md" />
-          </span>
-          <span class="w-full truncate text-center text-xs font-medium text-foreground">
+          <span class="text-foreground"><Icon :name="action.icon" size="lg" /></span>
+          <span class="mt-2 w-full truncate px-1 text-center text-base font-normal text-foreground">
             {{ action.label }}
           </span>
         </a>
         <RouterLink
           v-else
           :to="action.to"
-          class="group flex flex-col items-center gap-2 rounded-xl px-2 py-4 transition-colors hover:bg-secondary"
+          class="group flex h-24 min-w-0 flex-1 flex-col items-center rounded-xl pt-[18px] transition-colors hover:bg-[#F9FAFD] md:w-[202px] md:flex-none dark:hover:bg-[#1D2026]"
         >
-          <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-secondary text-brand">
-            <Icon :name="action.icon" size="md" />
-          </span>
-          <span class="w-full truncate text-center text-xs font-medium text-foreground">
+          <span class="text-foreground"><Icon :name="action.icon" size="lg" /></span>
+          <span class="mt-2 w-full truncate px-1 text-center text-base font-normal text-foreground">
             {{ action.label }}
           </span>
         </RouterLink>
@@ -83,3 +83,13 @@ const actions = computed<QuickAction[]>(() => {
   return list
 })
 </script>
+
+<style scoped>
+/* 窄屏横向滚动时隐藏滚动条，保持 QW 白卡的干净观感。 */
+nav {
+  scrollbar-width: none;
+}
+nav::-webkit-scrollbar {
+  display: none;
+}
+</style>

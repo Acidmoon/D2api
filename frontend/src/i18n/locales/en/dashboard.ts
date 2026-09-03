@@ -75,6 +75,17 @@ export default {
       title: 'Top up & plans',
       desc: 'Add balance or subscribe to a group to start calling models'
     },
+    models: {
+      section: 'Latest Models',
+      tryNow: 'Try Now',
+      callApi: 'Call API',
+      viewAll: 'View all models'
+    },
+    benefits: {
+      platforms: 'platforms',
+      quotaWindows: 'quota windows',
+      viewBenefits: 'View benefits'
+    },
     learn: {
       title: 'Learn & quick start',
       docs: 'View docs',
@@ -106,6 +117,10 @@ export default {
   keys: {
     title: 'API Keys',
     description: 'Manage your API keys and access tokens',
+    table: {
+      title: 'Key List',
+      description: 'Access credentials used to authenticate model API calls',
+    },
     searchPlaceholder: 'Search name or key...',
     endpoints: {
       title: 'API Endpoints',
@@ -304,6 +319,15 @@ export default {
   usage: {
     title: 'Usage Records',
     description: 'View and analyze your API usage history',
+    quickStart: 'Quick Start',
+    getApiKey: 'Get Your API Key',
+    overviewTitle: 'Usage Overview',
+    summaryTitle: 'Account Overview',
+    detailTitle: 'Usage Details',
+    lastUpdated: 'Updated {time}',
+    rpmLabel: 'Avg RPM',
+    tpmLabel: 'Avg TPM',
+    chartFailed: 'Failed to load usage data. Please try again later.',
     costDetails: 'Cost Breakdown',
     tokenDetails: 'Token Breakdown',
     cacheTtlOverriddenHint: 'Cache TTL Override enabled',
@@ -704,6 +728,8 @@ export default {
   profile: {
     title: 'Profile Settings',
     description: 'Manage your account information and settings',
+    accountSectionTitle: 'Account Profile',
+    accountSectionDescription: 'Manage your avatar, username and connected accounts',
     quickSettings: 'Quick Settings',
     accountBalance: 'Account Balance',
     concurrencyLimit: 'Concurrency Limit',

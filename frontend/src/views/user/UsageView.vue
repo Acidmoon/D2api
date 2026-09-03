@@ -1,154 +1,153 @@
 <template>
   <AppLayout>
-    <div class="space-y-6">
+    <div class="space-y-3">
       <!-- In-content page header -->
-      <div class="page-header">
-        <h1 class="page-title">{{ t('usage.title') }}</h1>
-        <p class="page-description">{{ t('usage.description') }}</p>
-      </div>
+      <header class="mb-6">
+        <h1 class="text-[28px] font-semibold leading-tight tracking-tight text-foreground">
+          {{ t('usage.title') }}
+        </h1>
+        <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
+          <p class="qw-desc text-sm">{{ t('usage.description') }}</p>
+          <a
+            v-if="docUrl"
+            :href="docUrl"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="qw-link inline-flex items-center gap-1 text-[13px] font-medium"
+          >
+            <Icon name="book" size="sm" />
+            <span>{{ t('usage.quickStart') }}</span>
+            <Icon name="externalLink" size="xs" />
+          </a>
+          <a
+            href="/keys"
+            class="qw-link inline-flex items-center gap-1 text-[13px] font-medium"
+            @click="goKeys"
+          >
+            <Icon name="key" size="sm" />
+            <span>{{ t('usage.getApiKey') }}</span>
+          </a>
+        </div>
+      </header>
 
       <!-- Segmented tabs (usage / error requests) -->
-      <div v-if="errorViewEnabled" class="tabs w-fit" role="tablist">
-        <button type="button" role="tab" :aria-selected="activeTab === 'usage'" class="tab" :class="{ 'tab-active': activeTab === 'usage' }" @click="activeTab = 'usage'">
+      <div
+        v-if="errorViewEnabled"
+        class="flex w-fit items-center gap-1 rounded-full bg-[color:var(--nm-surface)] p-1"
+        role="tablist"
+      >
+        <button
+          type="button"
+          role="tab"
+          :aria-selected="activeTab === 'usage'"
+          class="qw-tab"
+          :class="{ 'qw-tab-active': activeTab === 'usage' }"
+          @click="activeTab = 'usage'"
+        >
           {{ t('usage.tabs.usage') }}
         </button>
-        <button type="button" role="tab" :aria-selected="activeTab === 'errors'" class="tab" :class="{ 'tab-active': activeTab === 'errors' }" @click="switchToErrors">
+        <button
+          type="button"
+          role="tab"
+          :aria-selected="activeTab === 'errors'"
+          class="qw-tab"
+          :class="{ 'qw-tab-active': activeTab === 'errors' }"
+          @click="switchToErrors"
+        >
           {{ t('usage.tabs.errors') }}
         </button>
       </div>
 
-      <UsageStatsCards :stats="usageStats" :show-account-cost="false" :strike-standard-cost="true" />
-
-      <div class="space-y-4">
-        <div class="card p-4">
-          <div class="flex flex-wrap items-center gap-4">
-            <div class="flex items-center gap-2">
-              <span class="text-sm font-medium text-muted-foreground">{{ t('admin.dashboard.timeRange') }}:</span>
-              <DateRangePicker
-                v-model:start-date="startDate"
-                v-model:end-date="endDate"
-                @change="onDateRangeChange"
-              />
-            </div>
-            <div class="ml-auto flex items-center gap-2">
-              <span class="text-sm font-medium text-muted-foreground">{{ t('admin.dashboard.granularity') }}:</span>
-              <div class="w-28">
-                <Select v-model="granularity" :options="granularityOptions" @change="loadChartData" />
-              </div>
+      <!-- Overview row: usage / trend (left) + account summary (right) -->
+      <div class="grid grid-cols-1 gap-3 lg:grid-cols-[2fr_1fr]">
+        <section class="card p-7">
+          <div class="flex flex-wrap items-start justify-between gap-4">
+            <h2 class="text-xl font-semibold text-foreground">{{ t('usage.overviewTitle') }}</h2>
+            <div class="qw-weak flex items-center gap-1 text-xs">
+              <span>{{ t('usage.lastUpdated', { time: lastUpdatedText }) }}</span>
+              <button
+                type="button"
+                class="flex h-8 w-8 items-center justify-center rounded-full text-[color:var(--nm-ink-faint)] transition-colors hover:bg-[color:var(--nm-surface-soft)] hover:text-foreground"
+                :aria-label="t('common.refresh')"
+                @click="refreshData"
+              >
+                <Icon name="refresh" size="sm" />
+              </button>
             </div>
           </div>
-        </div>
+          <div class="qw-flat mt-5">
+            <UsageStatsCards :stats="usageStats" :show-account-cost="false" :strike-standard-cost="true" />
+          </div>
+          <div class="mt-2">
+            <TokenUsageTrend :trend-data="trendData" :loading="chartsLoading" embedded />
+          </div>
+        </section>
 
-        <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <ModelDistributionChart
-            v-model:metric="modelDistributionMetric"
-            :model-stats="requestedModelStats"
-            :loading="modelStatsLoading"
-            :show-source-toggle="false"
-            :show-metric-toggle="true"
-            :enable-breakdown="false"
-            :show-account-cost="false"
-            :start-date="startDate"
-            :end-date="endDate"
-          />
-          <GroupDistributionChart
-            v-model:metric="groupDistributionMetric"
-            :group-stats="groupStats"
-            :loading="chartsLoading"
-            :show-metric-toggle="true"
-            :enable-breakdown="false"
-            :show-account-cost="false"
-            :start-date="startDate"
-            :end-date="endDate"
-          />
-        </div>
-
-        <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <EndpointDistributionChart
-            v-model:source="endpointDistributionSource"
-            v-model:metric="endpointDistributionMetric"
-            :endpoint-stats="inboundEndpointStats"
-            :upstream-endpoint-stats="upstreamEndpointStats"
-            :endpoint-path-stats="endpointPathStats"
-            :loading="endpointStatsLoading"
-            :show-source-toggle="false"
-            :show-metric-toggle="true"
-            :enable-breakdown="false"
-            :title="t('usage.endpointDistribution')"
-            :start-date="startDate"
-            :end-date="endDate"
-          />
-          <TokenUsageTrend :trend-data="trendData" :loading="chartsLoading" />
-        </div>
+        <section class="card p-7">
+          <h2 class="text-xl font-semibold text-foreground">{{ t('usage.summaryTitle') }}</h2>
+          <dl class="mt-4 divide-y divide-[color:var(--nm-border-light)]">
+            <div class="flex items-center justify-between gap-4 py-3.5">
+              <dt class="qw-weak text-xs">{{ t('usage.totalRequests') }}</dt>
+              <dd class="text-2xl font-semibold tabular-nums text-foreground">
+                {{ (usageStats?.total_requests ?? 0).toLocaleString() }}
+              </dd>
+            </div>
+            <div class="flex items-center justify-between gap-4 py-3.5">
+              <dt class="qw-weak text-xs">{{ t('usage.totalTokens') }}</dt>
+              <dd class="text-2xl font-semibold tabular-nums text-foreground">
+                {{ (usageStats?.total_tokens ?? 0).toLocaleString() }}
+              </dd>
+            </div>
+            <div class="flex items-center justify-between gap-4 py-3.5">
+              <dt class="qw-weak text-xs">{{ t('usage.rpmLabel') }}</dt>
+              <dd class="text-2xl font-semibold tabular-nums text-foreground">
+                {{ formatRate(requestsPerMinute) }}
+              </dd>
+            </div>
+            <div class="flex items-center justify-between gap-4 py-3.5">
+              <dt class="qw-weak text-xs">{{ t('usage.tpmLabel') }}</dt>
+              <dd class="text-2xl font-semibold tabular-nums text-foreground">
+                {{ formatRate(tokensPerMinute) }}
+              </dd>
+            </div>
+          </dl>
+        </section>
       </div>
 
-      <div class="card p-6">
-        <div class="flex flex-wrap items-end justify-between gap-4">
-          <div v-if="activeTab === 'errors'" class="flex flex-1 flex-wrap items-end gap-4">
-            <div class="w-full sm:w-auto sm:min-w-[220px]">
-              <label class="input-label">{{ t('usage.errors.keyName') }}</label>
-              <Select v-model="errorFilter.api_key_id" :options="errorKeyOptions" @change="applyErrorFilters" />
-            </div>
-            <div class="w-full sm:w-auto sm:min-w-[220px]">
-              <label class="input-label">{{ t('usage.errors.model') }}</label>
-              <Select
-                v-model="errorFilter.model"
-                :options="errorModelOptions"
-                searchable
-                creatable
-                clearable
-                :placeholder="t('usage.errors.modelPlaceholder')"
-                @change="applyErrorFilters"
-              />
-            </div>
-            <div class="w-full sm:w-auto sm:min-w-[200px]">
-              <label class="input-label">{{ t('usage.errors.category') }}</label>
-              <Select v-model="errorFilter.category" :options="errorCategoryOptions" @change="applyErrorFilters" />
-            </div>
-            <div class="w-full sm:w-auto sm:min-w-[180px]">
-              <label class="input-label">{{ t('usage.errors.status') }}</label>
-              <Select v-model="errorFilter.status_code" :options="errorStatusOptions" @change="applyErrorFilters" />
-            </div>
+      <!-- Usage details -->
+      <section class="card p-7">
+        <h2 class="text-xl font-semibold text-foreground">{{ t('usage.detailTitle') }}</h2>
+
+        <!-- Filter row: date range + granularity + actions -->
+        <div class="mt-5 flex flex-wrap items-center gap-3">
+          <div class="qw-pill w-full sm:w-[17rem]">
+            <DateRangePicker
+              v-model:start-date="startDate"
+              v-model:end-date="endDate"
+              @change="onDateRangeChange"
+            />
           </div>
-          <div v-else class="flex flex-1 flex-wrap items-end gap-4">
-            <div class="w-full sm:w-auto sm:min-w-[220px]">
-              <label class="input-label">{{ t('usage.apiKeyFilter') }}</label>
-              <Select v-model="filters.api_key_id" :options="apiKeyOptions" @change="applyFilters" />
-            </div>
-            <div class="w-full sm:w-auto sm:min-w-[220px]">
-              <label class="input-label">{{ t('usage.model') }}</label>
-              <Select v-model="filters.model" :options="modelOptions" searchable @change="applyFilters" />
-            </div>
-            <div class="w-full sm:w-auto sm:min-w-[200px]">
-              <label class="input-label">{{ t('admin.usage.group') }}</label>
-              <Select v-model="filters.group_id" :options="groupOptions" searchable @change="applyFilters" />
-            </div>
-            <div class="w-full sm:w-auto sm:min-w-[180px]">
-              <label class="input-label">{{ t('usage.type') }}</label>
-              <Select v-model="filters.request_type" :options="requestTypeOptions" @change="applyFilters" />
-            </div>
-            <div class="w-full sm:w-auto sm:min-w-[200px]">
-              <label class="input-label">{{ t('admin.usage.billingType') }}</label>
-              <Select v-model="filters.billing_type" :options="billingTypeOptions" @change="applyFilters" />
-            </div>
-            <div class="w-full sm:w-auto sm:min-w-[200px]">
-              <label class="input-label">{{ t('admin.usage.billingMode') }}</label>
-              <Select v-model="filters.billing_mode" :options="billingModeOptions" @change="applyFilters" />
-            </div>
+          <div class="qw-pill w-32">
+            <Select v-model="granularity" :options="granularityOptions" @change="loadChartData" />
           </div>
 
-          <div class="flex w-full flex-wrap items-center justify-end gap-3 sm:w-auto">
-            <button type="button" @click="refreshData" :disabled="activeTab === 'errors' ? errorLoading : loading" class="btn btn-secondary">
+          <div class="ml-auto flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              class="qw-btn"
+              :disabled="activeTab === 'errors' ? errorLoading : loading"
+              @click="refreshData"
+            >
               {{ t('common.refresh') }}
             </button>
-            <button type="button" @click="resetFilters" class="btn btn-secondary">
+            <button type="button" class="qw-btn" @click="resetFilters">
               {{ t('common.reset') }}
             </button>
             <div class="relative" ref="columnDropdownRef">
               <button
                 type="button"
                 @click="showColumnDropdown = !showColumnDropdown"
-                class="btn btn-secondary px-2 md:px-3"
+                class="qw-btn"
                 :title="t('admin.users.columnSettings')"
               >
                 <Icon name="grid" size="sm" />
@@ -170,50 +169,161 @@
                 </button>
               </div>
             </div>
-            <button v-if="activeTab !== 'errors'" type="button" @click="exportToCSV" :disabled="exporting" class="btn btn-primary">
+            <button
+              v-if="activeTab !== 'errors'"
+              type="button"
+              class="qw-btn qw-btn-primary"
+              :disabled="exporting"
+              @click="exportToCSV"
+            >
               {{ exporting ? t('usage.exporting') : t('usage.exportCsv') }}
             </button>
           </div>
         </div>
-      </div>
 
-      <template v-if="activeTab === 'usage'">
-        <UsageTable
-          :data="usageLogs"
-          :loading="loading"
-          :columns="visibleColumns"
-          :server-side-sort="true"
-          :show-account-billing="false"
-          :show-upstream-endpoint="false"
-          default-sort-key="created_at"
-          default-sort-order="desc"
-          @sort="handleSort"
-          @ipGeoBatchFailed="handleIpGeoBatchFailed"
-        />
+        <!-- Filter row: tab-specific filters -->
+        <div class="mt-3 flex flex-wrap items-center gap-3">
+          <template v-if="activeTab === 'errors'">
+            <div class="qw-pill w-full sm:w-56">
+              <Select v-model="errorFilter.api_key_id" :options="errorKeyOptions" @change="applyErrorFilters" />
+            </div>
+            <div class="qw-pill w-full sm:w-56">
+              <Select
+                v-model="errorFilter.model"
+                :options="errorModelOptions"
+                searchable
+                creatable
+                clearable
+                :placeholder="t('usage.errors.modelPlaceholder')"
+                @change="applyErrorFilters"
+              />
+            </div>
+            <div class="qw-pill w-full sm:w-52">
+              <Select v-model="errorFilter.category" :options="errorCategoryOptions" @change="applyErrorFilters" />
+            </div>
+            <div class="qw-pill w-full sm:w-44">
+              <Select v-model="errorFilter.status_code" :options="errorStatusOptions" @change="applyErrorFilters" />
+            </div>
+          </template>
+          <template v-else>
+            <div class="qw-pill w-full sm:w-56">
+              <Select v-model="filters.api_key_id" :options="apiKeyOptions" @change="applyFilters" />
+            </div>
+            <div class="qw-pill w-full sm:w-56">
+              <Select v-model="filters.model" :options="modelOptions" searchable @change="applyFilters" />
+            </div>
+            <div class="qw-pill w-full sm:w-52">
+              <Select v-model="filters.group_id" :options="groupOptions" searchable @change="applyFilters" />
+            </div>
+            <div class="qw-pill w-full sm:w-44">
+              <Select v-model="filters.request_type" :options="requestTypeOptions" @change="applyFilters" />
+            </div>
+            <div class="qw-pill w-full sm:w-52">
+              <Select v-model="filters.billing_type" :options="billingTypeOptions" @change="applyFilters" />
+            </div>
+            <div class="qw-pill w-full sm:w-52">
+              <Select v-model="filters.billing_mode" :options="billingModeOptions" @change="applyFilters" />
+            </div>
+          </template>
+        </div>
 
-        <Pagination
-          v-if="pagination.total > 0"
-          :page="pagination.page"
-          :total="pagination.total"
-          :page-size="pagination.page_size"
-          @update:page="handlePageChange"
-          @update:pageSize="handlePageSizeChange"
-        />
-      </template>
+        <!-- Load error banner -->
+        <div
+          v-if="chartError"
+          role="alert"
+          class="mt-4 flex h-12 items-center gap-2 rounded-xl bg-[color:var(--nm-danger-soft)] px-4 text-sm text-[color:var(--nm-danger-text)]"
+        >
+          <Icon name="xCircle" size="sm" class="shrink-0" />
+          <span>{{ t('usage.chartFailed') }}</span>
+        </div>
 
-      <UserErrorRequestsTable
-        v-else-if="errorViewEnabled"
-        :rows="errorRows"
-        :total="errorTotal"
-        :loading="errorLoading"
-        :page="errorPage"
-        :page-size="errorPageSize"
-        :visible-column-keys="errVisibleColumnKeys"
-        @sort="onErrorSort"
-        @update:page="onErrorPage"
-        @update:pageSize="onErrorPageSize"
-        @ipGeoBatchFailed="handleIpGeoBatchFailed"
-      />
+        <!-- Charts -->
+        <div class="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <div class="qw-flat">
+            <ModelDistributionChart
+              v-model:metric="modelDistributionMetric"
+              :model-stats="requestedModelStats"
+              :loading="modelStatsLoading"
+              :show-source-toggle="false"
+              :show-metric-toggle="true"
+              :enable-breakdown="false"
+              :show-account-cost="false"
+              :start-date="startDate"
+              :end-date="endDate"
+            />
+          </div>
+          <div class="qw-flat">
+            <GroupDistributionChart
+              v-model:metric="groupDistributionMetric"
+              :group-stats="groupStats"
+              :loading="chartsLoading"
+              :show-metric-toggle="true"
+              :enable-breakdown="false"
+              :show-account-cost="false"
+              :start-date="startDate"
+              :end-date="endDate"
+            />
+          </div>
+          <div class="qw-flat">
+            <EndpointDistributionChart
+              v-model:source="endpointDistributionSource"
+              v-model:metric="endpointDistributionMetric"
+              :endpoint-stats="inboundEndpointStats"
+              :upstream-endpoint-stats="upstreamEndpointStats"
+              :endpoint-path-stats="endpointPathStats"
+              :loading="endpointStatsLoading"
+              :show-source-toggle="false"
+              :show-metric-toggle="true"
+              :enable-breakdown="false"
+              :title="t('usage.endpointDistribution')"
+              :start-date="startDate"
+              :end-date="endDate"
+            />
+          </div>
+        </div>
+
+        <template v-if="activeTab === 'usage'">
+          <div class="mt-6">
+            <UsageTable
+              :data="usageLogs"
+              :loading="loading"
+              :columns="visibleColumns"
+              :server-side-sort="true"
+              :show-account-billing="false"
+              :show-upstream-endpoint="false"
+              :flat="true"
+              default-sort-key="created_at"
+              default-sort-order="desc"
+              @sort="handleSort"
+              @ipGeoBatchFailed="handleIpGeoBatchFailed"
+            />
+
+            <Pagination
+              v-if="pagination.total > 0"
+              :page="pagination.page"
+              :total="pagination.total"
+              :page-size="pagination.page_size"
+              @update:page="handlePageChange"
+              @update:pageSize="handlePageSizeChange"
+            />
+          </div>
+        </template>
+
+        <div v-else-if="errorViewEnabled" class="mt-6 qw-flat">
+          <UserErrorRequestsTable
+            :rows="errorRows"
+            :total="errorTotal"
+            :loading="errorLoading"
+            :page="errorPage"
+            :page-size="errorPageSize"
+            :visible-column-keys="errVisibleColumnKeys"
+            @sort="onErrorSort"
+            @update:page="onErrorPage"
+            @update:pageSize="onErrorPageSize"
+            @ipGeoBatchFailed="handleIpGeoBatchFailed"
+          />
+        </div>
+      </section>
     </div>
   </AppLayout>
 
@@ -222,8 +332,10 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRouter } from 'vue-router'
 import { useAppStore } from '@/stores/app'
 import { keysAPI, usageAPI, userGroupsAPI } from '@/api'
+import { sanitizeUrl } from '@/utils/url'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import Pagination from '@/components/common/Pagination.vue'
 import Select, { type SelectOption } from '@/components/common/Select.vue'
@@ -257,9 +369,31 @@ import { COMMON_ERROR_STATUS_CODES } from '@/utils/errorBadges'
 
 const { t } = useI18n()
 const appStore = useAppStore()
+const router = useRouter()
 
 type DistributionMetric = 'tokens' | 'actual_cost'
 type EndpointSource = 'inbound' | 'upstream' | 'path'
+
+// QW header links: doc external link (hidden when unset) + /keys link.
+// `|| ''` 兜底：settings 未加载时 appStore.docUrl 可能为 undefined，sanitizeUrl 需要字符串。
+const docUrl = computed(() => sanitizeUrl(appStore.docUrl || ''))
+const goKeys = (event: MouseEvent) => {
+  event.preventDefault()
+  void router.push('/keys')
+}
+
+// "Last updated" stamp + chart load error banner (QW header/detail card affordances).
+const lastUpdated = ref<Date | null>(null)
+const lastUpdatedText = computed(() => {
+  if (!lastUpdated.value) return '--:--:--'
+  return lastUpdated.value.toLocaleTimeString(undefined, {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  })
+})
+const chartError = ref(false)
 
 const usageStats = ref<UsageStatsResponse | null>(null)
 const usageLogs = ref<UsageLog[]>([])
@@ -350,6 +484,17 @@ const defaultRange = getLast24HoursRangeDates()
 const startDate = ref(defaultRange.start)
 const endDate = ref(defaultRange.end)
 const granularity = ref<'day' | 'hour'>(getGranularityForRange(startDate.value, endDate.value))
+
+// Average request/token rates over the selected range (account summary card).
+const rangeMinutes = computed(() => {
+  const start = new Date(`${startDate.value}T00:00:00`).getTime()
+  const end = new Date(`${endDate.value}T23:59:59`).getTime()
+  if (Number.isNaN(start) || Number.isNaN(end) || end <= start) return 1
+  return Math.max(1, Math.round((end - start) / 60000))
+})
+const requestsPerMinute = computed(() => (usageStats.value?.total_requests ?? 0) / rangeMinutes.value)
+const tokensPerMinute = computed(() => (usageStats.value?.total_tokens ?? 0) / rangeMinutes.value)
+const formatRate = (value: number): string => (value >= 100 ? Math.round(value).toLocaleString() : value.toFixed(1))
 
 const modelDistributionMetric = ref<DistributionMetric>('tokens')
 const groupDistributionMetric = ref<DistributionMetric>('tokens')
@@ -465,6 +610,7 @@ const loadStats = async () => {
     const stats = await usageAPI.getStats(normalizedFilters.value)
     if (seq !== statsReqSeq) return
     usageStats.value = stats
+    lastUpdated.value = new Date()
     inboundEndpointStats.value = stats.endpoints || []
     upstreamEndpointStats.value = []
     endpointPathStats.value = []
@@ -513,11 +659,13 @@ const loadChartData = async () => {
     if (seq !== chartReqSeq) return
     trendData.value = snapshot.trend || []
     groupStats.value = snapshot.groups || []
+    chartError.value = false
   } catch (error) {
     if (seq !== chartReqSeq) return
     console.error('Failed to load chart data:', error)
     trendData.value = []
     groupStats.value = []
+    chartError.value = true
   } finally {
     if (seq === chartReqSeq) chartsLoading.value = false
   }
@@ -894,3 +1042,103 @@ watch(endpointDistributionSource, () => {
   // Endpoint source switching is handled by the chart component using already loaded stats.
 })
 </script>
+
+<style scoped>
+/* QW text tones — exact light hexes, token-based dark fallbacks. */
+.qw-desc {
+  color: #7f8798;
+}
+.qw-weak {
+  color: #8e96a7;
+}
+:global(.dark) .qw-desc,
+:global(.dark) .qw-weak {
+  color: var(--nm-ink-faint);
+}
+
+/* Accent links in the title row. */
+.qw-link {
+  color: var(--nm-accent);
+}
+.qw-link:hover {
+  color: var(--nm-accent-strong);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* Segmented pill tabs. */
+.qw-tab {
+  display: inline-flex;
+  align-items: center;
+  height: 2rem;
+  padding: 0 1rem;
+  border-radius: 9999px;
+  font-size: 12px;
+  color: var(--nm-ink);
+  transition: background-color 160ms ease;
+}
+.qw-tab:hover {
+  background: var(--nm-surface-soft);
+}
+.qw-tab-active {
+  background: var(--nm-surface-soft);
+  font-weight: 500;
+}
+
+/* Pill-shaped filter controls (Select / DateRangePicker triggers). */
+.qw-pill :deep(.select-trigger),
+.qw-pill :deep(.date-picker-trigger) {
+  height: 2.5rem;
+  min-height: 2.5rem;
+  padding: 0 1rem;
+  border-radius: 9999px;
+  border-color: var(--nm-border);
+  background: var(--nm-surface);
+  font-size: 13px;
+  box-shadow: none;
+}
+.qw-pill :deep(.select-trigger-open),
+.qw-pill :deep(.date-picker-trigger-open) {
+  border-color: hsl(var(--ring));
+}
+
+/* Outline pill actions. */
+.qw-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  height: 2.25rem;
+  padding: 0 18px;
+  border-radius: 9999px;
+  border: 1px solid var(--nm-border-strong);
+  background: transparent;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--nm-ink);
+  transition: background-color 160ms ease, opacity 160ms ease;
+}
+.qw-btn:hover:not(:disabled) {
+  background: var(--nm-surface-soft);
+}
+.qw-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.qw-btn-primary {
+  background: var(--nm-ink);
+  border-color: var(--nm-ink);
+  color: var(--nm-surface);
+}
+.qw-btn-primary:hover:not(:disabled) {
+  background: var(--nm-ink);
+  opacity: 0.9;
+}
+
+/* Flatten nested cards so charts/stats sit directly on the QW card. */
+.qw-flat :deep(.card) {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+}
+</style>

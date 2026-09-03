@@ -4,7 +4,7 @@
          Rendered for the first group too (QW: 首页/API Keys | 模型…). -->
     <div
       v-if="item.dividerBefore && !collapsed"
-      class="mx-2 my-2 h-px flex-shrink-0 bg-border/70"
+      class="mx-2 my-2 h-px flex-shrink-0 bg-border"
     ></div>
     <!-- Collapsible group (has children) -->
     <template v-if="item.children?.length">
@@ -27,18 +27,18 @@
         >
           <span class="min-w-0 truncate">{{ item.label }}</span>
           <ChevronDownIcon
-            class="h-4 w-4 flex-shrink-0 transition-transform duration-200"
+            class="h-3.5 w-3.5 flex-shrink-0 text-[color:var(--nm-ink-faint)] transition-transform duration-200"
             :class="isGroupExpanded(item) ? 'rotate-180' : ''"
           />
         </span>
       </button>
-      <!-- Children -->
-      <div v-if="!collapsed && isGroupExpanded(item)" class="mb-1 ml-4 border-l border-border pl-2">
+      <!-- Children: QW sub-items — +27px indent, 185px wide, radius 8 (10 active). -->
+      <div v-if="!collapsed && isGroupExpanded(item)" class="mb-1 ml-[27px] w-[185px]">
         <router-link
           v-for="child in item.children"
           :key="child.path"
           :to="child.path"
-          class="sidebar-link mb-0.5 py-1.5 text-sm"
+          class="sidebar-link sidebar-link-child mb-0.5"
           :class="{ 'sidebar-link-active': route.path === child.path }"
           @click="emit('menu-click', child.path)"
         >

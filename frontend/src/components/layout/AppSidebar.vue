@@ -2,7 +2,7 @@
   <aside
     class="sidebar"
     :class="[
-      sidebarCollapsed ? 'w-[76px]' : 'w-72',
+      sidebarCollapsed ? 'w-[76px]' : 'w-[272px]',
       { '-translate-x-full lg:translate-x-0': !mobileOpen }
     ]"
   >
@@ -11,7 +11,7 @@
       <!-- Custom Logo or Default Logo -->
       <router-link
         :to="homePath"
-        class="sidebar-logo flex h-9 w-9 items-center justify-center overflow-hidden border border-border bg-card transition-opacity hover:opacity-80 rounded-md"
+        class="sidebar-logo flex h-7 w-7 items-center justify-center overflow-hidden transition-opacity hover:opacity-80"
         @click="handleMenuItemClick(homePath)"
       >
         <img v-if="settingsLoaded" :src="siteLogo || '/logo.svg'" alt="Logo" class="h-full w-full object-contain" />
@@ -19,7 +19,7 @@
       <div class="sidebar-brand" :class="{ 'sidebar-brand-collapsed': sidebarCollapsed }" :aria-hidden="sidebarCollapsed ? 'true' : 'false'">
         <router-link
           :to="homePath"
-          class="sidebar-brand-title text-lg font-semibold text-foreground transition-opacity hover:opacity-80"
+          class="sidebar-brand-title text-[17px] font-semibold text-foreground transition-opacity hover:opacity-80"
           @click="handleMenuItemClick(homePath)"
         >
           {{ siteName }}
@@ -34,7 +34,7 @@
       <!-- Admin View: Admin menu first, then personal menu -->
       <template v-if="isAdmin">
         <!-- Admin Section -->
-        <div class="sidebar-section">
+        <div class="sidebar-section" :class="{ 'px-2': !sidebarCollapsed }">
           <SidebarNavList
             :items="adminNavItems"
             :collapsed="sidebarCollapsed"
@@ -44,9 +44,9 @@
         </div>
 
         <!-- Personal Section for Admin (hidden in simple mode) -->
-        <div v-if="!authStore.isSimpleMode" class="sidebar-section">
+        <div v-if="!authStore.isSimpleMode" class="sidebar-section" :class="{ 'px-2': !sidebarCollapsed }">
           <!-- Hairline separator between the admin section and the personal group -->
-          <div v-if="!sidebarCollapsed" class="mx-2 my-2 h-px flex-shrink-0 bg-border/70"></div>
+          <div v-if="!sidebarCollapsed" class="mx-2 my-2 h-px flex-shrink-0 bg-border"></div>
           <div class="sidebar-section-title" :class="{ 'sidebar-section-title-collapsed': sidebarCollapsed }" :aria-hidden="sidebarCollapsed ? 'true' : 'false'">
             <span class="sidebar-section-title-text" :class="{ 'sidebar-section-title-text-collapsed': sidebarCollapsed }">
               {{ t('nav.myAccount') }}
@@ -64,7 +64,7 @@
 
       <!-- Regular User View -->
       <template v-else-if="!appStore.backendModeEnabled">
-        <div class="sidebar-section">
+        <div class="sidebar-section" :class="{ 'px-2': !sidebarCollapsed }">
           <SidebarNavList
             :items="userNavItems"
             :collapsed="sidebarCollapsed"
@@ -75,32 +75,28 @@
       </template>
     </nav>
 
-    <!-- Bottom Section -->
-    <div class="mt-auto border-t border-border/70 p-3">
+    <!-- Bottom Section: QW-style 84px zone with two 36x36 rounded icon controls -->
+    <div class="sidebar-footer" :class="{ 'flex-col': sidebarCollapsed }">
       <!-- Theme Toggle -->
       <button
         @click="toggleTheme"
-        class="sidebar-link mb-2 w-full"
-        :class="{ 'sidebar-link-collapsed': sidebarCollapsed }"
-        :title="sidebarCollapsed ? (isDark ? t('nav.lightMode') : t('nav.darkMode')) : undefined"
+        class="sidebar-icon-btn"
+        :title="isDark ? t('nav.lightMode') : t('nav.darkMode')"
+        :aria-label="isDark ? t('nav.lightMode') : t('nav.darkMode')"
       >
         <SunIcon v-if="isDark" class="h-5 w-5 flex-shrink-0 text-amber-500 dark:text-amber-400" />
         <MoonIcon v-else class="h-5 w-5 flex-shrink-0" />
-        <span class="sidebar-label" :class="{ 'sidebar-label-collapsed': sidebarCollapsed }" :aria-hidden="sidebarCollapsed ? 'true' : 'false'">{{
-          isDark ? t('nav.lightMode') : t('nav.darkMode')
-        }}</span>
       </button>
 
       <!-- Collapse Button -->
       <button
         @click="toggleSidebar"
-        class="sidebar-link w-full"
-        :class="{ 'sidebar-link-collapsed': sidebarCollapsed }"
+        class="sidebar-icon-btn"
         :title="sidebarCollapsed ? t('nav.expand') : t('nav.collapse')"
+        :aria-label="sidebarCollapsed ? t('nav.expand') : t('nav.collapse')"
       >
         <ChevronDoubleLeftIcon v-if="!sidebarCollapsed" class="h-5 w-5 flex-shrink-0" />
         <ChevronDoubleRightIcon v-else class="h-5 w-5 flex-shrink-0" />
-        <span class="sidebar-label" :class="{ 'sidebar-label-collapsed': sidebarCollapsed }" :aria-hidden="sidebarCollapsed ? 'true' : 'false'">{{ t('nav.collapse') }}</span>
       </button>
     </div>
   </aside>
@@ -888,8 +884,8 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .sidebar-logo {
-  flex: 0 0 2.25rem;
-  min-width: 2.25rem;
+  flex: 0 0 1.75rem;
+  min-width: 1.75rem;
 }
 
 .sidebar-header-collapsed {
@@ -922,12 +918,6 @@ onBeforeUnmount(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.sidebar-link-collapsed {
-  gap: 0;
-  padding-left: 0.875rem;
-  padding-right: 0.875rem;
 }
 
 .sidebar-section-title {
@@ -974,26 +964,6 @@ onBeforeUnmount(() => {
 .sidebar-section-title-collapsed::after {
   opacity: 1;
   transition-delay: 0.08s;
-}
-
-.sidebar-label {
-  display: block;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  transition:
-    max-width 0.2s ease,
-    opacity 0.12s ease,
-    transform 0.12s ease;
-  max-width: 12rem;
-}
-
-.sidebar-label-collapsed {
-  max-width: 0;
-  opacity: 0;
-  transform: translateX(-4px);
-  pointer-events: none;
 }
 
 /* Custom SVG icon in sidebar: constrain size without overriding uploaded SVG

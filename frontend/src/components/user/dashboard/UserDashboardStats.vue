@@ -1,243 +1,251 @@
 <template>
-  <section class="grid gap-5 xl:grid-cols-3" data-testid="dashboard-stats">
-    <!-- Left 2/3: balance / requests / spend / tokens + platform benefits -->
-    <div class="grid content-start gap-4 sm:grid-cols-2 xl:col-span-2">
-      <!-- Balance (hidden in simple mode) -->
-      <div v-if="!isSimple" class="card flex flex-col p-5" data-testid="dashboard-balance-card">
-        <div class="flex items-start justify-between gap-2">
-          <span class="stat-label">{{ t('dashboard.balance') }}</span>
-          <span class="stat-icon stat-icon-success"><Icon name="dollar" size="sm" /></span>
-        </div>
-        <p class="mt-4 text-3xl font-semibold tabular-nums sm:text-4xl" style="color: var(--nm-success-text)">
+  <!-- QW 三列工作台：左（余额+权益）/ 中（近期支出趋势）/ 右（用量分析）；
+       简单模式隐藏左列时退化为两列，避免第三列空置 -->
+  <section class="grid gap-3 md:grid-cols-3" :class="{ 'md:grid-cols-2': isSimple }" data-testid="dashboard-stats">
+    <!-- Left column: balance + benefits (hidden in simple mode) -->
+    <div v-if="!isSimple" class="flex flex-col gap-2.5">
+      <!-- Balance -->
+      <div
+        class="flex min-h-[177px] flex-1 flex-col rounded-[24px] bg-card p-7 shadow-card"
+        data-testid="dashboard-balance-card"
+      >
+        <h2 class="text-xl font-semibold text-foreground">{{ t('dashboard.balance') }}</h2>
+        <p class="mt-3 text-[32px] font-bold leading-10 tabular-nums text-foreground">
           ${{ formatBalance(balance) }}
         </p>
-        <p class="mt-1 text-xs text-muted-foreground">{{ t('common.available') }}</p>
-        <div class="mt-auto flex flex-wrap items-center gap-2 pt-5">
-          <RouterLink v-if="showPaymentLinks" to="/purchase" class="swiss-action text-brand">
-            <Icon name="plus" size="xs" />
+        <div v-if="showPaymentLinks" class="mt-auto flex flex-wrap items-center gap-3 pt-4">
+          <RouterLink
+            to="/purchase"
+            class="flex items-center gap-1.5 text-[13px] font-medium text-[color:var(--nm-accent-text)] transition-opacity hover:opacity-80"
+          >
+            <Icon name="creditCard" size="xs" />
             {{ t('dashboard.topUp') }}
           </RouterLink>
-          <RouterLink v-if="showPaymentLinks" to="/orders" class="swiss-action">
+          <span class="h-3.5 w-px bg-[color:var(--nm-border)]" aria-hidden="true"></span>
+          <RouterLink
+            to="/orders"
+            class="flex items-center gap-1.5 text-[13px] font-medium text-foreground transition-opacity hover:opacity-80"
+          >
             <Icon name="document" size="xs" />
             {{ t('dashboard.viewOrders') }}
           </RouterLink>
         </div>
       </div>
 
-      <!-- Requests -->
-      <div class="card flex flex-col p-5" data-testid="dashboard-requests-card">
-        <div class="flex items-start justify-between gap-2">
-          <span class="stat-label">{{ t('dashboard.totalRequests') }}</span>
-          <span class="stat-icon stat-icon-primary"><Icon name="bolt" size="sm" /></span>
-        </div>
-        <p class="mt-4 text-3xl font-semibold tabular-nums text-foreground sm:text-4xl">
-          {{ formatNumber(stats.total_requests) }}
-        </p>
-        <p class="mt-1 text-xs text-muted-foreground">
-          {{ t('dashboard.todayRequests') }}: {{ formatNumber(stats.today_requests) }}
-        </p>
-      </div>
-
-      <!-- Spend with 7-day mini trend -->
-      <div class="card flex flex-col p-5" data-testid="dashboard-spend-card">
-        <div class="flex items-start justify-between gap-2">
-          <span class="stat-label">{{ t('dashboard.totalSpend') }}</span>
-          <span class="stat-icon stat-icon-warning"><Icon name="trendingUp" size="sm" /></span>
-        </div>
-        <p class="mt-4 text-3xl font-semibold tabular-nums text-foreground sm:text-4xl">
-          ${{ formatCost(stats.total_actual_cost) }}
-        </p>
-        <p class="mt-1 text-xs text-muted-foreground">
-          {{ t('dashboard.todayCost') }}: ${{ formatCost(stats.today_actual_cost) }}
-        </p>
-        <div v-if="spendBars.length > 0" class="mt-5 flex h-10 items-end gap-1" aria-hidden="true">
-          <div
-            v-for="bar in spendBars"
-            :key="bar.date"
-            class="min-w-0 flex-1 rounded-full bg-brand"
-            :style="{ height: bar.height + '%' }"
-            :title="bar.title"
-          />
-        </div>
-        <div v-if="showPaymentLinks" class="mt-auto flex flex-wrap items-center gap-2 pt-5">
-          <RouterLink to="/orders" class="swiss-action">
-            <Icon name="document" size="xs" />
-            {{ t('dashboard.viewOrders') }}
-          </RouterLink>
-        </div>
-      </div>
-
-      <!-- Tokens -->
-      <div class="card flex flex-col p-5" data-testid="dashboard-tokens-card">
-        <div class="flex items-start justify-between gap-2">
-          <span class="stat-label">{{ t('dashboard.totalTokens') }}</span>
-          <span class="stat-icon"><Icon name="database" size="sm" /></span>
-        </div>
-        <p class="mt-4 text-3xl font-semibold tabular-nums text-foreground sm:text-4xl">
-          {{ formatTokens(stats.total_tokens) }}
-        </p>
-        <p class="mt-1 text-xs text-muted-foreground">
-          {{ t('dashboard.todayTokens') }}: {{ formatTokens(stats.today_tokens) }}
-        </p>
-        <dl class="mt-5 space-y-1.5 text-xs">
-          <div class="flex items-center justify-between gap-2">
-            <dt class="shrink-0 text-muted-foreground">{{ t('dashboard.input') }}</dt>
-            <dd class="truncate font-medium tabular-nums text-foreground">
-              {{ formatTokens(stats.total_input_tokens) }}
-              <span class="font-normal text-muted-foreground">/ {{ t('dashboard.today') }} {{ formatTokens(stats.today_input_tokens) }}</span>
-            </dd>
-          </div>
-          <div class="flex items-center justify-between gap-2">
-            <dt class="shrink-0 text-muted-foreground">{{ t('dashboard.output') }}</dt>
-            <dd class="truncate font-medium tabular-nums text-foreground">
-              {{ formatTokens(stats.total_output_tokens) }}
-              <span class="font-normal text-muted-foreground">/ {{ t('dashboard.today') }} {{ formatTokens(stats.today_output_tokens) }}</span>
-            </dd>
-          </div>
-          <div class="flex items-center justify-between gap-2">
-            <dt class="shrink-0 text-muted-foreground">{{ t('dashboard.cache') }}</dt>
-            <dd class="truncate font-medium tabular-nums text-foreground">
-              {{ formatTokens(cacheTotal) }}
-              <span class="font-normal text-muted-foreground">/ {{ t('dashboard.today') }} {{ formatTokens(cacheToday) }}</span>
-            </dd>
-          </div>
-        </dl>
-      </div>
-
-      <!-- Platform benefits / quotas: hidden in simple mode; rendered only when at
-           least one platform has quota limits configured (same condition as before). -->
+      <!-- Platform benefits / quotas: rendered only when at least one platform
+           has quota limits configured (same condition as before). -->
       <div
-        v-if="!isSimple && quotaCards.length > 0"
-        class="card p-6 sm:col-span-2"
+        v-if="quotaCards.length > 0"
+        class="flex min-h-[187px] flex-col rounded-[24px] bg-card p-7 shadow-card"
         data-testid="dashboard-benefits-card"
       >
-        <div class="flex items-start justify-between gap-2">
-          <span class="stat-label">{{ t('dashboard.platformBenefits') }}</span>
-          <span class="stat-icon"><Icon name="gift" size="sm" /></span>
+        <div class="flex items-center justify-between gap-3">
+          <h2 class="text-xl font-semibold text-foreground">{{ t('dashboard.platformBenefits') }}</h2>
+          <RouterLink to="/usage" class="qw-pill">{{ t('dashboard.benefits.viewBenefits') }}</RouterLink>
         </div>
-        <div class="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          <div
-            v-for="quotaCard in quotaCards"
-            :key="quotaCard.platform"
-            class="rounded-xl bg-secondary p-3"
-          >
-            <p class="text-sm font-semibold text-foreground">{{ quotaCard.label }}</p>
-            <div class="mt-2 space-y-2.5">
-              <div v-for="row in quotaCard.windows" :key="row.window">
-                <div class="flex items-center justify-between gap-2 text-xs">
-                  <span class="shrink-0 text-muted-foreground">{{ t(`dashboard.platformQuota.${row.window}`) }}</span>
-                  <span v-if="row.disabled" class="font-mono text-destructive">{{ t('dashboard.platformQuota.disabled') }}</span>
-                  <span v-else class="truncate font-mono tabular-nums text-foreground">
-                    ${{ formatUsd(row.usage) }} / ${{ formatUsd(row.limit) }}
-                  </span>
-                </div>
-                <div class="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-border" aria-hidden="true">
-                  <div
-                    class="h-full rounded-full transition-all"
-                    :style="{
-                      width: (row.disabled ? 100 : row.percent) + '%',
-                      backgroundColor: row.disabled ? 'var(--nm-danger)' : quotaBarColor(row.percent)
-                    }"
-                  />
-                </div>
-                <p v-if="row.resetsAt" class="mt-0.5 text-[11px] text-muted-foreground">
-                  {{ t('dashboard.platformQuota.resetsAt', { time: formatResetTime(row.resetsAt) }) }}
-                </p>
-              </div>
+        <div class="mt-auto flex items-end justify-between gap-4 pt-4">
+          <div class="flex gap-8" :title="benefitsSummary">
+            <div>
+              <p class="text-[28px] font-bold leading-9 tabular-nums text-foreground">
+                {{ quotaCards.length }}
+              </p>
+              <p class="mt-1 text-[13px] text-[#8E96A7] dark:text-[#7A8290]">
+                {{ t('dashboard.benefits.platforms') }}
+              </p>
+            </div>
+            <div>
+              <p class="text-[28px] font-bold leading-9 tabular-nums text-foreground">
+                {{ totalQuotaWindows }}
+              </p>
+              <p class="mt-1 text-[13px] text-[#8E96A7] dark:text-[#7A8290]">
+                {{ t('dashboard.benefits.quotaWindows') }}
+              </p>
             </div>
           </div>
+          <!-- 原创 CSS/SVG 点阵装饰：中性点阵 + 一段 accent 折线，随主题换色 -->
+          <svg
+            class="hidden h-[72px] w-[132px] shrink-0 sm:block"
+            viewBox="0 0 132 72"
+            fill="none"
+            aria-hidden="true"
+          >
+            <defs>
+              <pattern id="qw-benefits-dots" width="12" height="12" patternUnits="userSpaceOnUse">
+                <circle cx="1.5" cy="1.5" r="1.5" fill="var(--nm-border)" />
+              </pattern>
+            </defs>
+            <rect width="132" height="72" fill="url(#qw-benefits-dots)" />
+            <path
+              d="M6 62C36 62 46 22 76 22s44 16 50 16"
+              :stroke="quotaPressureColor"
+              stroke-width="2"
+              stroke-linecap="round"
+            />
+            <circle cx="126" cy="38" r="3" :fill="quotaPressureColor" />
+          </svg>
         </div>
       </div>
     </div>
 
-    <!-- Right 1/3: usage analysis -->
-    <div class="card flex flex-col gap-5 p-6" data-testid="dashboard-usage-summary">
-      <span class="stat-label">{{ t('dashboard.usageAnalysis') }}</span>
+    <!-- Middle column: recent spend with 7-day mini line chart -->
+    <div
+      class="flex min-h-[384px] flex-col rounded-[24px] bg-card p-7 shadow-card"
+      data-testid="dashboard-spend-card"
+    >
+      <div class="flex items-center justify-between gap-3">
+        <h2 class="text-xl font-semibold text-foreground">{{ t('dashboard.totalSpend') }}</h2>
+        <RouterLink v-if="showPaymentLinks" to="/orders" class="qw-pill">
+          {{ t('dashboard.viewOrders') }}
+        </RouterLink>
+      </div>
+      <p class="mt-5 flex items-center gap-1 text-xs text-[#8E96A7] dark:text-[#7A8290]">
+        {{ t('dashboard.last7Days') }}
+        <Icon name="infoCircle" size="xs" />
+      </p>
+      <p class="mt-1 text-[32px] font-bold leading-10 tabular-nums text-foreground">
+        ${{ formatCost(spend7dTotal) }}
+      </p>
+      <div v-if="spendChart" class="relative mt-4 min-h-0 flex-1">
+        <svg
+          class="h-full w-full"
+          viewBox="0 0 315 120"
+          preserveAspectRatio="none"
+          aria-hidden="true"
+        >
+          <defs>
+            <linearGradient id="qw-spend-area" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="var(--nm-accent)" stop-opacity="0.16" />
+              <stop offset="100%" stop-color="var(--nm-accent)" stop-opacity="0" />
+            </linearGradient>
+          </defs>
+          <path :d="spendChart.areaPath" fill="url(#qw-spend-area)" />
+          <path
+            :d="spendChart.linePath"
+            fill="none"
+            stroke="var(--nm-accent)"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            vector-effect="non-scaling-stroke"
+          />
+        </svg>
+        <span
+          class="absolute right-0 -translate-y-1/2 rounded-full bg-[#5B58FF] px-2 py-0.5 text-xs font-medium leading-4 text-[#F0F3FF] dark:bg-[#7B78FF] dark:text-[#0B0C0F]"
+          :style="{ top: `${spendChart.lastYPct}%` }"
+        >
+          ${{ formatCost(spendChart.lastValue) }}
+        </span>
+      </div>
+      <div
+        v-if="spendChart"
+        class="mt-2 flex items-center justify-between text-xs text-[#8E96A7] dark:text-[#7A8290]"
+      >
+        <span>{{ axisStart }}</span>
+        <span>{{ axisMid }}</span>
+        <span>{{ t('dates.today') }}</span>
+      </div>
+    </div>
 
-      <!-- Gradient promo banner (payment enabled only) -->
+    <!-- Right column: usage analysis -->
+    <div
+      class="flex min-h-[384px] flex-col rounded-[24px] bg-card p-7 shadow-card"
+      data-testid="dashboard-usage-summary"
+    >
+      <h2 class="text-xl font-semibold text-foreground">{{ t('dashboard.usageAnalysis') }}</h2>
+
+      <!-- Promo banner (payment enabled only) -->
       <RouterLink
         v-if="showPaymentLinks"
         to="/purchase"
-        class="promo-banner group flex items-center justify-between gap-3 rounded-2xl p-4"
+        class="promo-banner group relative mt-5 flex min-h-[96px] flex-col justify-center overflow-hidden rounded-[18px] p-5"
         data-testid="dashboard-promo-banner"
       >
-        <span class="min-w-0">
-          <span class="block text-sm font-semibold text-foreground">{{ t('dashboard.promo.title') }}</span>
-          <span class="mt-0.5 block truncate text-xs text-muted-foreground">{{ t('dashboard.promo.desc') }}</span>
+        <svg
+          class="absolute right-4 top-4 h-5 w-5 text-foreground transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M7 17L17 7M7 7h10v10" />
+        </svg>
+        <span class="relative z-[1] flex min-w-0 flex-col items-start gap-2">
+          <span class="text-lg font-semibold text-foreground">{{ t('dashboard.promo.title') }}</span>
+          <span
+            class="max-w-full truncate rounded-full bg-white/70 px-2.5 py-1 text-xs text-foreground dark:bg-black/30"
+          >
+            {{ t('dashboard.promo.desc') }}
+          </span>
         </span>
-        <Icon name="arrowRight" size="sm" class="shrink-0 text-brand transition-transform group-hover:translate-x-0.5" />
       </RouterLink>
 
+      <div class="mt-6 h-px shrink-0 bg-[color:var(--nm-border)]" aria-hidden="true"></div>
+
       <!-- Pay-as-you-go big number with prev/next pager -->
-      <div data-testid="dashboard-paygo">
-        <div class="flex items-center justify-between gap-2">
-          <span class="stat-label">{{ t('dashboard.payAsYouGo') }}</span>
-          <div class="flex items-center gap-1">
-            <button
-              type="button"
-              class="inline-flex h-6 w-6 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
-              :disabled="spendPageIndex === 0"
-              :aria-label="t('dashboard.prev')"
-              data-testid="dashboard-paygo-prev"
-              @click="spendPageIndex = Math.max(0, spendPageIndex - 1)"
-            >
-              <Icon name="chevronLeft" size="xs" />
-            </button>
-            <button
-              type="button"
-              class="inline-flex h-6 w-6 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
-              :disabled="spendPageIndex >= spendPages.length - 1"
-              :aria-label="t('dashboard.next')"
-              data-testid="dashboard-paygo-next"
-              @click="spendPageIndex = Math.min(spendPages.length - 1, spendPageIndex + 1)"
-            >
-              <Icon name="chevronRight" size="xs" />
-            </button>
-          </div>
+      <div class="mt-6 flex items-end justify-between gap-3" data-testid="dashboard-paygo">
+        <div class="min-w-0">
+          <p class="text-sm font-semibold text-foreground">{{ t('dashboard.payAsYouGo') }}</p>
+          <p class="mt-2 text-[32px] font-bold leading-10 tabular-nums text-foreground">
+            ${{ formatCost(currentSpendPage.value) }}
+          </p>
+          <p class="mt-1 truncate text-[13px] text-[#8E96A7] dark:text-[#7A8290]">
+            {{ currentSpendPage.label }}
+          </p>
         </div>
-        <p class="mt-2 text-3xl font-semibold tabular-nums text-foreground sm:text-4xl">
-          ${{ formatCost(currentSpendPage.value) }}
-        </p>
-        <p class="mt-1 text-xs text-muted-foreground">{{ currentSpendPage.label }}</p>
+        <div class="flex shrink-0 items-center gap-2 pb-1">
+          <button
+            type="button"
+            class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#D1D7E2] text-muted-foreground transition-colors hover:bg-[#F2F4F8] hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40 dark:border-[#2A2E37] dark:hover:bg-[#1D2026]"
+            :disabled="spendPageIndex === 0"
+            :aria-label="t('dashboard.prev')"
+            data-testid="dashboard-paygo-prev"
+            @click="spendPageIndex = Math.max(0, spendPageIndex - 1)"
+          >
+            <Icon name="chevronLeft" size="sm" />
+          </button>
+          <button
+            type="button"
+            class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#D1D7E2] text-muted-foreground transition-colors hover:bg-[#F2F4F8] hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40 dark:border-[#2A2E37] dark:hover:bg-[#1D2026]"
+            :disabled="spendPageIndex >= spendPages.length - 1"
+            :aria-label="t('dashboard.next')"
+            data-testid="dashboard-paygo-next"
+            @click="spendPageIndex = Math.min(spendPages.length - 1, spendPageIndex + 1)"
+          >
+            <Icon name="chevronRight" size="sm" />
+          </button>
+        </div>
       </div>
 
-      <!-- Secondary summary -->
-      <dl class="grid flex-1 grid-cols-2 gap-3">
-        <div class="rounded-xl bg-secondary p-3">
-          <dt class="text-xs text-muted-foreground">{{ t('dashboard.todayRequests') }}</dt>
+      <!-- Secondary today summary: keeps the requests/tokens cards addressable -->
+      <dl class="mt-auto grid grid-cols-2 gap-3 border-t border-[color:var(--nm-border)] pt-4">
+        <div data-testid="dashboard-requests-card">
+          <dt class="text-xs text-[#8E96A7] dark:text-[#7A8290]">{{ t('dashboard.todayRequests') }}</dt>
           <dd class="mt-1 text-lg font-semibold tabular-nums text-foreground">
             {{ formatNumber(stats.today_requests) }}
           </dd>
         </div>
-        <div class="rounded-xl bg-secondary p-3">
-          <dt class="text-xs text-muted-foreground">{{ t('dashboard.todayTokens') }}</dt>
+        <div data-testid="dashboard-tokens-card">
+          <dt class="text-xs text-[#8E96A7] dark:text-[#7A8290]">{{ t('dashboard.todayTokens') }}</dt>
           <dd class="mt-1 text-lg font-semibold tabular-nums text-foreground">
             {{ formatTokens(stats.today_tokens) }}
           </dd>
         </div>
-        <div class="rounded-xl bg-secondary p-3">
-          <dt class="text-xs text-muted-foreground">{{ t('dashboard.rpm') }}</dt>
+        <div>
+          <dt class="text-xs text-[#8E96A7] dark:text-[#7A8290]">{{ t('dashboard.rpm') }}</dt>
           <dd class="mt-1 text-lg font-semibold tabular-nums text-foreground">
             {{ formatRate(stats.rpm) }}
           </dd>
         </div>
-        <div class="rounded-xl bg-secondary p-3">
-          <dt class="text-xs text-muted-foreground">{{ t('dashboard.tpm') }}</dt>
-          <dd class="mt-1 text-lg font-semibold tabular-nums text-foreground">
-            {{ formatTokens(stats.tpm) }}
-          </dd>
-        </div>
-        <div class="col-span-2 rounded-xl bg-secondary p-3">
-          <dt class="text-xs text-muted-foreground">{{ t('dashboard.avgResponse') }}</dt>
+        <div>
+          <dt class="text-xs text-[#8E96A7] dark:text-[#7A8290]">{{ t('dashboard.avgResponse') }}</dt>
           <dd class="mt-1 text-lg font-semibold tabular-nums text-foreground">
             {{ formatDuration(stats.average_duration_ms) }}
           </dd>
         </div>
       </dl>
-
-      <RouterLink to="/usage" class="btn btn-secondary btn-sm">
-        {{ t('dashboard.viewUsage') }}
-      </RouterLink>
     </div>
   </section>
 </template>
@@ -279,24 +287,48 @@ const currentSpendPage = computed(
   () => spendPages.value[Math.min(spendPageIndex.value, spendPages.value.length - 1)]
 )
 
-const cacheTotal = computed(
-  () => (props.stats?.total_cache_creation_tokens || 0) + (props.stats?.total_cache_read_tokens || 0)
-)
-const cacheToday = computed(
-  () => (props.stats?.today_cache_creation_tokens || 0) + (props.stats?.today_cache_read_tokens || 0)
+// ---- 7 天支出迷你折线图（SVG polyline + 渐变面积 + 末端数值徽标） ----
+
+const CHART_W = 315
+const CHART_H = 120
+
+interface SpendChart {
+  linePath: string
+  areaPath: string
+  lastYPct: number
+  lastValue: number
+}
+
+const spend7dTotal = computed(() =>
+  (props.trend || []).slice(-7).reduce((sum, p) => sum + (p.actual_cost || 0), 0)
 )
 
-// Mini bar trend of actual spend: the last 7 points of the fixed
-// 7-day/day-granularity trend loaded by the dashboard view.
-const spendBars = computed(() => {
+const spendChart = computed<SpendChart | null>(() => {
   const points = (props.trend || []).slice(-7)
-  if (points.length === 0) return []
-  const max = Math.max(...points.map((p) => p.actual_cost || 0))
-  return points.map((p) => ({
-    date: p.date,
-    height: max > 0 ? Math.max(8, Math.round(((p.actual_cost || 0) / max) * 100)) : 8,
-    title: `${p.date} · $${formatCost(p.actual_cost || 0)}`
-  }))
+  if (points.length === 0) return null
+  const values = points.map((p) => p.actual_cost || 0)
+  const max = Math.max(...values)
+  const padTop = 8
+  const usable = CHART_H - padTop
+  const xAt = (i: number) =>
+    points.length === 1 ? CHART_W / 2 : (i / (points.length - 1)) * CHART_W
+  const yAt = (v: number) => (max > 0 ? padTop + usable - (v / max) * usable : CHART_H - 4)
+  const coords = values.map((v, i) => `${xAt(i).toFixed(2)},${yAt(v).toFixed(2)}`)
+  const linePath = `M${coords.join(' L')}`
+  const areaPath = `${linePath} L${CHART_W},${CHART_H} L0,${CHART_H} Z`
+  return {
+    linePath,
+    areaPath,
+    lastYPct: (yAt(values[values.length - 1]) / CHART_H) * 100,
+    lastValue: values[values.length - 1] || 0
+  }
+})
+
+const axisStart = computed(() => (props.trend?.[0]?.date || '').slice(5))
+const axisMid = computed(() => {
+  const points = props.trend || []
+  if (points.length === 0) return ''
+  return (points[Math.floor(points.length / 2)]?.date || '').slice(5)
 })
 
 // ---- Platform quotas (benefits card) ----
@@ -408,6 +440,37 @@ const quotaCards = computed<QuotaCard[]>(() => {
   return cards
 })
 
+const totalQuotaWindows = computed(() =>
+  quotaCards.value.reduce((sum, card) => sum + card.windows.length, 0)
+)
+
+// 权益数字的悬停摘要：逐平台逐窗口给出用量/限额与重置时间（保留旧配额明细语义）。
+const benefitsSummary = computed(() =>
+  quotaCards.value
+    .map((card) => {
+      const windows = card.windows
+        .map((row) => {
+          const usageText = row.disabled
+            ? t('dashboard.platformQuota.disabled')
+            : `${formatUsd(row.usage)} / ${formatUsd(row.limit)}`
+          const reset = row.resetsAt ? ` (${formatResetTime(row.resetsAt)})` : ''
+          return `${t(`dashboard.platformQuota.${row.window}`)} ${usageText}${reset}`
+        })
+        .join(' · ')
+      return `${card.label}: ${windows}`
+    })
+    .join('\n')
+)
+
+// 装饰折线颜色随最高配额压力变化（<75 成功色 / <75 警告色 / ≥95 危险色）。
+const quotaPressureColor = computed(() => {
+  const maxPercent = Math.max(
+    0,
+    ...quotaCards.value.flatMap((card) => card.windows.map((row) => row.percent))
+  )
+  return quotaBarColor(maxPercent)
+})
+
 const formatBalance = (b: number) =>
   new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(b)
 const formatCost = (c: number) =>
@@ -427,13 +490,48 @@ const formatTokens = (t: number) => {
 </script>
 
 <style scoped>
-/* Tailwind 的 /透明度修饰符对 hsl(var(--x)) 颜色不生效，渐变与 hover 态用
-   var token + color alpha 直接表达，随亮/暗主题自动适配。 */
+/* QW 描边药丸按钮：白底 1px #D1D7E2 描边，dark 下换用边框 token。 */
+.qw-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  flex-shrink: 0;
+  padding: 0 18px;
+  border-radius: 999px;
+  border: 1px solid #d1d7e2;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+  color: var(--nm-ink);
+  white-space: nowrap;
+  transition: background-color 150ms ease;
+}
+
+.qw-pill:hover {
+  background-color: var(--nm-surface-soft);
+}
+
+:global(.dark) .qw-pill {
+  border-color: var(--nm-border);
+}
+
+/* Tailwind 的 /透明度修饰符对 hsl(var(--x)) 颜色不生效，横幅底色用
+   light 固定值 + dark token 两段表达，随亮/暗主题自动适配。 */
 .promo-banner {
-  background: linear-gradient(90deg, hsl(var(--brand) / 0.12), hsl(var(--primary) / 0.18));
+  /* #efeffe = rgb(239, 239, 254)，QW 实测浅靛底 */
+  background-color: #efeffe;
 }
 
 .promo-banner:hover {
-  background: linear-gradient(90deg, hsl(var(--brand) / 0.17), hsl(var(--primary) / 0.25));
+  background-color: #e4e7fe;
+}
+
+:global(.dark) .promo-banner {
+  background-color: var(--nm-accent-soft);
+}
+
+:global(.dark) .promo-banner:hover {
+  background-color: var(--nm-accent-strong);
 }
 </style>

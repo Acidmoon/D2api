@@ -1,22 +1,19 @@
 <template>
   <AppLayout>
-    <div class="mx-auto max-w-7xl space-y-6">
-      <div v-if="loading" class="flex items-center justify-center py-12"><LoadingSpinner /></div>
-      <template v-else-if="stats">
-        <div class="page-header">
-          <h1 class="page-title">{{ t('dashboard.title') }}</h1>
-          <p class="page-description">{{ t('dashboard.welcomeMessage') }}</p>
-        </div>
-        <UserDashboardQuickActions />
-        <UserDashboardStats
-          :stats="stats"
-          :balance="user?.balance || 0"
-          :is-simple="authStore.isSimpleMode"
-          :trend="trendData"
-          :platform-quotas="platformQuotas"
-        />
-        <UserDashboardLearn />
-      </template>
+    <div v-if="loading" class="flex items-center justify-center py-12"><LoadingSpinner /></div>
+    <div v-else-if="stats" class="space-y-3">
+      <!-- QW 工作台：标题块 28/600，与下方卡片间距 12px -->
+      <h1 class="text-[28px] font-semibold leading-9 text-foreground">{{ t('dashboard.title') }}</h1>
+      <UserDashboardQuickActions />
+      <UserDashboardStats
+        :stats="stats"
+        :balance="user?.balance || 0"
+        :is-simple="authStore.isSimpleMode"
+        :trend="trendData"
+        :platform-quotas="platformQuotas"
+      />
+      <UserDashboardLearn />
+      <UserDashboardModels />
     </div>
   </AppLayout>
 </template>
@@ -31,6 +28,7 @@ import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import UserDashboardQuickActions from '@/components/user/dashboard/UserDashboardQuickActions.vue'
 import UserDashboardStats from '@/components/user/dashboard/UserDashboardStats.vue'
 import UserDashboardLearn from '@/components/user/dashboard/UserDashboardLearn.vue'
+import UserDashboardModels from '@/components/user/dashboard/UserDashboardModels.vue'
 import type { TrendDataPoint, PlatformQuotaItem } from '@/types'
 import { getMyPlatformQuotas } from '@/api/user'
 

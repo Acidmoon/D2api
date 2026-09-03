@@ -1,67 +1,87 @@
 <template>
-  <div class="space-y-6">
+  <div>
     <section
       data-testid="profile-overview-hero"
-      class="card p-6 md:p-8"
+      class="card p-7"
     >
-      <div class="flex flex-col gap-6 sm:flex-row sm:items-center">
-        <div
-          class="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-brand to-primary-400 text-2xl font-bold text-white"
-        >
-          <img
-            v-if="avatarUrl"
-            :src="avatarUrl"
-            :alt="displayName"
-            class="h-full w-full object-cover"
+      <div class="flex flex-col gap-6 lg:flex-row lg:items-center">
+        <div class="flex min-w-0 flex-1 items-center gap-5">
+          <div
+            class="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-brand to-primary-400 text-xl font-bold text-white"
           >
-          <span v-else>{{ avatarInitial }}</span>
-        </div>
-
-        <div class="min-w-0 flex-1 space-y-2">
-          <div class="flex flex-wrap items-center gap-2">
-            <h2 class="truncate text-xl font-bold text-foreground">
-              {{ displayName }}
-            </h2>
-            <span :class="['badge', user?.role === 'admin' ? 'badge-primary' : 'badge-gray']">
-              {{ user?.role === 'admin' ? t('profile.administrator') : t('profile.user') }}
-            </span>
-            <span
-              :class="['badge', user?.status === 'active' ? 'badge-success' : 'badge-danger']"
+            <img
+              v-if="avatarUrl"
+              :src="avatarUrl"
+              :alt="displayName"
+              class="h-full w-full object-cover"
             >
-              {{
-                user?.status === 'active'
-                  ? t('common.active')
-                  : t('common.disabled')
-              }}
-            </span>
+            <span v-else>{{ avatarInitial }}</span>
           </div>
 
-          <div class="space-y-1.5">
-            <div
-              v-if="primaryEmailDisplay"
-              class="flex items-center gap-1.5"
-            >
-              <p class="truncate text-sm text-muted-foreground">
-                {{ primaryEmailDisplay }}
-              </p>
-              <button
-                type="button"
-                class="rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-                :title="t('common.copy')"
-                :aria-label="t('common.copy')"
-                @click="copyEmail"
+          <div class="min-w-0 space-y-1.5">
+            <div class="flex flex-wrap items-center gap-2">
+              <h2 class="truncate text-xl font-semibold text-foreground">
+                {{ displayName }}
+              </h2>
+              <span :class="['badge', user?.role === 'admin' ? 'badge-primary' : 'badge-gray']">
+                {{ user?.role === 'admin' ? t('profile.administrator') : t('profile.user') }}
+              </span>
+              <span
+                :class="['badge', user?.status === 'active' ? 'badge-success' : 'badge-danger']"
               >
-                <Icon name="copy" size="sm" />
-              </button>
+                {{
+                  user?.status === 'active'
+                    ? t('common.active')
+                    : t('common.disabled')
+                }}
+              </span>
             </div>
+
+            <div class="flex flex-wrap items-center gap-x-4 gap-y-1">
+              <div
+                v-if="primaryEmailDisplay"
+                class="flex items-center gap-1"
+              >
+                <p class="truncate text-sm text-[#8e96a7] dark:text-[color:var(--nm-ink-faint)]">
+                  {{ primaryEmailDisplay }}
+                </p>
+                <button
+                  type="button"
+                  class="rounded-full p-1.5 text-[color:var(--nm-ink-faint)] transition-colors hover:bg-[color:var(--nm-surface-soft)] hover:text-foreground"
+                  :title="t('common.copy')"
+                  :aria-label="t('common.copy')"
+                  @click="copyEmail"
+                >
+                  <Icon name="copy" size="sm" />
+                </button>
+              </div>
+              <div
+                v-if="userIdDisplay"
+                class="flex items-center gap-1"
+              >
+                <p class="truncate text-sm text-[#8e96a7] dark:text-[color:var(--nm-ink-faint)]">
+                  ID: {{ userIdDisplay }}
+                </p>
+                <button
+                  type="button"
+                  class="rounded-full p-1.5 text-[color:var(--nm-ink-faint)] transition-colors hover:bg-[color:var(--nm-surface-soft)] hover:text-foreground"
+                  :title="t('common.copy')"
+                  :aria-label="t('common.copy')"
+                  @click="copyId"
+                >
+                  <Icon name="copy" size="sm" />
+                </button>
+              </div>
+            </div>
+
             <div
               v-if="sourceHints.length"
-              class="flex flex-wrap gap-2 text-xs text-muted-foreground"
+              class="flex flex-wrap gap-2 text-xs text-[#8e96a7] dark:text-[color:var(--nm-ink-faint)]"
             >
               <span
                 v-for="hint in sourceHints"
                 :key="hint.key"
-                class="inline-flex items-center gap-1 rounded-full bg-secondary px-3 py-1"
+                class="inline-flex items-center gap-1 rounded-full bg-[color:var(--nm-surface-soft)] px-3 py-1"
               >
                 <Icon name="link" size="sm" />
                 {{ hint.text }}
@@ -69,70 +89,78 @@
             </div>
           </div>
         </div>
-      </div>
 
-      <div class="mt-6 grid gap-3 sm:grid-cols-3">
-        <div
-          data-testid="profile-overview-metric-balance"
-          class="rounded-xl bg-secondary px-4 py-3"
-        >
-          <p class="text-xs font-medium text-muted-foreground">
-            {{ t('profile.accountBalance') }}
-          </p>
-          <p class="mt-1 text-lg font-semibold tabular-nums text-foreground">
-            {{ formatCurrency(user?.balance || 0) }}
-          </p>
-        </div>
-        <div
-          data-testid="profile-overview-metric-concurrency"
-          class="rounded-xl bg-secondary px-4 py-3"
-        >
-          <p class="text-xs font-medium text-muted-foreground">
-            {{ t('profile.concurrencyLimit') }}
-          </p>
-          <p class="mt-1 text-lg font-semibold tabular-nums text-foreground">
-            {{ user?.concurrency || 0 }}
-          </p>
-        </div>
-        <div
-          data-testid="profile-overview-metric-member-since"
-          class="rounded-xl bg-secondary px-4 py-3"
-        >
-          <p class="text-xs font-medium text-muted-foreground">
-            {{ t('profile.memberSince') }}
-          </p>
-          <p class="mt-1 text-lg font-semibold text-foreground">
-            {{ memberSinceLabel }}
-          </p>
-        </div>
+        <dl class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div
+            data-testid="profile-overview-metric-balance"
+            class="rounded-xl bg-[color:var(--nm-surface-soft)] px-4 py-3"
+          >
+            <p class="text-xs font-medium text-[#8e96a7] dark:text-[color:var(--nm-ink-faint)]">
+              {{ t('profile.accountBalance') }}
+            </p>
+            <p class="mt-1 text-base font-semibold tabular-nums text-foreground">
+              {{ formatCurrency(user?.balance || 0) }}
+            </p>
+          </div>
+          <div
+            data-testid="profile-overview-metric-concurrency"
+            class="rounded-xl bg-[color:var(--nm-surface-soft)] px-4 py-3"
+          >
+            <p class="text-xs font-medium text-[#8e96a7] dark:text-[color:var(--nm-ink-faint)]">
+              {{ t('profile.concurrencyLimit') }}
+            </p>
+            <p class="mt-1 text-base font-semibold tabular-nums text-foreground">
+              {{ user?.concurrency || 0 }}
+            </p>
+          </div>
+          <div
+            data-testid="profile-overview-metric-member-since"
+            class="rounded-xl bg-[color:var(--nm-surface-soft)] px-4 py-3"
+          >
+            <p class="text-xs font-medium text-[#8e96a7] dark:text-[color:var(--nm-ink-faint)]">
+              {{ t('profile.memberSince') }}
+            </p>
+            <p class="mt-1 text-base font-semibold text-foreground">
+              {{ memberSinceLabel }}
+            </p>
+          </div>
+        </dl>
       </div>
     </section>
 
-    <h2 class="text-base font-semibold text-foreground">
+    <h2 class="my-6 text-lg font-semibold text-foreground">
       {{ t('profile.quickSettings') }}
     </h2>
 
     <div class="space-y-6">
-      <div data-testid="profile-main-column" class="space-y-6">
+      <div data-testid="profile-main-column">
         <section
-          data-testid="profile-basics-panel"
+          data-testid="profile-account-card"
           class="card p-6"
         >
-          <div class="flex items-start gap-3">
-            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-secondary text-brand">
-              <Icon name="user" size="sm" />
+          <div class="flex items-center gap-5">
+            <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[color:var(--nm-surface-soft)] text-foreground">
+              <Icon name="user" size="lg" />
             </span>
-            <div>
-              <h3 class="text-sm font-semibold text-foreground">
-                {{ t('profile.basicsTitle') }}
+            <div class="min-w-0 flex-1">
+              <h3 class="text-xl font-semibold text-foreground">
+                {{ t('profile.accountSectionTitle') }}
               </h3>
-              <p class="mt-0.5 text-xs text-muted-foreground">
-                {{ t('profile.basicsDescription') }}
+              <p class="mt-1 text-sm text-[#7f8798] dark:text-[color:var(--nm-ink-faint)]">
+                {{ t('profile.accountSectionDescription') }}
               </p>
             </div>
+            <Icon
+              name="chevronRight"
+              size="md"
+              class="shrink-0 text-[color:var(--nm-ink-faint)]"
+            />
           </div>
 
-          <div class="mt-5 grid gap-4 md:grid-cols-2">
+          <div
+            data-testid="profile-basics-panel"
+            class="mt-6 grid gap-4 md:grid-cols-2"
+          >
             <div class="rounded-2xl bg-secondary/60 p-5">
               <ProfileAvatarCard
                 :user="user"
@@ -147,50 +175,53 @@
               />
             </div>
           </div>
-        </section>
 
-        <section
-          data-testid="profile-auth-bindings-panel"
-          class="card p-6"
-        >
-          <ProfileIdentityBindingsSection
-            :user="user"
-            :linuxdo-enabled="linuxdoEnabled"
-            :dingtalk-enabled="dingtalkEnabled"
-            :oidc-enabled="oidcEnabled"
-            :oidc-provider-name="oidcProviderName"
-            :wechat-enabled="wechatEnabled"
-            :wechat-open-enabled="wechatOpenEnabled"
-            :wechat-mp-enabled="wechatMpEnabled"
-            embedded
-            compact
-          />
-        </section>
-      </div>
-
-      <div data-testid="profile-side-column" class="space-y-6">
-        <section
-          v-if="sourceHints.length"
-          class="card p-6"
-        >
-          <h3 class="text-sm font-semibold text-foreground">
-            {{ t('profile.linkedProfileSources') }}
-          </h3>
-          <p class="mt-0.5 text-xs text-muted-foreground">
-            {{ t('profile.linkedProfileSourcesDescription') }}
-          </p>
-
-          <div class="mt-4 grid gap-2">
-            <div
-              v-for="hint in sourceHints"
-              :key="hint.key"
-              class="flex items-start gap-3 rounded-xl bg-secondary/60 px-4 py-3 text-sm text-muted-foreground"
-            >
-              <Icon name="link" size="sm" class="mt-0.5 shrink-0 text-muted-foreground" />
-              <span>{{ hint.text }}</span>
-            </div>
+          <div
+            data-testid="profile-auth-bindings-panel"
+            class="mt-6"
+          >
+            <ProfileIdentityBindingsSection
+              :user="user"
+              :linuxdo-enabled="linuxdoEnabled"
+              :dingtalk-enabled="dingtalkEnabled"
+              :oidc-enabled="oidcEnabled"
+              :oidc-provider-name="oidcProviderName"
+              :wechat-enabled="wechatEnabled"
+              :wechat-open-enabled="wechatOpenEnabled"
+              :wechat-mp-enabled="wechatMpEnabled"
+              embedded
+              compact
+            />
           </div>
         </section>
+
+        <div
+          data-testid="profile-side-column"
+          class="mt-6"
+        >
+          <section
+            v-if="sourceHints.length"
+            class="card p-6"
+          >
+            <h3 class="text-sm font-semibold text-foreground">
+              {{ t('profile.linkedProfileSources') }}
+            </h3>
+            <p class="mt-0.5 text-xs text-[#7f8798] dark:text-[color:var(--nm-ink-faint)]">
+              {{ t('profile.linkedProfileSourcesDescription') }}
+            </p>
+
+            <div class="mt-4 grid gap-2">
+              <div
+                v-for="hint in sourceHints"
+                :key="hint.key"
+                class="flex items-start gap-3 rounded-xl bg-secondary/60 px-4 py-3 text-sm text-muted-foreground"
+              >
+                <Icon name="link" size="sm" class="mt-0.5 shrink-0 text-muted-foreground" />
+                <span>{{ hint.text }}</span>
+              </div>
+            </div>
+          </section>
+        </div>
       </div>
     </div>
   </div>
@@ -230,6 +261,15 @@ const { copyToClipboard } = useClipboard()
 
 function copyEmail(): void {
   void copyToClipboard(primaryEmailDisplay.value)
+}
+
+const userIdDisplay = computed(() => {
+  const id = props.user?.id
+  return id === undefined || id === null ? '' : String(id)
+})
+
+function copyId(): void {
+  void copyToClipboard(userIdDisplay.value)
 }
 
 function normalizeBindingStatus(binding: boolean | UserAuthBindingStatus | undefined): boolean | null {

@@ -1,171 +1,167 @@
 <template>
   <AppLayout>
-    <TablePageLayout>
-      <template #filters>
+    <div class="flex flex-col gap-3">
+      <!-- Page header: 28px/600 title + 14px muted description -->
+      <header class="mb-3">
+        <h1 class="text-[28px] font-semibold leading-9 tracking-[-0.01em] text-foreground">
+          {{ t('keys.title') }}
+        </h1>
+        <p class="qw-desc mt-2 text-sm">{{ t('keys.description') }}</p>
+      </header>
+
+      <!-- Endpoint card -->
+      <section v-if="endpointRows.length > 0" class="qw-card p-7">
         <div>
-          <!-- In-content page header -->
-          <div class="page-header">
-            <h1 class="page-title">{{ t('keys.title') }}</h1>
-            <p class="page-description">{{ t('keys.description') }}</p>
+          <h2 class="text-xl font-semibold text-foreground">
+            {{ t('keys.endpoints.title') }}
+          </h2>
+          <p class="qw-desc mt-2 text-sm">{{ t('keys.endpoints.description') }}</p>
+        </div>
+        <div class="mt-5 grid gap-3 md:grid-cols-2">
+          <div
+            v-for="item in endpointRows"
+            :key="item.endpoint"
+            class="qw-endpoint-row flex h-12 items-center gap-3 px-3"
+          >
+            <span
+              class="qw-endpoint-chip flex h-8 min-w-0 shrink-0 items-center truncate rounded-lg px-3 text-[13px] font-medium"
+              :title="item.description || item.name"
+            >{{ item.name }}</span>
+            <span
+              v-if="item.isDefault"
+              class="shrink-0 text-xs font-medium text-muted-foreground"
+            >{{ t('keys.endpoints.default') }}</span>
+            <span class="min-w-0 flex-1 truncate text-sm text-foreground" :title="item.endpoint">
+              {{ item.endpoint }}
+            </span>
+            <button
+              type="button"
+              class="qw-icon-btn size-9 shrink-0"
+              :class="copiedEndpoint === item.endpoint ? 'text-semantic-success' : ''"
+              :title="
+                copiedEndpoint === item.endpoint
+                  ? t('keys.endpoints.copiedHint')
+                  : t('keys.endpoints.clickToCopy')
+              "
+              :aria-label="
+                copiedEndpoint === item.endpoint
+                  ? t('keys.endpoints.copiedHint')
+                  : t('keys.endpoints.clickToCopy')
+              "
+              @click="copyEndpoint(item.endpoint)"
+            >
+              <Check v-if="copiedEndpoint === item.endpoint" class="h-4 w-4" />
+              <Clipboard v-else class="h-4 w-4" />
+            </button>
+            <a
+              :href="endpointSpeedTestUrl(item.endpoint)"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="qw-icon-btn size-9 shrink-0"
+              :title="t('keys.endpoints.speedTest')"
+              :aria-label="t('keys.endpoints.speedTest')"
+            >
+              <Zap class="h-4 w-4" />
+            </a>
           </div>
+        </div>
+      </section>
 
-          <!-- Endpoint info card -->
-          <section v-if="endpointRows.length > 0" class="card mb-5">
-            <div class="card-body">
-              <div class="flex flex-wrap items-start justify-between gap-2">
-                <div>
-                  <h2 class="text-sm font-semibold text-foreground">
-                    {{ t('keys.endpoints.title') }}
-                  </h2>
-                  <p class="mt-0.5 text-xs text-muted-foreground">
-                    {{ t('keys.endpoints.description') }}
-                  </p>
-                </div>
-                <a
-                  v-if="sanitizedDocUrl"
-                  :href="sanitizedDocUrl"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="inline-flex items-center gap-1 text-xs font-medium text-brand hover:underline"
-                >
-                  {{ t('keys.endpoints.learnMore') }}
-                  <ExternalLink class="h-3 w-3" />
-                </a>
-              </div>
-              <div class="mt-4 space-y-3">
-                <div
-                  v-for="(item, index) in endpointRows"
-                  :key="index"
-                  class="flex flex-col gap-2 sm:flex-row sm:items-center"
-                >
-                  <div class="flex w-full shrink-0 items-center gap-1.5 sm:w-44">
-                    <span
-                      class="truncate text-xs font-medium text-muted-foreground"
-                      :title="item.description || item.name"
-                    >{{ item.name }}</span>
-                    <span
-                      v-if="item.isDefault"
-                      class="badge badge-primary shrink-0 px-1.5 py-px text-[10px] leading-tight"
-                    >{{ t('keys.endpoints.default') }}</span>
-                  </div>
-                  <div class="flex min-w-0 flex-1 items-center gap-1.5">
-                    <div
-                      class="min-w-0 flex-1 truncate rounded-xl bg-secondary px-3.5 py-2 font-mono text-sm text-foreground"
-                      :title="item.endpoint"
-                    >{{ item.endpoint }}</div>
-                    <button
-                      type="button"
-                      class="rounded-full p-2 transition-colors"
-                      :class="
-                        copiedEndpoint === item.endpoint
-                          ? 'text-semantic-success'
-                          : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
-                      "
-                      :title="
-                        copiedEndpoint === item.endpoint
-                          ? t('keys.endpoints.copiedHint')
-                          : t('keys.endpoints.clickToCopy')
-                      "
-                      :aria-label="
-                        copiedEndpoint === item.endpoint
-                          ? t('keys.endpoints.copiedHint')
-                          : t('keys.endpoints.clickToCopy')
-                      "
-                      @click="copyEndpoint(item.endpoint)"
-                    >
-                      <Check v-if="copiedEndpoint === item.endpoint" class="h-4 w-4" />
-                      <Clipboard v-else class="h-4 w-4" />
-                    </button>
-                    <a
-                      :href="endpointSpeedTestUrl(item.endpoint)"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      class="rounded-full p-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-                      :title="t('keys.endpoints.speedTest')"
-                      :aria-label="t('keys.endpoints.speedTest')"
-                    >
-                      <Zap class="h-4 w-4" />
-                    </a>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </section>
+      <!-- API keys table card -->
+      <section class="qw-card p-7">
+        <div>
+          <h2 class="text-xl font-semibold text-foreground">{{ t('keys.table.title') }}</h2>
+          <p class="qw-desc mt-2 text-sm">
+            {{ t('keys.table.description') }}
+            <a
+              v-if="sanitizedDocUrl"
+              :href="sanitizedDocUrl"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="qw-learn-more ml-4 inline-flex items-center gap-0.5 text-[13px] font-medium"
+            >
+              {{ t('keys.endpoints.learnMore') }}
+              <ExternalLink class="h-3.5 w-3.5" />
+            </a>
+          </p>
+        </div>
 
-          <!-- Toolbar: filters left, actions right -->
-          <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <div class="flex flex-1 flex-wrap items-center gap-2">
-              <SearchInput
-                v-model="filterSearch"
-                :placeholder="t('keys.searchPlaceholder')"
-                class="w-full sm:w-64"
-                pills
-                @search="onFilterChange"
-              />
-              <Select
-                :model-value="filterGroupId"
-                class="w-40"
-                :options="groupFilterOptions"
-                @update:model-value="onGroupFilterChange"
-              />
-              <Select
-                :model-value="filterStatus"
-                class="w-40"
-                :options="statusFilterOptions"
-                @update:model-value="onStatusFilterChange"
-              />
-            </div>
-            <div class="flex flex-wrap items-center gap-2">
+        <!-- Toolbar: search + filters left, actions right -->
+        <div class="mt-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div class="flex flex-1 flex-wrap items-center gap-2">
+            <SearchInput
+              v-model="filterSearch"
+              :placeholder="t('keys.searchPlaceholder')"
+              class="qw-search w-full sm:w-[280px]"
+              pills
+              @search="onFilterChange"
+            />
+            <Select
+              :model-value="filterGroupId"
+              class="qw-filter-select w-40"
+              :options="groupFilterOptions"
+              @update:model-value="onGroupFilterChange"
+            />
+            <Select
+              :model-value="filterStatus"
+              class="qw-filter-select w-40"
+              :options="statusFilterOptions"
+              @update:model-value="onStatusFilterChange"
+            />
+            <Button
+              variant="ghost"
+              size="icon"
+              class="qw-icon-btn size-9 rounded-full"
+              :disabled="loading"
+              :title="t('common.refresh')"
+              :aria-label="t('common.refresh')"
+              @click="loadApiKeys"
+            >
+              <RefreshCw :class="loading ? 'animate-spin' : ''" />
+            </Button>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <div class="relative" ref="columnDropdownRef">
               <Button
                 variant="ghost"
                 size="icon"
-                class="rounded-full"
-                :disabled="loading"
-                :title="t('common.refresh')"
-                :aria-label="t('common.refresh')"
-                @click="loadApiKeys"
+                class="qw-icon-btn size-9 rounded-full"
+                :title="t('keys.columnSettings')"
+                @click="showColumnDropdown = !showColumnDropdown"
               >
-                <RefreshCw :class="loading ? 'animate-spin' : ''" />
+                <Columns3 class="h-4 w-4" />
               </Button>
-              <div class="relative" ref="columnDropdownRef">
-                <Button
-                  variant="ghost"
-                  class="rounded-full"
-                  :title="t('keys.columnSettings')"
-                  @click="showColumnDropdown = !showColumnDropdown"
+              <div
+                v-if="showColumnDropdown"
+                class="dropdown right-0 top-full mt-1.5 max-h-80 w-52 overflow-y-auto"
+              >
+                <button
+                  v-for="col in toggleableColumns"
+                  :key="col.key"
+                  type="button"
+                  class="dropdown-item justify-between"
+                  @click="toggleColumn(col.key)"
                 >
-                  <Columns3 class="h-4 w-4 md:mr-1.5" />
-                  <span class="hidden md:inline">{{ t('keys.columnSettings') }}</span>
-                </Button>
-                <div
-                  v-if="showColumnDropdown"
-                  class="dropdown right-0 top-full mt-1.5 max-h-80 w-52 overflow-y-auto"
-                >
-                  <button
-                    v-for="col in toggleableColumns"
-                    :key="col.key"
-                    type="button"
-                    class="dropdown-item justify-between"
-                    @click="toggleColumn(col.key)"
-                  >
-                    <span>{{ col.label }}</span>
-                    <Check
-                      v-if="isColumnVisible(col.key)"
-                      class="h-4 w-4 shrink-0 text-brand"
-                    />
-                  </button>
-                </div>
+                  <span>{{ col.label }}</span>
+                  <Check
+                    v-if="isColumnVisible(col.key)"
+                    class="h-4 w-4 shrink-0 text-brand"
+                  />
+                </button>
               </div>
-              <Button class="rounded-full" data-tour="keys-create-btn" @click="showCreateModal = true">
-                <Plus />
-                {{ t('keys.createKey') }}
-              </Button>
             </div>
+            <Button
+              class="h-10 rounded-full px-5 text-sm font-medium"
+              data-tour="keys-create-btn"
+              @click="showCreateModal = true"
+            >
+              <Plus />
+              {{ t('keys.createKey') }}
+            </Button>
           </div>
         </div>
-      </template>
 
-      <template #table>
+        <div class="qw-table mt-3">
         <DataTable
           :columns="columns"
           :data="apiKeys"
@@ -521,19 +517,20 @@
             />
           </template>
         </DataTable>
-      </template>
+        </div>
 
-      <template #pagination>
-        <Pagination
-          v-if="pagination.total > 0"
-          :page="pagination.page"
-          :total="pagination.total"
-          :page-size="pagination.page_size"
-          @update:page="handlePageChange"
-          @update:pageSize="handlePageSizeChange"
-        />
-      </template>
-    </TablePageLayout>
+        <!-- Pagination -->
+        <div v-if="pagination.total > 0" class="mt-2">
+          <Pagination
+            :page="pagination.page"
+            :total="pagination.total"
+            :page-size="pagination.page_size"
+            @update:page="handlePageChange"
+            @update:pageSize="handlePageSizeChange"
+          />
+        </div>
+      </section>
+    </div>
 
     <!-- Create/Edit Modal -->
     <BaseDialog
@@ -1145,8 +1142,7 @@ import { getPersistedPageSize } from '@/composables/usePersistedPageSize'
 const { t } = useI18n()
 import { keysAPI, authAPI, usageAPI, userGroupsAPI } from '@/api'
 import AppLayout from '@/components/layout/AppLayout.vue'
-import TablePageLayout from '@/components/layout/TablePageLayout.vue'
-	import DataTable from '@/components/common/DataTable.vue'
+import DataTable from '@/components/common/DataTable.vue'
 	import Pagination from '@/components/common/Pagination.vue'
 	import BaseDialog from '@/components/common/BaseDialog.vue'
 	import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
@@ -2105,3 +2101,136 @@ onUnmounted(() => {
   if (endpointCopyTimer !== undefined) clearTimeout(endpointCopyTimer)
 })
 </script>
+
+<style scoped>
+/* ===== QW pixel spec tokens (light hex from design-ref; dark via --nm-* vars) ===== */
+.qw-desc {
+  color: #7f8798;
+}
+:global(.dark) .qw-desc {
+  color: var(--nm-ink-muted);
+}
+
+/* Page-level card: white, 24px radius, hairline border */
+.qw-card {
+  background-color: hsl(var(--card));
+  border: 1px solid var(--nm-border);
+  border-radius: 24px;
+}
+
+/* Endpoint URL row: h-12 rounded-xl hairline box */
+.qw-endpoint-row {
+  background-color: hsl(var(--card));
+  border: 1px solid var(--nm-border);
+  border-radius: 12px;
+}
+
+/* Endpoint chip: h-8 accent-soft pill label */
+.qw-endpoint-chip {
+  background-color: var(--nm-accent-soft);
+  color: hsl(var(--brand));
+}
+
+/* 36x36 quiet icon button */
+.qw-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: hsl(var(--muted-foreground));
+  border-radius: 9999px;
+  transition: background-color 160ms ease, color 160ms ease;
+}
+.qw-icon-btn:hover {
+  background-color: var(--nm-surface-soft);
+  color: hsl(var(--foreground));
+}
+.qw-icon-btn:disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+/* "Learn more" accent link */
+.qw-learn-more {
+  color: hsl(var(--brand));
+}
+.qw-learn-more:hover {
+  text-decoration: underline;
+}
+
+/* Search pill: h-10 w-280 rounded-full hairline border, 13px placeholder */
+.qw-search :deep(input) {
+  height: 40px;
+  border: 1px solid var(--nm-border);
+  border-radius: 9999px;
+  background-color: hsl(var(--card));
+  box-shadow: none;
+}
+.qw-search :deep(input)::placeholder {
+  color: #8e96a7;
+  font-size: 13px;
+}
+:global(.dark) .qw-search :deep(input) {
+  background-color: hsl(var(--card));
+  border-color: var(--nm-border);
+}
+
+/* Filter select pill: h-10 rounded-full hairline border, 13px label */
+.qw-filter-select :deep(.select-trigger) {
+  height: 40px;
+  min-height: 40px;
+  border: 1px solid var(--nm-border);
+  border-radius: 9999px;
+  background-color: hsl(var(--card));
+}
+.qw-filter-select :deep(.select-value) {
+  font-size: 13px;
+}
+
+/* ===== Table spec: header row h-11 rounded-lg on #F9FAFD, th 12px/500 #707889;
+     body rows h-14 with #EEF1F5 hairline, td 14px ===== */
+.qw-table :deep(thead),
+.qw-table :deep(.table-wrapper .table-header) {
+  background: transparent;
+}
+.qw-table :deep(.sticky-header-cell) {
+  height: 44px;
+  padding-top: 0;
+  padding-bottom: 0;
+  background: #f9fafd;
+  color: #707889;
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.qw-table :deep(thead tr th:first-child) {
+  border-top-left-radius: 8px;
+  border-bottom-left-radius: 8px;
+}
+.qw-table :deep(thead tr th:last-child) {
+  border-top-right-radius: 8px;
+  border-bottom-right-radius: 8px;
+}
+.qw-table :deep(tbody tr.dt-row) {
+  height: 56px;
+}
+.qw-table :deep(tbody tr.dt-row td) {
+  font-size: 14px;
+  border-bottom: 1px solid #eef1f5;
+}
+.qw-table :deep(tbody tr.dt-row:last-child td) {
+  border-bottom: none;
+}
+
+:global(.dark) .qw-table :deep(thead),
+:global(.dark) .qw-table :deep(.table-wrapper .table-header),
+:global(.dark) .qw-table :deep(.sticky-header-cell) {
+  background: var(--nm-surface-soft);
+}
+:global(.dark) .qw-table :deep(.sticky-header-cell) {
+  color: var(--nm-ink-faint);
+}
+:global(.dark) .qw-table :deep(tbody tr.dt-row td) {
+  border-bottom-color: var(--nm-border-light);
+}
+</style>

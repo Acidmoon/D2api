@@ -2,12 +2,16 @@
   <AppLayout>
     <div
       data-testid="profile-shell"
-      class="mx-auto max-w-[950px] space-y-6"
+      class="space-y-6"
     >
-      <div class="page-header">
-        <h1 class="page-title">{{ t('profile.title') }}</h1>
-        <p class="page-description">{{ t('profile.description') }}</p>
-      </div>
+      <header>
+        <h1 class="text-[28px] font-semibold leading-tight tracking-tight text-foreground">
+          {{ t('profile.title') }}
+        </h1>
+        <p class="mt-2 text-sm text-[#7f8798] dark:text-[color:var(--nm-ink-faint)]">
+          {{ t('profile.description') }}
+        </p>
+      </header>
 
       <ProfileInfoCard
         :user="user"
@@ -24,22 +28,44 @@
         v-if="contactInfo"
         class="card p-6"
       >
-        <div class="flex items-center gap-4">
-          <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-secondary text-brand">
-            <Icon name="chat" size="md" />
+        <div class="flex items-center gap-5">
+          <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[color:var(--nm-surface-soft)] text-foreground">
+            <Icon name="chat" size="lg" />
           </span>
           <div class="min-w-0">
-            <h3 class="text-sm font-semibold text-foreground">
+            <h3 class="text-xl font-semibold text-foreground">
               {{ t('common.contactSupport') }}
             </h3>
-            <p class="mt-0.5 break-all text-sm text-muted-foreground">
+            <p class="mt-1 break-all text-sm text-[#7f8798] dark:text-[color:var(--nm-ink-faint)]">
               {{ contactInfo }}
             </p>
           </div>
         </div>
       </section>
 
-      <ProfilePasswordForm />
+      <section class="card p-6">
+        <div class="flex items-center gap-5">
+          <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[color:var(--nm-surface-soft)] text-foreground">
+            <Icon name="lock" size="lg" />
+          </span>
+          <div class="min-w-0 flex-1">
+            <h3 class="text-xl font-semibold text-foreground">
+              {{ t('profile.changePassword') }}
+            </h3>
+            <p class="mt-1 text-sm text-[#7f8798] dark:text-[color:var(--nm-ink-faint)]">
+              {{ t('profile.passwordDescription') }}
+            </p>
+          </div>
+          <Icon
+            name="chevronRight"
+            size="md"
+            class="shrink-0 text-[color:var(--nm-ink-faint)]"
+          />
+        </div>
+        <div class="mt-6 max-w-md">
+          <ProfilePasswordForm embedded />
+        </div>
+      </section>
 
       <ProfileBalanceNotifyCard
         v-if="user && balanceLowNotifyEnabled"

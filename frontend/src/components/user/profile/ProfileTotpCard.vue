@@ -1,19 +1,24 @@
 <template>
   <div class="card p-6">
-    <div class="flex items-start gap-3">
-      <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-secondary text-brand">
-        <Icon name="shield" size="sm" />
+    <div class="flex items-center gap-5">
+      <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[color:var(--nm-surface-soft)] text-foreground">
+        <Icon name="shield" size="lg" />
       </span>
-      <div>
-        <h2 class="text-sm font-semibold text-foreground">
+      <div class="min-w-0 flex-1">
+        <h2 class="text-xl font-semibold text-foreground">
           {{ t('profile.totp.title') }}
         </h2>
-        <p class="mt-0.5 text-xs text-muted-foreground">
+        <p class="mt-1 text-sm text-[#7f8798] dark:text-[color:var(--nm-ink-faint)]">
           {{ t('profile.totp.description') }}
         </p>
       </div>
+      <Icon
+        name="chevronRight"
+        size="md"
+        class="shrink-0 text-[color:var(--nm-ink-faint)]"
+      />
     </div>
-    <div class="mt-5">
+    <div class="mt-6">
       <!-- Loading state -->
       <div v-if="loading" class="flex items-center justify-center py-8">
         <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div>

@@ -1,7 +1,7 @@
 <template>
-  <!-- QW-style shell: borderless bar inline on the canvas, compact height. -->
+  <!-- QW-style shell: borderless 84px bar inline on the canvas. -->
   <header class="sticky top-0 z-30 bg-background">
-    <div class="flex h-14 items-center justify-between gap-2 px-2 sm:px-4 md:px-6">
+    <div class="flex h-[84px] items-center justify-between gap-2 px-2 sm:px-4 md:px-6">
       <!-- Left: Mobile Menu Toggle + Page Title -->
       <div class="flex shrink-0 items-center gap-2 sm:gap-4">
         <button
@@ -27,15 +27,14 @@
         <!-- Announcement Bell (quiet icon button) -->
         <AnnouncementBell v-if="user" class="header-quiet" />
 
-        <!-- Docs Link (quiet) -->
+        <!-- Docs Link: plain 14px ink text, pill hover (QW topbar style) -->
         <a
           v-if="docUrl"
           :href="docUrl"
           target="_blank"
           rel="noopener noreferrer"
-          class="hidden h-9 items-center gap-1.5 rounded-full px-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground sm:inline-flex"
+          class="hidden h-9 items-center rounded-full px-3 text-sm text-foreground transition-colors hover:bg-secondary sm:inline-flex"
         >
-          <Icon name="book" size="sm" />
           <span>{{ t('nav.docs') }}</span>
         </a>
 
@@ -46,27 +45,20 @@
         <div v-if="user" class="relative" ref="dropdownRef">
           <button
             @click="toggleDropdown"
-            class="user-menu-trigger flex min-h-11 items-center gap-2 rounded-full p-1.5 transition-colors"
+            class="user-menu-trigger flex items-center justify-center rounded-full p-1 transition-colors"
             :aria-label="t('common.userMenu')"
           >
-            <div class="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-primary text-sm font-semibold text-primary-foreground">
+            <!-- QW trigger: a bare 40px gradient circle with the first initial
+                 (avatar image wins when set). No name/role/chevron here. -->
+            <div class="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-[#5B58FF] to-[#8B5CF6] text-sm font-semibold text-white">
               <img
                 v-if="avatarUrl"
                 :src="avatarUrl"
                 :alt="displayName"
                 class="h-full w-full object-cover"
               >
-              <span v-else>{{ userInitials }}</span>
+              <span v-else>{{ userInitial }}</span>
             </div>
-            <div class="hidden text-left md:block">
-              <div class="text-sm font-medium text-foreground">
-                {{ displayName }}
-              </div>
-              <div class="text-xs text-gray-500 dark:text-dark-400">
-                {{ t('admin.users.roles.' + user.role) }}
-              </div>
-            </div>
-            <Icon name="chevronDown" size="sm" class="hidden text-muted-foreground md:block" />
           </button>
 
           <!-- Dropdown Menu -->
@@ -354,16 +346,17 @@ const showOnboardingButton = computed(() => {
   return !authStore.isSimpleMode && user.value?.role === 'admin'
 })
 
-const userInitials = computed(() => {
+// QW avatar trigger shows a single first letter (username, then email local part).
+const userInitial = computed(() => {
   if (!user.value) return ''
   // Prefer username, fallback to email
   if (user.value.username) {
-    return user.value.username.substring(0, 2).toUpperCase()
+    return user.value.username.charAt(0).toUpperCase()
   }
   if (user.value.email) {
-    // Get the part before @ and take first 2 chars
+    // Get the part before @ and take the first char
     const localPart = user.value.email.split('@')[0]
-    return localPart.substring(0, 2).toUpperCase()
+    return localPart.charAt(0).toUpperCase()
   }
   return ''
 })
