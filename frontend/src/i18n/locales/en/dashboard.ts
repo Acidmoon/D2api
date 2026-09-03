@@ -101,9 +101,9 @@ export default {
         title: 'Leaderboard',
         desc: 'See usage and spend rankings'
       },
-      redeem: {
-        title: 'Redeem code',
-        desc: 'Redeem codes for balance or concurrency'
+      docsCard: {
+        title: 'Documentation',
+        desc: 'Integration guides, model notes and FAQ'
       }
     }
   },

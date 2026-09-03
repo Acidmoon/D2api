@@ -26,26 +26,48 @@
       </a>
     </div>
     <div class="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-      <RouterLink
-        v-for="card in cards"
-        :key="card.key"
-        :to="card.to"
-        class="learn-card group flex min-h-[162px] flex-col rounded-[18px] border border-[color:var(--nm-border-light)] p-5 transition-colors"
-      >
-        <div class="flex items-start justify-between gap-3">
-          <p class="line-clamp-2 text-base font-semibold leading-6 text-foreground">
-            {{ card.title }}
+      <template v-for="card in cards" :key="card.key">
+        <a
+          v-if="card.external"
+          :href="card.to"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="learn-card group flex min-h-[162px] flex-col rounded-[18px] border border-[color:var(--nm-border-light)] p-5 transition-colors"
+        >
+          <div class="flex items-start justify-between gap-3">
+            <p class="line-clamp-2 text-base font-semibold leading-6 text-foreground">
+              {{ card.title }}
+            </p>
+            <span
+              class="flex h-[58px] w-[58px] shrink-0 items-center justify-center rounded-full bg-[color:var(--nm-surface-soft)] text-foreground"
+            >
+              <Icon :name="card.icon" size="lg" />
+            </span>
+          </div>
+          <p class="mt-auto line-clamp-2 text-sm leading-5 text-[#7F8798] dark:text-[#B4BCC6]">
+            {{ card.desc }}
           </p>
-          <span
-            class="flex h-[58px] w-[58px] shrink-0 items-center justify-center rounded-full bg-[color:var(--nm-surface-soft)] text-foreground"
-          >
-            <Icon :name="card.icon" size="lg" />
-          </span>
-        </div>
-        <p class="mt-auto line-clamp-2 text-sm leading-5 text-[#7F8798] dark:text-[#B4BCC6]">
-          {{ card.desc }}
-        </p>
-      </RouterLink>
+        </a>
+        <RouterLink
+          v-else
+          :to="card.to"
+          class="learn-card group flex min-h-[162px] flex-col rounded-[18px] border border-[color:var(--nm-border-light)] p-5 transition-colors"
+        >
+          <div class="flex items-start justify-between gap-3">
+            <p class="line-clamp-2 text-base font-semibold leading-6 text-foreground">
+              {{ card.title }}
+            </p>
+            <span
+              class="flex h-[58px] w-[58px] shrink-0 items-center justify-center rounded-full bg-[color:var(--nm-surface-soft)] text-foreground"
+            >
+              <Icon :name="card.icon" size="lg" />
+            </span>
+          </div>
+          <p class="mt-auto line-clamp-2 text-sm leading-5 text-[#7F8798] dark:text-[#B4BCC6]">
+            {{ card.desc }}
+          </p>
+        </RouterLink>
+      </template>
     </div>
   </section>
 </template>
@@ -60,7 +82,7 @@ import { FeatureFlags, isFeatureFlagEnabled } from '@/utils/featureFlags'
 import { sanitizeUrl } from '@/utils/url'
 import { useBatchImageAccess } from '@/composables/useBatchImageAccess'
 
-type LearnIcon = 'sparkles' | 'cube' | 'trophy' | 'gift'
+type LearnIcon = 'sparkles' | 'cube' | 'trophy' | 'book'
 
 interface LearnCard {
   key: string
@@ -68,6 +90,8 @@ interface LearnCard {
   icon: LearnIcon
   title: string
   desc: string
+  /** 外链（如管理员配置的文档地址）时渲染为 <a> 而非 RouterLink。 */
+  external?: boolean
 }
 
 const { t } = useI18n()
@@ -109,13 +133,17 @@ const cards = computed<LearnCard[]>(() => {
       desc: t('dashboard.learn.leaderboard.desc')
     })
   }
-  list.push({
-    key: 'redeem',
-    to: '/redeem',
-    icon: 'gift',
-    title: t('dashboard.learn.redeem.title'),
-    desc: t('dashboard.learn.redeem.desc')
-  })
+  // 文档卡：链接管理员在 设置→站点 可配置的 doc_url（运营者自建文档页）。
+  if (docUrl.value) {
+    list.push({
+      key: 'docs',
+      to: docUrl.value,
+      icon: 'book',
+      title: t('dashboard.learn.docsCard.title'),
+      desc: t('dashboard.learn.docsCard.desc'),
+      external: true
+    })
+  }
   return list
 })
 </script>

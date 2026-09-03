@@ -101,9 +101,9 @@ export default {
         title: '排行榜',
         desc: '查看用量与消费排行'
       },
-      redeem: {
-        title: '兑换码',
-        desc: '兑换码充值余额或增加并发'
+      docsCard: {
+        title: '使用文档',
+        desc: '接入指南、模型说明与常见问题'
       }
     }
   },
