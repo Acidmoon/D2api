@@ -1,0 +1,55 @@
+export default {
+  imageStudio: {
+    title: 'Image Studio',
+    description: 'Generate images with your own API key, then preview them full size or download the originals.',
+    key: {
+      label: 'Creation group API key',
+      placeholder: 'Select an API key',
+      hint: 'Group: {group}. Requests are billed to this key.',
+      empty: 'No API key has image generation enabled. Create one under API Keys first.',
+      refresh: 'Refresh',
+      create: 'Create API key'
+    },
+    form: {
+      model: 'Model',
+      modelPlaceholder: 'Select a model',
+      modelsLoading: 'Loading models...',
+      modelsEmpty: 'This group has no available models yet.',
+      prompt: 'Prompt',
+      promptPlaceholder: 'Describe the image you want...',
+      size: 'Size',
+      sizeAuto: 'Auto',
+      count: 'Count',
+      generate: 'Generate',
+      generating: 'Generating...',
+      costHint: 'Each generated image is billed through the selected group.'
+    },
+    result: {
+      title: 'Results',
+      clear: 'Clear',
+      emptyTitle: 'No images yet',
+      emptyDescription: 'Write a prompt on the left and click Generate.',
+      noKeyTitle: 'No image API key',
+      noKeyDescription: 'Create an API key under a group that allows image generation.',
+      loading: 'Generating, this can take a while...',
+      open: 'View',
+      download: 'Download',
+      downloading: 'Downloading...',
+      downloadOriginal: 'Download original',
+      revisedPrompt: 'Revised prompt',
+      generated: 'Generated {count} image(s)'
+    },
+    lightbox: {
+      title: 'Preview'
+    },
+    errors: {
+      keyRequired: 'Select an API key first.',
+      modelRequired: 'Select a model first.',
+      promptRequired: 'Enter a prompt first.',
+      modelsFailed: 'Failed to load models: {message}',
+      generateFailed: 'Generation failed: {message}',
+      downloadFailed: 'Download failed: {message}',
+      emptyResult: 'The upstream returned no image.'
+    }
+  }
+}
