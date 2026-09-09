@@ -56,15 +56,60 @@ export default {
     viewUsage: '查看使用记录',
     checkDetailedLogs: '查看详细的使用日志',
     redeemCode: '兑换码',
-    addBalanceWithCode: '使用兑换码充值'
+    addBalanceWithCode: '使用兑换码充值',
+    platformBenefits: '平台权益',
+    today: '今日',
+    totalRequests: '累计请求',
+    topUp: '充值',
+    viewOrders: '查看订单',
+    orders: '订单',
+    channels: '可用渠道',
+    totalSpend: '累计消费',
+    usageAnalysis: '用量分析',
+    payAsYouGo: '按量付费',
+    prev: '上一项',
+    next: '下一项',
+    rpm: '每分钟请求',
+    tpm: '每分钟 Token',
+    promo: {
+      title: '充值与套餐',
+      desc: '充值余额或订阅分组，即刻开始调用模型',
+    },
+    models: {
+      section: '最新模型',
+      tryNow: '立即体验',
+      callApi: '调用 API',
+      viewAll: '查看所有模型',
+    },
+    benefits: {
+      platforms: '个平台',
+      quotaWindows: '项限额',
+      viewBenefits: '查看权益',
+    },
+    learn: {
+      title: '学习与快捷开始',
+      docs: '查看文档',
+      batchImage: {
+        title: '批量生图指南',
+        desc: '用 Agent 按清单批量生图的完整流程',
+      },
+      channels: {
+        title: '可用渠道',
+        desc: '浏览可用渠道、模型与定价',
+      },
+      leaderboard: {
+        title: '排行榜',
+        desc: '查看用量与消费排行',
+      },
+      docsCard: {
+        title: '使用文档',
+        desc: '接入指南、模型说明与常见问题',
+      },
+    },
   },
-
-  // Groups (shared)
   groups: {
-    subscription: '订阅'
+    subscription: '订阅',
   },
-
-  // API Keys
   keys: {
     title: 'API 密钥',
     description: '管理您的 API 密钥和访问令牌',
@@ -76,6 +121,8 @@ export default {
       copiedHint: '已复制到剪贴板',
       clickToCopy: '点击可复制此端点',
       speedTest: '测速',
+      description: '调用 API 时使用的接入地址，点击复制图标即可复制。',
+      learnMore: '了解更多',
     },
     allGroups: '全部分组',
     allStatus: '全部状态',
@@ -135,8 +182,7 @@ export default {
       note: '这些环境变量将在当前终端会话中生效。如需永久配置，请将其添加到 ~/.bashrc、~/.zshrc 或相应的配置文件中。',
       claudeSettingsHint: '用户级持久配置。此文件包含 API 密钥，请勿提交到项目仓库。',
       noGroupTitle: '请先分配分组',
-      noGroupDescription:
-        '此 API 密钥尚未分配分组，请先在密钥列表中点击分组列进行分配，然后才能查看使用配置。',
+      noGroupDescription: '此 API 密钥尚未分配分组，请先在密钥列表中点击分组列进行分配，然后才能查看使用配置。',
       openai: {
         description: '将以下配置文件添加到 Codex CLI 配置目录中。',
         authModeTitle: 'Codex 认证模式',
@@ -146,8 +192,7 @@ export default {
         authModeApiKeyRestartNotice: '保存此配置后，必须完全退出并重启 Codex Desktop 或 CLI，然后新建 task，让客户端重新构建工具注册表。',
         configTomlHint: '请确保以下内容位于 config.toml 文件的开头部分',
         note: '请确保配置目录存在。macOS/Linux 用户可运行 mkdir -p ~/.codex 创建目录。',
-        noteWindows:
-          '按 Win+R，输入 %userprofile%\\.codex 打开配置目录。如目录不存在，请先手动创建。'
+        noteWindows: '按 Win+R，输入 %userprofile%\\.codex 打开配置目录。如目录不存在，请先手动创建。',
       },
       cliTabs: {
         claudeCode: 'Claude Code',
@@ -155,65 +200,54 @@ export default {
         codexCli: 'Codex CLI',
         codexCliWs: 'Codex CLI (WebSocket)',
         grokCli: 'Grok CLI',
-        opencode: 'OpenCode'
+        opencode: 'OpenCode',
       },
       antigravity: {
         description: '为 Antigravity 分组配置 API 访问。请根据您使用的客户端选择对应的配置方式。',
         claudeCode: 'Claude Code',
         geminiCli: 'Gemini CLI',
-        claudeNote:
-          '这些环境变量将在当前终端会话中生效。如需永久配置，请将其添加到 ~/.bashrc、~/.zshrc 或相应的配置文件中。',
-        geminiNote:
-          '这些环境变量将在当前终端会话中生效。如需永久配置，请将其添加到 ~/.bashrc、~/.zshrc 或相应的配置文件中。'
+        claudeNote: '这些环境变量将在当前终端会话中生效。如需永久配置，请将其添加到 ~/.bashrc、~/.zshrc 或相应的配置文件中。',
+        geminiNote: '这些环境变量将在当前终端会话中生效。如需永久配置，请将其添加到 ~/.bashrc、~/.zshrc 或相应的配置文件中。',
       },
       gemini: {
-        description:
-          '将以下环境变量添加到您的终端配置文件或直接在终端中运行，以配置 Gemini CLI 访问。',
+        description: '将以下环境变量添加到您的终端配置文件或直接在终端中运行，以配置 Gemini CLI 访问。',
         modelComment: '如果你有 Gemini 3 权限可以填：gemini-3-pro-preview',
-        note: '这些环境变量将在当前终端会话中生效。如需永久配置，请将其添加到 ~/.bashrc、~/.zshrc 或相应的配置文件中。'
+        note: '这些环境变量将在当前终端会话中生效。如需永久配置，请将其添加到 ~/.bashrc、~/.zshrc 或相应的配置文件中。',
       },
       grok: {
-        description:
-          '配置 Grok CLI、Claude Code、Codex 或 OpenCode，让请求通过当前 Sub2API Grok 分组发送。文本模型走 Responses；图片/视频使用 Imagine 模型 ID 与媒体端点。',
+        description: '配置 Grok CLI、Claude Code、Codex 或 OpenCode，让请求通过当前 Sub2API Grok 分组发送。文本模型走 Responses；图片/视频使用 Imagine 模型 ID 与媒体端点。',
         claudeDescription: '配置 Claude Code，让 Messages API 请求通过当前 Sub2API Grok 分组发送。',
         codexDescription: '配置 Codex，让 Responses API 请求通过当前 Sub2API Grok 分组发送。',
-        configTomlHint:
-          '官方路径：~/.grok/config.toml（或 $GROK_HOME）。请填写 [endpoints]（models_base_url / models_list_url / xai_api_base_url / cli_chat_proxy_base_url）、[auth] preferred_method=api_key、[models]、[session]、[features] 图片/视频覆盖。优先 env_key，勿硬编码 api_key；文本模型必须 api_backend=responses。合并前备份，保存后运行 grok inspect。',
-        codexConfigTomlHint:
-          'Codex 官方：wire_api 仅支持 "responses"；优先 env_key，勿与 experimental_bearer_token 混用；非 OpenAI 网关默认 supports_websockets = false（Sub2API 仍可接客户端 WS 并桥接到 HTTP/SSE）。合并前备份 ~/.codex/config.toml。',
-        note:
-          '导出 GROK_MODELS_BASE_URL 与 XAI_API_KEY，将完整 config.toml（endpoints/auth/models/session/features）保存为 ~/.grok/config.toml，运行 grok inspect，再用 /model 选择 grok-4.5（编程场景可用 grok-build-0.1）。',
-        noteWindows:
-          '设置 GROK_MODELS_BASE_URL 与 XAI_API_KEY，将完整 config.toml 保存为 %USERPROFILE%\\.grok\\config.toml，运行 grok inspect，再用 /model 选择 grok-4.5（编程场景可用 grok-build-0.1）。',
-        claudeNote:
-          '二选一：终端环境变量仅当前会话；~/.claude/settings.json 可持久化。请勿把含 API Key 的文件提交到仓库。',
-        codexNote:
-          '导出 SUB2API_API_KEY，将 config.toml 保存到 ~/.codex（可用 mkdir -p ~/.codex）。优先 env_key，勿提交密钥。',
-        codexNoteWindows:
-          '设置 $env:SUB2API_API_KEY，将 config.toml 保存到 %USERPROFILE%\\.codex。优先 env_key，勿提交密钥。'
+        configTomlHint: '官方路径：~/.grok/config.toml（或 $GROK_HOME）。请填写 [endpoints]（models_base_url / models_list_url / xai_api_base_url / cli_chat_proxy_base_url）、[auth] preferred_method=api_key、[models]、[session]、[features] 图片/视频覆盖。优先 env_key，勿硬编码 api_key；文本模型必须 api_backend=responses。合并前备份，保存后运行 grok inspect。',
+        codexConfigTomlHint: 'Codex 官方：wire_api 仅支持 "responses"；优先 env_key，勿与 experimental_bearer_token 混用；非 OpenAI 网关默认 supports_websockets = false（Sub2API 仍可接客户端 WS 并桥接到 HTTP/SSE）。合并前备份 ~/.codex/config.toml。',
+        note: '导出 GROK_MODELS_BASE_URL 与 XAI_API_KEY，将完整 config.toml（endpoints/auth/models/session/features）保存为 ~/.grok/config.toml，运行 grok inspect，再用 /model 选择 grok-4.5（编程场景可用 grok-build-0.1）。',
+        noteWindows: '设置 GROK_MODELS_BASE_URL 与 XAI_API_KEY，将完整 config.toml 保存为 %USERPROFILE%\\.grok\\config.toml，运行 grok inspect，再用 /model 选择 grok-4.5（编程场景可用 grok-build-0.1）。',
+        claudeNote: '二选一：终端环境变量仅当前会话；~/.claude/settings.json 可持久化。请勿把含 API Key 的文件提交到仓库。',
+        codexNote: '导出 SUB2API_API_KEY，将 config.toml 保存到 ~/.codex（可用 mkdir -p ~/.codex）。优先 env_key，勿提交密钥。',
+        codexNoteWindows: '设置 $env:SUB2API_API_KEY，将 config.toml 保存到 %USERPROFILE%\\.codex。优先 env_key，勿提交密钥。',
       },
       deepseek: {
         description: '通过当前 DeepSeek 分组配置 Claude Code、Codex 或 OpenCode。',
         codexDescription: '使用 API Key 配置 Codex，并通过当前 DeepSeek 分组发送请求。',
         codexConfigTomlHint: '下载下方模型目录，将两个文件保存到 Codex 配置目录后重启 Codex。',
-        codexNote: '启动 Codex 前先导出 SUB2API_API_KEY。下载的目录只包含模型元数据，不包含 API Key。'
+        codexNote: '启动 Codex 前先导出 SUB2API_API_KEY。下载的目录只包含模型元数据，不包含 API Key。',
       },
       minimax: {
         description: '通过当前 MiniMax 分组配置 Claude Code、Codex 或 OpenCode。',
         codexDescription: '使用 API Key 配置 Codex，并通过当前 MiniMax 分组发送请求。',
         codexConfigTomlHint: '下载下方模型目录，将两个文件保存到 Codex 配置目录后重启 Codex。',
-        codexNote: '启动 Codex 前先导出 SUB2API_API_KEY。下载的目录只包含模型元数据，不包含 API Key。'
+        codexNote: '启动 Codex 前先导出 SUB2API_API_KEY。下载的目录只包含模型元数据，不包含 API Key。',
       },
       composite: {
         description: '通过当前 Composite 路由分组配置受支持的客户端。',
         codexDescription: '使用 API Key 和当前 Composite 分组的完整模型目录配置 Codex。',
         codexConfigTomlHint: '下载下方模型目录，将两个文件保存到 Codex 配置目录后重启 Codex。',
-        codexNote: '启动 Codex 前先导出 SUB2API_API_KEY；分组会根据目录中选中的模型路由请求。'
+        codexNote: '启动 Codex 前先导出 SUB2API_API_KEY；分组会根据目录中选中的模型路由请求。',
       },
       routedCodex: {
         description: '使用当前路由分组的完整模型目录配置 Codex。',
         configTomlHint: '下载下方模型目录，将两个文件保存到 Codex 配置目录后重启 Codex。',
-        note: '启动 Codex 前先导出 SUB2API_API_KEY。下载的目录只包含模型元数据，不包含 API Key。'
+        note: '启动 Codex 前先导出 SUB2API_API_KEY。下载的目录只包含模型元数据，不包含 API Key。',
       },
       codexModelCatalog: {
         title: 'Codex 模型目录',
@@ -222,13 +256,13 @@ export default {
         retry: '重试',
         download: '下载目录',
         modelsCount: '已获取 {count} 个模型',
-        errorDescription: '无法使用当前 API Key 获取模型目录。'
+        errorDescription: '无法使用当前 API Key 获取模型目录。',
       },
       opencode: {
         title: 'OpenCode 配置示例',
         subtitle: 'opencode.json',
-        hint: '配置文件路径：~/.config/opencode/opencode.json（或 opencode.jsonc），不存在需手动创建。可使用默认 provider（openai/anthropic/google）或自定义 provider_id。API Key 支持直接配置或通过客户端 /connect 命令配置。示例仅供参考，模型与选项可按需调整。'
-      }
+        hint: '配置文件路径：~/.config/opencode/opencode.json（或 opencode.jsonc），不存在需手动创建。可使用默认 provider（openai/anthropic/google）或自定义 provider_id。API Key 支持直接配置或通过客户端 /connect 命令配置。示例仅供参考，模型与选项可按需调整。',
+      },
     },
     customKeyLabel: '自定义密钥',
     customKeyPlaceholder: '输入自定义密钥（至少16个字符）',
@@ -244,17 +278,15 @@ export default {
     ipBlacklistPlaceholder: '1.2.3.4\n5.6.0.0/16',
     ipBlacklistHint: '每行一个 IP 或 CIDR，这些 IP 将被禁止使用此密钥',
     ipRestrictionEnabled: '已配置 IP 限制',
-    ccSwitchNotInstalled:
-      'CC-Switch 未安装或协议处理程序未注册。请先安装 CC-Switch 或手动复制 API 密钥。',
+    ccSwitchNotInstalled: 'CC-Switch 未安装或协议处理程序未注册。请先安装 CC-Switch 或手动复制 API 密钥。',
     ccsClientSelect: {
       title: '选择客户端',
       description: '请选择您要导入到 CC-Switch 的客户端类型：',
       claudeCode: 'Claude Code',
       claudeCodeDesc: '导入为 Claude Code 配置',
       geminiCli: 'Gemini CLI',
-      geminiCliDesc: '导入为 Gemini CLI 配置'
+      geminiCliDesc: '导入为 Gemini CLI 配置',
     },
-    // 配额和有效期
     quotaLimit: '额度限制',
     quotaAmount: '额度金额 (USD)',
     quotaAmountPlaceholder: '输入 USD 额度限制',
@@ -293,11 +325,13 @@ export default {
       active: '活跃',
       inactive: '已停用',
       quota_exhausted: '额度耗尽',
-      expired: '已过期'
-    }
+      expired: '已过期',
+    },
+    table: {
+      title: '密钥列表',
+      description: '展示用于模型调用身份鉴权的访问凭证',
+    },
   },
-
-  // Usage
   usage: {
     title: '使用记录',
     description: '查看和分析您的 API 使用历史',
@@ -340,11 +374,11 @@ export default {
     model: '模型',
     requestedModel: '请求',
     upstreamModel: '上游',
-	  sentUpstreamModel: '发往上游',
-	  upstreamResponseModel: '上游响应',
-	  upstreamModelMismatch: '上游响应模型不一致',
-	  modelVariant: '疑似版本变体',
-	  modelMismatch: '模型不一致',
+    sentUpstreamModel: '发往上游',
+    upstreamResponseModel: '上游响应',
+    upstreamModelMismatch: '上游响应模型不一致',
+    modelVariant: '疑似版本变体',
+    modelMismatch: '模型不一致',
     reasoningEffort: '推理强度',
     requestedReasoningEffort: '请求推理强度',
     endpoint: '端点',
@@ -439,17 +473,37 @@ export default {
       detailAccuracy: '定位精度',
       detailCoordinates: '坐标',
     },
-    tabs: { usage: '用量明细', errors: '错误请求', ranking: '用户排行' },
+    tabs: {
+      usage: '用量明细',
+      errors: '错误请求',
+      ranking: '用户排行',
+    },
     errors: {
-      time: '时间', model: '模型', endpoint: '端点', status: '状态码',
-      category: '分类', platform: '平台', message: '错误信息',
-      keyName: 'Key 名称', keyDeleted: '已删除', allKeys: '全部 Key',
-      modelPlaceholder: '搜索模型', allCategories: '全部分类', allStatuses: '全部状态码',
-      empty: '暂无错误请求', failedToLoad: '加载错误请求失败',
+      time: '时间',
+      model: '模型',
+      endpoint: '端点',
+      status: '状态码',
+      category: '分类',
+      platform: '平台',
+      message: '错误信息',
+      keyName: 'Key 名称',
+      keyDeleted: '已删除',
+      allKeys: '全部 Key',
+      modelPlaceholder: '搜索模型',
+      allCategories: '全部分类',
+      allStatuses: '全部状态码',
+      empty: '暂无错误请求',
+      failedToLoad: '加载错误请求失败',
       categories: {
-        auth: '认证失败', rate_limit: '限流', quota: '余额/订阅',
-        invalid_request: '参数错误', service_unavailable: '服务暂时不可用',
-        upstream: '上游错误', internal: '平台错误', other: '其他', cyber: '安全策略',
+        auth: '认证失败',
+        rate_limit: '限流',
+        quota: '余额/订阅',
+        invalid_request: '参数错误',
+        service_unavailable: '服务暂时不可用',
+        upstream: '上游错误',
+        internal: '平台错误',
+        other: '其他',
+        cyber: '安全策略',
       },
       detail: {
         title: '错误请求详情',
@@ -458,16 +512,23 @@ export default {
         loadFailed: '加载详情失败，请稍后重试',
       },
     },
+    quickStart: '快速接入',
+    getApiKey: '获取专属 API Key',
+    overviewTitle: '用量概览',
+    summaryTitle: '账户概览',
+    detailTitle: '用量详情',
+    lastUpdated: '上次更新 {time}',
+    rpmLabel: '平均 RPM',
+    tpmLabel: '平均 TPM',
+    chartFailed: '用量数据加载失败，请稍后重试',
   },
-
-  // Shared keys for channel monitor (admin + user views)
   monitorCommon: {
     status: {
       operational: '正常',
       degraded: '降级',
       failed: '失败',
       error: '错误',
-      unknown: '-'
+      unknown: '-',
     },
     providers: {
       openai: 'OpenAI',
@@ -478,15 +539,13 @@ export default {
       kimi: 'Kimi',
       zhipu: '智谱 GLM',
       deepseek: 'DeepSeek',
-      minimax: 'MiniMax'
+      minimax: 'MiniMax',
     },
-    // 检查模式（监控条目的工作方式）
     checkMode: {
       probe: '探活',
       quota: '配额',
-      quota_probe: '探活 + 配额'
+      quota_probe: '探活 + 配额',
     },
-    // 配额快照展示（MonitorQuotaView，管理端与用户端共用）
     quota: {
       unavailable: '配额信息不可用',
       windows: {
@@ -497,15 +556,16 @@ export default {
         weekly: '周',
         daily: '日',
         '30d': '30 天',
-        total: '总量'
+        total: '总量',
       },
       labels: {
         requests: '请求',
         tokens: 'Token',
         shared: '共享',
         pro: 'Pro',
-        flash: 'Flash'
-      }
+        flash: 'Flash',
+      },
+      resetSoon: '即将重置',
     },
     extraModelsHeader: '附加模型',
     extraModelsEmpty: '无附加模型',
@@ -524,10 +584,8 @@ export default {
     relativeSecondsAgo: '{n} 秒前',
     relativeMinutesAgo: '{n} 分钟前',
     relativeHoursAgo: '{n} 小时前',
-    relativeDaysAgo: '{n} 天前'
+    relativeDaysAgo: '{n} 天前',
   },
-
-  // Channel Status (user-facing read-only view)
   channelStatus: {
     title: '渠道状态',
     description: '查看渠道可用性、延迟和近期状态',
@@ -540,12 +598,12 @@ export default {
     windowTab: {
       '7d': '7 天',
       '15d': '15 天',
-      '30d': '30 天'
+      '30d': '30 天',
     },
     overall: {
       operational: 'OPERATIONAL',
       degraded: 'DEGRADED',
-      unavailable: 'UNAVAILABLE'
+      unavailable: 'UNAVAILABLE',
     },
     columns: {
       name: '名称',
@@ -553,7 +611,7 @@ export default {
       groupName: '分组',
       primaryModel: '主模型',
       availability7d: '7 天可用率',
-      latency: '延迟 (ms)'
+      latency: '延迟 (ms)',
     },
     detailColumns: {
       model: '模型',
@@ -562,15 +620,13 @@ export default {
       availability7d: '7 天可用率',
       availability15d: '15 天可用率',
       availability30d: '30 天可用率',
-      avgLatency7d: '7 天平均延迟 (ms)'
+      avgLatency7d: '7 天平均延迟 (ms)',
     },
     empty: {
       title: '暂无可显示的渠道',
-      description: '管理员尚未配置可监控的渠道。'
-    }
+      description: '管理员尚未配置可监控的渠道。',
+    },
   },
-
-  // Available Channels (user-facing)
   availableChannels: {
     title: '可用渠道',
     description: '查看您可访问的渠道与其支持的模型、定价',
@@ -587,7 +643,7 @@ export default {
       description: '描述',
       platform: '平台',
       groups: '我可访问的分组',
-      supportedModels: '支持模型'
+      supportedModels: '支持模型',
     },
     pricing: {
       billingMode: '计费模式',
@@ -606,11 +662,14 @@ export default {
       perRequestPrice: '每次请求',
       intervals: '阶梯定价',
       unitPerMillion: '/ 1M token',
-      unitPerRequest: '/ 次'
-    }
+      unitPerRequest: '/ 次',
+    },
+    stats: {
+      channels: '渠道数',
+      platforms: '平台数',
+      models: '模型数',
+    },
   },
-
-  // Model Plaza (public group/model pricing showcase)
   modelPlaza: {
     title: '模型广场',
     description: '按分组浏览可用模型与价格',
@@ -625,17 +684,17 @@ export default {
       rateLabel: '倍率',
       modelLabel: '模型',
       searchPlaceholder: '搜索模型名称',
-      all: '全部'
+      all: '全部',
     },
     badges: {
       exclusive: '专属分组',
-      subscription: '订阅'
+      subscription: '订阅',
     },
     detail: {
       noModels: '该分组暂未配置模型',
       noPricing: '未配置定价',
       peakNote: '高峰时段 {window} 计费倍率 ×{multiplier}',
-      longContextDisabledNote: '该分组未启用长上下文阶梯计费，超阈值请求仍按基础档计费，官方阶梯仅供参考'
+      longContextDisabledNote: '该分组未启用长上下文阶梯计费，超阈值请求仍按基础档计费，官方阶梯仅供参考',
     },
     table: {
       model: '模型',
@@ -652,8 +711,7 @@ export default {
       maxReasoningMultiplierHint: '最终转发的推理强度为 max 时，整次请求的计费与额度消耗乘以 {multiplier}',
       marginalBadge: '超出部分计价',
       timePricingRowHint: '按 {timezone} 时间，在该时段内发起的请求按本行价格计费',
-      timePricingRowHintWeekdays:
-        '按 {timezone} 时间，仅工作日（周一至周五）在该时段内发起的请求按本行价格计费，周末全天按标准价',
+      timePricingRowHintWeekdays: '按 {timezone} 时间，仅工作日（周一至周五）在该时段内发起的请求按本行价格计费，周末全天按标准价',
       timePricingRowHintPeak: '；本行价格未含高峰倍率，与高峰时段 {window} 重叠的部分实付再乘 ×{multiplier}',
       timePricingWeekdays: '工作日',
       timePricingRateHint: '生效倍率 {rate} × 时段倍率 {multiplier}',
@@ -664,14 +722,13 @@ export default {
       perUnitRequest: '/ 次',
       perUnitImage: '/ 张',
       perRequest: '按次计费',
-      perImage: '按图片计费'
+      perImage: '按图片计费',
     },
     nav: {
       login: '登录',
-      backToDashboard: '回到后台'
-    }
+      backToDashboard: '回到后台',
+    },
   },
-
   affiliate: {
     title: '邀请返利',
     description: '邀请新用户注册，并将返利额度转入账户余额',
@@ -690,7 +747,7 @@ export default {
       availableQuota: '可转返利额度',
       frozenQuota: '冻结中',
       frozenQuotaHint: '新产生的返利正在冻结期中',
-      totalQuota: '历史返利额度'
+      totalQuota: '历史返利额度',
     },
     transfer: {
       title: '返利额度转余额',
@@ -698,7 +755,7 @@ export default {
       button: '转入余额',
       transferring: '转入中...',
       empty: '当前没有可转入额度',
-      success: '已转入余额：{amount}'
+      success: '已转入余额：{amount}',
     },
     invitees: {
       title: '已邀请用户',
@@ -707,19 +764,17 @@ export default {
         email: '邮箱',
         username: '用户名',
         rebate: '返利明细',
-        joinedAt: '注册时间'
-      }
+        joinedAt: '注册时间',
+      },
     },
     tips: {
       title: '使用说明',
       line1: '将邀请码或邀请链接分享给新用户。',
       line2: '被邀请用户充值后，你可获得 {rate} 的返利额度。',
       line3: '返利额度可随时转入账户余额。',
-      line4: '新产生的返利需要经过冻结期后才能提现。'
-    }
+      line4: '新产生的返利需要经过冻结期后才能提现。',
+    },
   },
-
-  // Redeem
   redeem: {
     title: '兑换码',
     description: '输入兑换码以充值余额或增加并发数',
@@ -759,10 +814,8 @@ export default {
     codeRedeemSuccess: '兑换成功！',
     failedToRedeem: '兑换失败，请检查兑换码后重试。',
     subscriptionRefreshFailed: '兑换成功，但订阅状态刷新失败。',
-    pleaseEnterCode: '请输入兑换码'
+    pleaseEnterCode: '请输入兑换码',
   },
-
-  // Profile
   profile: {
     title: '个人设置',
     description: '管理您的账户信息和设置',
@@ -803,7 +856,6 @@ export default {
     passwordTooShort: '密码至少需要 8 个字符',
     passwordChangeSuccess: '密码修改成功',
     passwordChangeFailed: '密码修改失败',
-    // TOTP 2FA
     totp: {
       title: '双因素认证 (2FA)',
       description: '使用 Google Authenticator 等应用增强账户安全',
@@ -833,14 +885,13 @@ export default {
       loginTitle: '双因素认证',
       loginHint: '请输入您认证器应用显示的 6 位验证码',
       loginFailed: '验证失败，请重试',
-      // New translations for email verification
       verifyEmailFirst: '请先验证您的邮箱',
       verifyPasswordFirst: '请先验证您的身份',
       emailCode: '邮箱验证码',
       enterEmailCode: '请输入 6 位验证码',
       sendCode: '发送验证码',
       codeSent: '验证码已发送到您的邮箱',
-      sendCodeFailed: '发送验证码失败'
+      sendCodeFailed: '发送验证码失败',
     },
     passkey: {
       title: 'Passkey',
@@ -865,7 +916,7 @@ export default {
       deleteTitle: '删除 Passkey',
       deleteConfirm: '删除“{name}”？删除后将无法再使用它登录。',
       deleted: 'Passkey 已删除。',
-      deleteFailed: '删除 Passkey 失败。'
+      deleteFailed: '删除 Passkey 失败。',
     },
     balanceNotify: {
       title: '余额不足提醒',
@@ -953,21 +1004,19 @@ export default {
         avatar: '头像当前来自 {providerName}',
         username: '昵称当前来自 {providerName}',
       },
-    }
+    },
+    accountSectionTitle: '账号资料',
+    accountSectionDescription: '管理头像、用户名与第三方账号绑定',
+    quickSettings: '快捷设置',
+    passwordDescription: '定期更新密码，保障账户安全。',
   },
-
-  // Empty States
   empty: {
-    noData: '暂无数据'
+    noData: '暂无数据',
   },
-
-  // Table
   table: {
     expandActions: '展开更多操作',
-    collapseActions: '收起操作'
+    collapseActions: '收起操作',
   },
-
-  // Pagination
   pagination: {
     showing: '显示',
     to: '至',
@@ -981,10 +1030,8 @@ export default {
     goToPage: '跳转到第 {page} 页',
     jumpTo: '跳转页',
     jumpPlaceholder: '页码',
-    jumpAction: '跳转'
+    jumpAction: '跳转',
   },
-
-  // Errors
   errors: {
     somethingWentWrong: '出错了',
     pageNotFound: '页面未找到',
@@ -993,10 +1040,12 @@ export default {
     serverError: '服务器错误',
     networkError: '网络错误',
     timeout: '请求超时',
-    tryAgain: '请重试'
+    tryAgain: '请重试',
+    pageNotFoundDescription: '你访问的页面不存在或已被移动。',
+    goBack: '返回上一页',
+    backToDashboard: '前往控制台',
+    needHelp: '需要帮助？',
   },
-
-  // Dates
   dates: {
     today: '今天',
     yesterday: '昨天',
@@ -1012,8 +1061,6 @@ export default {
     startDate: '开始日期',
     endDate: '结束日期',
     apply: '应用',
-    selectDateRange: '选择日期范围'
+    selectDateRange: '选择日期范围',
   },
-
-  // Admin
 }
