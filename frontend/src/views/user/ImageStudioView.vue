@@ -1,5 +1,12 @@
 <template>
-  <div class="space-y-4">
+  <AppLayout>
+    <div class="space-y-4">
+      <header>
+        <h1 class="text-[28px] font-semibold leading-9 tracking-[-0.01em] text-foreground">
+          {{ t('imageStudio.title') }}
+        </h1>
+        <p class="mt-2 text-sm text-muted-foreground">{{ t('imageStudio.description') }}</p>
+      </header>
     <!-- 顶部：选择创作分组的 API Key -->
     <div class="card">
       <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
@@ -189,13 +196,15 @@
         </div>
       </div>
     </BaseDialog>
-  </div>
+    </div>
+  </AppLayout>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseDialog from '@/components/common/BaseDialog.vue'
+import AppLayout from '@/components/layout/AppLayout.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import Select, { type SelectOption } from '@/components/common/Select.vue'
