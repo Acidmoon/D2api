@@ -6,10 +6,12 @@ import type { ApiKey } from '@/types'
 /**
  * 生图创作中心的入口/权限判断。
  *
- * 判定口径：用户存在至少一个 active 的 API Key，且其所属分组开启了
- * `allow_image_generation`。侧边栏据此决定是否显示入口，页面据此决定
- * 顶部 Key 选择器里有哪些候选项。
+ * 只认「创作分组」下的 Key：分组名包含 CREATION_GROUP_KEYWORD（默认“创作”）
+ * 且开启了 allow_image_generation。其余分组即使开了生图权限也不在本页出现。
+ * 分组名是当前唯一可用的判据（没有专门的“创作分组”配置项）；若后续改名，
+ * 调整下面的常量即可。
  */
+export const CREATION_GROUP_KEYWORD = '创作'
 
 const loaded = ref(false)
 const loading = ref(false)
@@ -17,8 +19,12 @@ const imageKeys = ref<ApiKey[]>([])
 let pendingLoad: Promise<ApiKey[]> | null = null
 const pageSize = 100
 
-function keyAllowsImageStudio(key: ApiKey): boolean {
-  return key.status === 'active' && key.group?.allow_image_generation === true
+/** 是否为生图创作中心可用的 Key（纯函数，便于单测）。 */
+export function isImageStudioKey(key: ApiKey): boolean {
+  if (key.status !== 'active') return false
+  const group = key.group
+  if (!group || group.allow_image_generation !== true) return false
+  return (group.name || '').includes(CREATION_GROUP_KEYWORD)
 }
 
 async function loadImageStudioAccess(force = false): Promise<ApiKey[]> {
@@ -47,7 +53,7 @@ async function loadImageStudioAccess(force = false): Promise<ApiKey[]> {
         sort_order: 'desc'
       })
       const items = response.items || []
-      collected.push(...items.filter(keyAllowsImageStudio))
+      collected.push(...items.filter(isImageStudioKey))
       if (page >= response.pages || items.length === 0) break
       page += 1
     }
