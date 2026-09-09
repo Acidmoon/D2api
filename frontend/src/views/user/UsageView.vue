@@ -1071,8 +1071,8 @@ watch(endpointDistributionSource, () => {
 .qw-weak {
   color: #8e96a7;
 }
-:global(.dark) .qw-desc,
-:global(.dark) .qw-weak {
+.dark .qw-desc,
+.dark .qw-weak {
   color: var(--nm-ink-faint);
 }
 

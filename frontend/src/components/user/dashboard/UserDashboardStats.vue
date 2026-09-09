@@ -516,7 +516,7 @@ const formatTokens = (t: number) => {
   background-color: var(--nm-surface-soft);
 }
 
-:global(.dark) .qw-pill {
+.dark .qw-pill {
   border-color: var(--nm-border);
 }
 
@@ -531,11 +531,11 @@ const formatTokens = (t: number) => {
   background-color: #e4e7fe;
 }
 
-:global(.dark) .promo-banner {
+.dark .promo-banner {
   background-color: var(--nm-accent-soft);
 }
 
-:global(.dark) .promo-banner:hover {
+.dark .promo-banner:hover {
   background-color: var(--nm-accent-strong);
 }
 </style>

@@ -292,7 +292,7 @@ onMounted(() => { fetchOrders(); loadRefundEligibility() })
 .qw-desc {
   color: #7f8798;
 }
-:global(.dark) .qw-desc {
+.dark .qw-desc {
   color: var(--nm-ink-muted);
 }
 
@@ -341,7 +341,7 @@ onMounted(() => { fetchOrders(); loadRefundEligibility() })
   color: #8e96a7;
   font-size: 13px;
 }
-:global(.dark) .qw-search :deep(input) {
+.dark .qw-search :deep(input) {
   background-color: hsl(var(--card));
   border-color: var(--nm-border);
 }
@@ -394,15 +394,15 @@ onMounted(() => { fetchOrders(); loadRefundEligibility() })
   border-bottom: none;
 }
 
-:global(.dark) .qw-table :deep(thead),
-:global(.dark) .qw-table :deep(.table-wrapper .table-header),
-:global(.dark) .qw-table :deep(.sticky-header-cell) {
+.dark .qw-table :deep(thead),
+.dark .qw-table :deep(.table-wrapper .table-header),
+.dark .qw-table :deep(.sticky-header-cell) {
   background: var(--nm-surface-soft);
 }
-:global(.dark) .qw-table :deep(.sticky-header-cell) {
+.dark .qw-table :deep(.sticky-header-cell) {
   color: var(--nm-ink-faint);
 }
-:global(.dark) .qw-table :deep(tbody tr.dt-row td) {
+.dark .qw-table :deep(tbody tr.dt-row td) {
   border-bottom-color: var(--nm-border-light);
 }
 </style>

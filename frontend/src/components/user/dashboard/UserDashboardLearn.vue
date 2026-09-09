@@ -171,7 +171,7 @@ const cards = computed<LearnCard[]>(() => {
   background-color: var(--nm-surface-soft);
 }
 
-:global(.dark) .qw-pill {
+.dark .qw-pill {
   border-color: var(--nm-border);
 }
 
