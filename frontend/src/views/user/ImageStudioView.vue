@@ -42,8 +42,9 @@
     </div>
 
     <div class="grid gap-4 xl:grid-cols-[380px_minmax(0,1fr)]">
-      <!-- 左侧：提示词 + 模型 -->
-      <div class="card space-y-4 self-start">
+      <!-- 左侧：参数区 -->
+      <div class="card self-start space-y-5">
+        <!-- 模型：只列真正能生图的模型 -->
         <div>
           <label class="input-label" for="image-studio-model">{{ t('imageStudio.form.model') }}</label>
           <Select
@@ -58,54 +59,137 @@
           <p v-if="!modelsLoading && selectedKey && modelOptions.length === 0" class="input-hint text-warning">
             {{ t('imageStudio.form.modelsEmpty') }}
           </p>
+          <p v-else-if="hiddenModelCount > 0" class="input-hint">
+            {{ t('imageStudio.form.modelsHidden', { count: hiddenModelCount }) }}
+          </p>
         </div>
 
+        <!-- 提示词 -->
         <div>
-          <label class="input-label" for="image-studio-prompt">{{ t('imageStudio.form.prompt') }}</label>
+          <div class="flex items-center justify-between">
+            <label class="input-label mb-0" for="image-studio-prompt">{{ t('imageStudio.form.prompt') }}</label>
+            <button
+              v-if="prompt"
+              type="button"
+              class="text-xs text-muted-foreground transition-colors hover:text-foreground"
+              @click="prompt = ''"
+            >
+              {{ t('imageStudio.form.clearPrompt') }}
+            </button>
+          </div>
           <TextArea
             id="image-studio-prompt"
             v-model="prompt"
-            :rows="8"
+            :rows="7"
             :placeholder="t('imageStudio.form.promptPlaceholder')"
           />
           <p class="input-hint text-right">{{ prompt.length }}/4000</p>
         </div>
 
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="input-label" for="image-studio-size">{{ t('imageStudio.form.size') }}</label>
-            <Select id="image-studio-size" v-model="size" :options="sizeOptions" />
+        <!-- 尺寸档位：分段选择，每档标出该分组单价 -->
+        <div>
+          <label class="input-label">{{ t('imageStudio.form.size') }}</label>
+          <div class="grid grid-cols-4 gap-2" role="radiogroup" :aria-label="t('imageStudio.form.size')">
+            <button
+              v-for="tier in sizeTierList"
+              :key="tier.value || 'auto'"
+              type="button"
+              role="radio"
+              :aria-checked="size === tier.value"
+              class="rounded-lg border px-2 py-2 text-center transition-colors"
+              :class="size === tier.value
+                ? 'border-primary-500 bg-primary-50 text-primary-700 dark:border-primary-400 dark:bg-primary-500/15 dark:text-primary-200'
+                : 'border-border bg-transparent text-muted-foreground hover:border-primary-300 hover:text-foreground dark:hover:border-primary-700'"
+              @click="size = tier.value"
+            >
+              <span class="block text-sm font-medium">{{ tier.label }}</span>
+              <span class="mt-0.5 block text-[11px] leading-4 opacity-80">{{ tier.priceText }}</span>
+            </button>
           </div>
-          <div>
-            <label class="input-label" for="image-studio-count">{{ t('imageStudio.form.count') }}</label>
-            <Select id="image-studio-count" v-model="count" :options="countOptions" />
+          <p class="input-hint">{{ t('imageStudio.form.sizeHint') }}</p>
+        </div>
+
+        <!-- 张数 -->
+        <div>
+          <label class="input-label">{{ t('imageStudio.form.count') }}</label>
+          <div class="grid grid-cols-4 gap-2" role="radiogroup" :aria-label="t('imageStudio.form.count')">
+            <button
+              v-for="option in countOptions"
+              :key="option.value"
+              type="button"
+              role="radio"
+              :aria-checked="count === option.value"
+              class="rounded-lg border px-2 py-2 text-sm transition-colors"
+              :class="count === option.value
+                ? 'border-primary-500 bg-primary-50 font-medium text-primary-700 dark:border-primary-400 dark:bg-primary-500/15 dark:text-primary-200'
+                : 'border-border text-muted-foreground hover:border-primary-300 hover:text-foreground dark:hover:border-primary-700'"
+              @click="count = option.value"
+            >
+              {{ option.label }}
+            </button>
           </div>
         </div>
 
-        <button
-          type="button"
-          class="btn btn-primary w-full"
-          :disabled="!canGenerate"
-          @click="generate"
-        >
-          {{ generating ? t('imageStudio.form.generating') : t('imageStudio.form.generate') }}
-        </button>
-        <p class="text-xs text-muted-foreground">{{ t('imageStudio.form.costHint') }}</p>
+        <!-- 费用预估 -->
+        <div class="rounded-lg border border-border bg-muted/40 px-3 py-2.5 text-sm">
+          <div class="flex items-center justify-between">
+            <span class="text-muted-foreground">{{ t('imageStudio.form.unitPrice') }}</span>
+            <span class="font-medium text-foreground">{{ unitPriceText }}</span>
+          </div>
+          <div class="mt-1 flex items-center justify-between">
+            <span class="text-muted-foreground">{{ t('imageStudio.form.estimatedTotal') }}</span>
+            <span class="font-semibold text-foreground">{{ estimatedTotalText }}</span>
+          </div>
+        </div>
+
+        <!-- 生成 / 取消 -->
+        <div class="space-y-2">
+          <button
+            type="button"
+            class="btn btn-primary w-full"
+            :disabled="!canGenerate"
+            @click="generate"
+          >
+            <LoadingSpinner v-if="generating" size="sm" class="mr-2" />
+            {{ generating ? t('imageStudio.form.generating') : t('imageStudio.form.generate') }}
+          </button>
+          <button
+            v-if="generating"
+            type="button"
+            class="btn btn-secondary w-full"
+            @click="cancelGeneration"
+          >
+            {{ t('imageStudio.form.cancel') }}
+          </button>
+          <p v-if="generating" class="text-center text-xs text-muted-foreground">
+            {{ t('imageStudio.form.elapsed', { seconds: elapsedSeconds }) }}
+          </p>
+          <p v-else class="text-xs text-muted-foreground">{{ t('imageStudio.form.costHint') }}</p>
+        </div>
       </div>
 
       <!-- 右侧：生成结果 -->
       <div class="card min-h-[480px]">
         <div class="mb-4 flex items-center justify-between">
           <h2 class="text-base font-semibold text-foreground">{{ t('imageStudio.result.title') }}</h2>
-          <button
-            v-if="results.length > 0"
-            type="button"
-            class="btn btn-secondary btn-sm"
-            :disabled="generating"
-            @click="clearResults"
-          >
-            {{ t('imageStudio.result.clear') }}
-          </button>
+          <div v-if="results.length > 0" class="flex items-center gap-2">
+            <button
+              type="button"
+              class="btn btn-secondary btn-sm"
+              :disabled="generating || downloadingAll"
+              @click="downloadAll"
+            >
+              {{ downloadingAll ? t('imageStudio.result.downloading') : t('imageStudio.result.downloadAll') }}
+            </button>
+            <button
+              type="button"
+              class="btn btn-secondary btn-sm"
+              :disabled="generating"
+              @click="clearResults"
+            >
+              {{ t('imageStudio.result.clear') }}
+            </button>
+          </div>
         </div>
 
         <div v-if="accessLoading || (modelsLoading && results.length === 0)" class="flex items-center justify-center py-20">
@@ -130,13 +214,23 @@
           <div v-if="generating" class="flex items-center gap-2 text-sm text-muted-foreground">
             <LoadingSpinner size="sm" />
             <span>{{ t('imageStudio.result.loading') }}</span>
+            <span class="tabular-nums">{{ elapsedSeconds }}s</span>
           </div>
 
           <div v-if="lastError" class="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
             {{ lastError }}
           </div>
 
-          <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 2xl:grid-cols-3">
+          <!-- 生成中占位：按张数先占位，避免新图插入时布局跳动 -->
+          <div v-if="generating" class="grid grid-cols-1 gap-3 sm:grid-cols-2 2xl:grid-cols-3">
+            <div
+              v-for="placeholder in pendingPlaceholders"
+              :key="placeholder"
+              class="aspect-square w-full animate-pulse rounded-xl border border-border bg-muted"
+            />
+          </div>
+
+          <div v-if="results.length > 0" class="grid grid-cols-1 gap-3 sm:grid-cols-2 2xl:grid-cols-3">
             <figure
               v-for="(item, index) in results"
               :key="item.id"
@@ -153,15 +247,25 @@
                   :alt="item.prompt"
                   class="aspect-square w-full cursor-zoom-in object-cover transition-transform duration-200 group-hover:scale-[1.02]"
                   loading="lazy"
+                  @load="handleResultImageLoad(item, $event)"
                 />
               </button>
+              <!-- 左上：真实输出尺寸（以字节为准，不看上游回显） -->
+              <div class="pointer-events-none absolute left-2 top-2 flex flex-wrap gap-1">
+                <span class="rounded bg-black/60 px-1.5 py-0.5 text-[11px] font-medium tabular-nums text-white/90">
+                  {{ item.width ? `${item.width}×${item.height}` : t('imageStudio.result.measuring') }}
+                </span>
+                <span class="rounded bg-black/60 px-1.5 py-0.5 text-[11px] text-white/90">{{ item.model }}</span>
+              </div>
               <div
                 class="pointer-events-none absolute inset-x-0 bottom-0 flex items-center justify-between gap-2 bg-gradient-to-t from-black/70 to-transparent px-3 py-2 opacity-0 transition-opacity group-hover:opacity-100"
               >
-                <span class="truncate text-xs text-white/90">{{ item.model }}</span>
                 <span class="pointer-events-auto flex items-center gap-2">
                   <button type="button" class="btn btn-secondary btn-sm" @click="openLightbox(index)">
                     {{ t('imageStudio.result.open') }}
+                  </button>
+                  <button type="button" class="btn btn-secondary btn-sm" @click="reusePrompt(item)">
+                    {{ t('imageStudio.result.reuse') }}
                   </button>
                   <button type="button" class="btn btn-primary btn-sm" :disabled="item.downloading" @click="downloadImage(index)">
                     {{ item.downloading ? t('imageStudio.result.downloading') : t('imageStudio.result.download') }}
@@ -338,6 +442,16 @@ import {
   type ImageStudioHistoryItem,
 } from '@/api/imageStudioHistory'
 import { saveBlob } from '@/api/batchImage'
+import {
+  IMAGE_COUNT_OPTIONS,
+  IMAGE_SIZE_TIERS,
+  estimateImageCost,
+  filterImageModels,
+  formatImagePrice,
+  normalizeSizeTier,
+  pickDefaultImageModel,
+  unitPriceForSelection,
+} from '@/composables/useImageStudioOptions'
 import { creationGroupOf, useImageStudioAccess } from '@/composables/useImageStudioAccess'
 import { useAppStore } from '@/stores/app'
 import type { ApiKey } from '@/types'
@@ -349,6 +463,9 @@ interface StudioResult {
   prompt: string
   model: string
   downloading: boolean
+  /** 从图片字节实际解析出的尺寸（不信任上游回显的 size） */
+  width: number
+  height: number
 }
 
 const { t } = useI18n()
@@ -369,9 +486,13 @@ const count = ref<number>(1)
 const models = ref<GatewayModel[]>([])
 const modelsLoading = ref(false)
 const generating = ref(false)
+const elapsedSeconds = ref(0)
+const downloadingAll = ref(false)
 const lastError = ref('')
 const results = ref<StudioResult[]>([])
 const lightboxIndex = ref<number | null>(null)
+
+let elapsedTimer: ReturnType<typeof setInterval> | null = null
 
 // ── 历史记录 ──
 const savingHistory = ref(false)
@@ -407,23 +528,44 @@ const selectedKeyGroup = computed(() =>
   selectedKey.value ? creationGroupOf(selectedKey.value) : null
 )
 
+/** /v1/models 可能混入不能走 images 端点的文本模型，这里过滤后单独计数。 */
+const imageModelList = computed<GatewayModel[]>(() => filterImageModels(models.value))
+const hiddenModelCount = computed(() => Math.max(0, models.value.length - imageModelList.value.length))
+
 const modelOptions = computed<SelectOption[]>(() =>
-  models.value.map((model) => ({
+  imageModelList.value.map((model) => ({
     value: model.id,
     label: model.display_name || model.id,
   }))
 )
 
-const sizeOptions = computed<SelectOption[]>(() => [
-  { value: '', label: t('imageStudio.form.sizeAuto') },
-  { value: '1024x1024', label: '1024 × 1024' },
-  { value: '1536x1024', label: '1536 × 1024' },
-  { value: '1024x1536', label: '1024 × 1536' },
-])
-
-const countOptions = computed<SelectOption[]>(() =>
-  [1, 2, 3, 4].map((value) => ({ value, label: String(value) }))
+/** 尺寸档位（带当前分组的单张价，未配价时退到不显示）。 */
+const sizeTierList = computed(() =>
+  IMAGE_SIZE_TIERS.map((tier) => {
+    const price = unitPriceForSelection(selectedKeyGroup.value, tier.value)
+    return {
+      value: tier.value,
+      label: t(tier.labelKey),
+      priceText: price === null ? '' : formatImagePrice(price),
+    }
+  })
 )
+
+const countOptions = computed<Array<{ value: number; label: string }>>(() =>
+  IMAGE_COUNT_OPTIONS.map((value) => ({ value, label: String(value) }))
+)
+
+const pendingPlaceholders = computed(() => Array.from({ length: count.value }, (_, i) => i))
+
+const unitPriceText = computed(() => {
+  const price = unitPriceForSelection(selectedKeyGroup.value, size.value)
+  return price === null ? t('imageStudio.form.priceUnknown') : `${formatImagePrice(price)} / ${t('imageStudio.form.perImage')}`
+})
+
+const estimatedTotalText = computed(() => {
+  const total = estimateImageCost(selectedKeyGroup.value, size.value, count.value)
+  return total === null ? t('imageStudio.form.priceUnknown') : formatImagePrice(total)
+})
 
 const canGenerate = computed(
   () => Boolean(selectedKey.value && selectedModel.value && prompt.value.trim()) && !generating.value
@@ -455,7 +597,7 @@ function restoreSelection() {
     const keyId = Number(localStorage.getItem(STORAGE_KEY_ID) || '')
     if (Number.isFinite(keyId) && keyId > 0) selectedKeyId.value = keyId
     selectedModel.value = localStorage.getItem(STORAGE_MODEL) || ''
-    size.value = localStorage.getItem(STORAGE_SIZE) || ''
+    size.value = normalizeSizeTier(localStorage.getItem(STORAGE_SIZE))
     const storedCount = Number(localStorage.getItem(STORAGE_COUNT) || '')
     if (Number.isFinite(storedCount) && storedCount >= 1 && storedCount <= 4) count.value = storedCount
   } catch {
@@ -463,10 +605,10 @@ function restoreSelection() {
   }
 }
 
-/** 分组可用模型里优先挑图片模型作为默认值。 */
-function pickDefaultModel(list: GatewayModel[]): string {
-  const imageModel = list.find((model) => /image/i.test(model.id))
-  return (imageModel || list[0])?.id || ''
+/** 只有仍然是图像模型的记忆值才保留，否则重新选默认。 */
+function imageModelListSome(list: GatewayModel[], modelId: string): boolean {
+  if (!modelId) return false
+  return filterImageModels(list).some((model) => model.id === modelId)
 }
 
 async function loadModels() {
@@ -484,8 +626,8 @@ async function loadModels() {
     const list = await listGatewayModels(selectedKey.value.key, controller.signal)
     if (controller.signal.aborted) return
     models.value = list
-    const stillValid = list.some((model) => model.id === selectedModel.value)
-    if (!stillValid) selectedModel.value = pickDefaultModel(list)
+    const stillValid = imageModelListSome(list, selectedModel.value)
+    if (!stillValid) selectedModel.value = pickDefaultImageModel(list)
   } catch (error) {
     if (controller.signal.aborted) return
     models.value = []
@@ -652,6 +794,7 @@ async function generate() {
 
   generating.value = true
   lastError.value = ''
+  startElapsedTimer()
   generateAbort?.abort()
   const controller = new AbortController()
   generateAbort = controller
@@ -679,16 +822,96 @@ async function generate() {
       prompt: image.revised_prompt || text,
       model: selectedModel.value,
       downloading: false,
+      width: 0,
+      height: 0,
     }))
     results.value = [...items, ...results.value]
     appStore.showSuccess(t('imageStudio.result.generated', { count: items.length }))
     void persistGeneration(items, text)
   } catch (error) {
     if (controller.signal.aborted) return
-    lastError.value = (error as Error).message
-    appStore.showError(t('imageStudio.errors.generateFailed', { message: (error as Error).message }))
+    lastError.value = describeGenerationError(error as Error)
+    appStore.showError(t('imageStudio.errors.generateFailed', { message: lastError.value }))
   } finally {
-    if (!controller.signal.aborted) generating.value = false
+    if (!controller.signal.aborted) {
+      stopElapsedTimer()
+      generating.value = false
+    }
+  }
+}
+
+/**
+ * 把上游/网关报错归成用户看得懂的一句话。
+ * 实测最常见的是 model_not_found（分组模型表与上游实际支持不一致）。
+ */
+function describeGenerationError(error: Error): string {
+  const message = error?.message || ''
+  if (/model_not_found|not supported by any configured account/i.test(message)) {
+    return t('imageStudio.errors.modelNotSupported')
+  }
+  if (/insufficient|balance|quota|余额|额度/i.test(message)) {
+    return t('imageStudio.errors.insufficientBalance')
+  }
+  if (/permission|forbidden|not allowed|权限/i.test(message)) {
+    return t('imageStudio.errors.permissionDenied')
+  }
+  if (/timeout|timed out|超时/i.test(message)) {
+    return t('imageStudio.errors.timeout')
+  }
+  return message || t('imageStudio.errors.unknown')
+}
+
+function startElapsedTimer() {
+  stopElapsedTimer()
+  elapsedSeconds.value = 0
+  elapsedTimer = setInterval(() => {
+    elapsedSeconds.value += 1
+  }, 1000)
+}
+
+function stopElapsedTimer() {
+  if (elapsedTimer !== null) {
+    clearInterval(elapsedTimer)
+    elapsedTimer = null
+  }
+}
+
+/** 用户主动取消：上游可能已经出图并计费，提示里说清楚。 */
+function cancelGeneration() {
+  generateAbort?.abort()
+  generateAbort = null
+  stopElapsedTimer()
+  generating.value = false
+  lastError.value = t('imageStudio.errors.cancelled')
+  appStore.showWarning(t('imageStudio.errors.cancelledHint'))
+}
+
+/** 结果图加载完成后读真实像素；尺寸看字节，不信上游回显。 */
+function handleResultImageLoad(item: StudioResult, event: Event) {
+  const img = event.target as HTMLImageElement | null
+  if (!img) return
+  item.width = img.naturalWidth || 0
+  item.height = img.naturalHeight || 0
+}
+
+/** 用该图的提示词回填输入区，便于微调重生。 */
+function reusePrompt(item: StudioResult) {
+  prompt.value = item.prompt
+  selectedModel.value = item.model || selectedModel.value
+  appStore.showSuccess(t('imageStudio.result.reused'))
+}
+
+/** 逐张下载（浏览器会要求允许多文件）；间隔开避免被截断。 */
+async function downloadAll() {
+  if (results.value.length === 0 || downloadingAll.value) return
+  downloadingAll.value = true
+  try {
+    for (let index = 0; index < results.value.length; index += 1) {
+      await downloadImage(index, true)
+      await new Promise((resolve) => setTimeout(resolve, 300))
+    }
+  } finally {
+    downloadingAll.value = false
   }
 }
 
@@ -705,7 +928,7 @@ function clearResults() {
   lastError.value = ''
 }
 
-async function downloadImage(index: number | null) {
+async function downloadImage(index: number | null, silent = false) {
   if (index === null) return
   const item = results.value[index]
   if (!item || item.downloading) return
@@ -713,9 +936,12 @@ async function downloadImage(index: number | null) {
   try {
     const blob = await imageToBlob(item.image)
     const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
-    saveBlob(blob, `${item.model || 'image'}-${stamp}.${extensionForBlob(blob)}`)
+    saveBlob(blob, `${item.model || 'image'}-${stamp}-${index + 1}.${extensionForBlob(blob)}`)
   } catch (error) {
-    appStore.showError(t('imageStudio.errors.downloadFailed', { message: (error as Error).message }))
+    // 批量下载时只报一次，不刷一屏 toast
+    if (!silent) {
+      appStore.showError(t('imageStudio.errors.downloadFailed', { message: (error as Error).message }))
+    }
   } finally {
     item.downloading = false
   }
@@ -740,6 +966,7 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   modelsAbort?.abort()
   generateAbort?.abort()
+  stopElapsedTimer()
   releaseHistoryDetailUrls()
 })
 </script>
