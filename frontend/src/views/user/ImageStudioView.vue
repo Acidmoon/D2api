@@ -23,11 +23,11 @@
             @change="handleKeyChange"
           />
           <p class="input-hint">
-            {{ selectedKey ? t('imageStudio.key.hint', { group: selectedKey.group?.name || '-' }) : t('imageStudio.key.empty') }}
+            {{ selectedKey ? t('imageStudio.key.hint', { group: selectedKeyGroup?.name || '-' }) : t('imageStudio.key.empty') }}
           </p>
         </div>
         <div class="flex items-center gap-2">
-          <span v-if="selectedKey" class="badge badge-primary">{{ selectedKey.group?.name || '-' }}</span>
+          <span v-if="selectedKey" class="badge badge-primary">{{ selectedKeyGroup?.name || '-' }}</span>
           <button type="button" class="btn btn-secondary btn-sm" :disabled="accessLoading" @click="reloadKeys">
             {{ t('imageStudio.key.refresh') }}
           </button>
@@ -219,7 +219,7 @@ import {
   type GeneratedImage,
 } from '@/api/imageStudio'
 import { saveBlob } from '@/api/batchImage'
-import { useImageStudioAccess } from '@/composables/useImageStudioAccess'
+import { creationGroupOf, useImageStudioAccess } from '@/composables/useImageStudioAccess'
 import { useAppStore } from '@/stores/app'
 import type { ApiKey } from '@/types'
 
@@ -263,12 +263,16 @@ const accessLoading = computed(() => imageStudioAccessLoading.value)
 const keyOptions = computed<SelectOption[]>(() =>
   imageStudioKeys.value.map((key: ApiKey) => ({
     value: key.id,
-    label: `${key.name} · ${key.group?.name || ''}`.trim(),
+    label: `${key.name} · ${creationGroupOf(key)?.name || ''}`.trim(),
   }))
 )
 
 const selectedKey = computed<ApiKey | null>(
   () => imageStudioKeys.value.find((key: ApiKey) => key.id === selectedKeyId.value) || null
+)
+
+const selectedKeyGroup = computed(() =>
+  selectedKey.value ? creationGroupOf(selectedKey.value) : null
 )
 
 const modelOptions = computed<SelectOption[]>(() =>

@@ -1,7 +1,7 @@
 import { computed, ref } from 'vue'
 import { keysAPI } from '@/api/keys'
 import { useAuthStore } from '@/stores/auth'
-import type { ApiKey } from '@/types'
+import type { ApiKey, Group } from '@/types'
 
 /**
  * 生图创作中心的入口/权限判断。
@@ -19,12 +19,27 @@ const imageKeys = ref<ApiKey[]>([])
 let pendingLoad: Promise<ApiKey[]> | null = null
 const pageSize = 100
 
+/**
+ * 返回该 Key 命中的创作分组（primary_group 优先，其次 group）；未命中返回 null。
+ * Key 可以只绑定 primary_group（group_id 为空），也可以只绑定 group，所以两边都要看。
+ */
+export function creationGroupOf(key: ApiKey): Group | null {
+  const candidates: Array<Group | undefined> = [key.primary_group, key.group]
+  for (const group of candidates) {
+    if (
+      group &&
+      group.allow_image_generation === true &&
+      (group.name || '').includes(CREATION_GROUP_KEYWORD)
+    ) {
+      return group
+    }
+  }
+  return null
+}
+
 /** 是否为生图创作中心可用的 Key（纯函数，便于单测）。 */
 export function isImageStudioKey(key: ApiKey): boolean {
-  if (key.status !== 'active') return false
-  const group = key.group
-  if (!group || group.allow_image_generation !== true) return false
-  return (group.name || '').includes(CREATION_GROUP_KEYWORD)
+  return key.status === 'active' && creationGroupOf(key) !== null
 }
 
 async function loadImageStudioAccess(force = false): Promise<ApiKey[]> {
