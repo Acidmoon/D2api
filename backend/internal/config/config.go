@@ -104,6 +104,7 @@ type Config struct {
 	Idempotency             IdempotencyConfig             `mapstructure:"idempotency"`
 	BatchImage              BatchImageConfig              `mapstructure:"batch_image"`
 	ImageStorage            ImageStorageConfig            `mapstructure:"image_storage"`
+	ImageStudio             ImageStudioConfig             `mapstructure:"image_studio"`
 	Plugins                 PluginConfig                  `mapstructure:"plugins"`
 }
 
@@ -246,6 +247,22 @@ type BatchImageConfig struct {
 	VertexOutputRetentionHours   int    `mapstructure:"vertex_output_retention_hours"`
 	VertexBatchPredictionBaseURL string `mapstructure:"vertex_batch_prediction_base_url"`
 	VertexGCSBaseURL             string `mapstructure:"vertex_gcs_base_url"`
+}
+
+// ImageStudioConfig 生图创作中心历史记录的本地存储与保留策略。
+// 图片字节落在 DataDir/<user_id>/<随机目录>/<index>.<ext>，元数据落在
+// image_studio_history 表；不同用户通过接口层的 user_id 隔离，互相不可见。
+type ImageStudioConfig struct {
+	// DataDir 历史图片落盘根目录，默认 ./data/image-studio
+	DataDir string `mapstructure:"data_dir"`
+	// RetentionDays 保留天数，默认 7
+	RetentionDays int `mapstructure:"retention_days"`
+	// MaxPerUser 每个用户最多保留的记录数，超出后删除最旧的，默认 200
+	MaxPerUser int `mapstructure:"max_per_user"`
+	// MaxImageBytes 单张图片字节上限，超过则跳过保存，默认 12MiB
+	MaxImageBytes int64 `mapstructure:"max_image_bytes"`
+	// CleanupIntervalMinutes 过期清理间隔（分钟），默认 60
+	CleanupIntervalMinutes int `mapstructure:"cleanup_interval_minutes"`
 }
 
 // ImageStorageConfig 配置异步图片任务结果上传的 S3 兼容对象存储。
@@ -2301,6 +2318,13 @@ func setDefaults() {
 
 	// Fingerprint - 模型指纹检测（参考指纹与检测报告的 JSON 文件存储根目录）
 	viper.SetDefault("fingerprint.data_dir", "./data/fingerprint")
+
+	// Image Studio - 生图创作中心历史（本地磁盘 + 7 天保留）
+	viper.SetDefault("image_studio.data_dir", "./data/image-studio")
+	viper.SetDefault("image_studio.retention_days", 7)
+	viper.SetDefault("image_studio.max_per_user", 200)
+	viper.SetDefault("image_studio.max_image_bytes", int64(12*1024*1024))
+	viper.SetDefault("image_studio.cleanup_interval_minutes", 60)
 
 	// 本地进程插件。插件必须由管理员手动上传，项目默认不携带任何插件能力。
 	viper.SetDefault("plugins.data_dir", "")

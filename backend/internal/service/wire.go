@@ -819,6 +819,13 @@ func ProvideAPIKeyService(
 	return svc
 }
 
+// ProvideImageStudioHistoryService 创建生图历史服务并启动过期清理 worker（7 天保留）。
+func ProvideImageStudioHistoryService(repo ImageStudioHistoryRepository, cfg *config.Config) *ImageStudioHistoryService {
+	svc := NewImageStudioHistoryService(repo, cfg)
+	svc.Start()
+	return svc
+}
+
 // ProviderSet is the Wire provider set for all services
 var ProviderSet = wire.NewSet(
 	// Core services
@@ -850,6 +857,7 @@ var ProviderSet = wire.NewSet(
 	NewBatchImageDownloadService,
 	ProvideBatchImageCleanupService,
 	ProvideBatchImageWorkerRuntime,
+	ProvideImageStudioHistoryService,
 	wire.Bind(new(AccountRuntimeBlocker), new(*OpenAIGatewayService)),
 	NewOAuthService,
 	ProvideOpenAIOAuthService,

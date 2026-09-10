@@ -129,6 +129,16 @@ func RegisterUserRoutes(
 			redeem.GET("/history", h.Redeem.GetHistory)
 		}
 
+		// 生图创作中心历史（按 user_id 隔离，图片字节落本地磁盘）
+		imageStudio := authenticated.Group("/image-studio")
+		{
+			imageStudio.POST("/history", h.ImageStudio.Save)
+			imageStudio.GET("/history", h.ImageStudio.List)
+			imageStudio.GET("/history/:id", h.ImageStudio.Get)
+			imageStudio.GET("/history/:id/images/:index", h.ImageStudio.Image)
+			imageStudio.DELETE("/history/:id", h.ImageStudio.Delete)
+		}
+
 		// 用户订阅
 		subscriptions := authenticated.Group("/subscriptions")
 		{
