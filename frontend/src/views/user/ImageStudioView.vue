@@ -28,6 +28,9 @@
         </div>
         <div class="flex items-center gap-2">
           <span v-if="selectedKey" class="badge badge-primary">{{ selectedKeyGroup?.name || '-' }}</span>
+          <button type="button" class="btn btn-secondary btn-sm" :disabled="savingHistory" @click="openHistory">
+            {{ t('imageStudio.history.open') }}
+          </button>
           <button type="button" class="btn btn-secondary btn-sm" :disabled="accessLoading" @click="reloadKeys">
             {{ t('imageStudio.key.refresh') }}
           </button>
@@ -196,6 +199,114 @@
         </div>
       </div>
     </BaseDialog>
+
+    <!-- 历史记录：列表 / 详情 -->
+    <BaseDialog
+      :show="historyOpen"
+      :title="historyDetail ? t('imageStudio.history.detailTitle') : t('imageStudio.history.title')"
+      width="extra-wide"
+      @close="closeHistory"
+    >
+      <!-- 详情 -->
+      <div v-if="historyDetail" class="space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <button type="button" class="btn btn-secondary btn-sm" @click="closeHistoryDetail">
+            {{ t('imageStudio.history.back') }}
+          </button>
+          <div class="flex items-center gap-2">
+            <span class="badge badge-gray">{{ historyDetail.model }}</span>
+            <span v-if="historyDetail.size" class="badge badge-gray">{{ historyDetail.size }}</span>
+            <button type="button" class="btn btn-secondary btn-sm" @click="removeHistoryItem(historyDetail)">
+              {{ t('imageStudio.history.delete') }}
+            </button>
+          </div>
+        </div>
+
+        <div class="rounded-lg border border-border bg-muted/40 p-3">
+          <p class="text-xs text-muted-foreground">{{ t('imageStudio.history.prompt') }}</p>
+          <p class="mt-1 whitespace-pre-wrap text-sm text-foreground">{{ historyDetail.prompt }}</p>
+          <template v-if="historyDetail.revised_prompt && historyDetail.revised_prompt !== historyDetail.prompt">
+            <p class="mt-3 text-xs text-muted-foreground">{{ t('imageStudio.history.revisedPrompt') }}</p>
+            <p class="mt-1 whitespace-pre-wrap text-sm text-foreground">{{ historyDetail.revised_prompt }}</p>
+          </template>
+          <p class="mt-3 text-xs text-muted-foreground">
+            {{ formatHistoryTime(historyDetail.created_at) }} · {{ t('imageStudio.history.expiresAt') }}{{ formatHistoryTime(historyDetail.expires_at) }}
+          </p>
+        </div>
+
+        <div v-if="historyDetailLoading" class="flex items-center justify-center py-10">
+          <LoadingSpinner size="md" />
+        </div>
+        <div v-else class="grid grid-cols-1 gap-3 sm:grid-cols-2 2xl:grid-cols-3">
+          <figure
+            v-for="(url, index) in historyDetailUrls"
+            :key="index"
+            class="group relative overflow-hidden rounded-xl border border-border bg-muted"
+          >
+            <img :src="url" :alt="historyDetail.prompt" class="aspect-square w-full object-cover" />
+            <div class="pointer-events-none absolute inset-x-0 bottom-0 flex justify-end bg-gradient-to-t from-black/70 to-transparent px-3 py-2 opacity-0 transition-opacity group-hover:opacity-100">
+              <button type="button" class="btn btn-primary btn-sm pointer-events-auto" @click="downloadHistoryImage(historyDetail, index)">
+                {{ t('imageStudio.result.download') }}
+              </button>
+            </div>
+          </figure>
+        </div>
+      </div>
+
+      <!-- 列表 -->
+      <div v-else class="space-y-3">
+        <div v-if="historyLoading" class="flex items-center justify-center py-12">
+          <LoadingSpinner size="md" />
+        </div>
+        <p v-else-if="historyError" class="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
+          {{ historyError }}
+        </p>
+        <EmptyState
+          v-else-if="historyItems.length === 0"
+          :title="t('imageStudio.history.emptyTitle')"
+          :description="t('imageStudio.history.emptyDescription')"
+        />
+        <template v-else>
+          <ul class="divide-y divide-border">
+            <li
+              v-for="item in historyItems"
+              :key="item.id"
+              class="flex cursor-pointer items-start gap-3 py-3 transition-colors hover:bg-muted/40"
+              @click="openHistoryDetail(item)"
+            >
+              <div class="min-w-0 flex-1">
+                <p class="line-clamp-2 text-sm text-foreground">{{ item.prompt }}</p>
+                <p class="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                  <span>{{ formatHistoryTime(item.created_at) }}</span>
+                  <span class="badge badge-gray">{{ item.model }}</span>
+                  <span v-if="item.size" class="badge badge-gray">{{ item.size }}</span>
+                  <span>{{ t('imageStudio.history.imageCount', { count: item.image_count }) }}</span>
+                </p>
+              </div>
+              <span class="badge badge-primary shrink-0">{{ t('imageStudio.history.view') }}</span>
+            </li>
+          </ul>
+          <div v-if="historyTotal > historyPageSize" class="flex items-center justify-between pt-2">
+            <span class="text-xs text-muted-foreground">
+              {{ t('imageStudio.history.pageInfo', { page: historyPage, total: Math.max(1, Math.ceil(historyTotal / historyPageSize)) }) }}
+            </span>
+            <div class="flex items-center gap-2">
+              <button type="button" class="btn btn-secondary btn-sm" :disabled="historyPage <= 1" @click="loadHistory(historyPage - 1)">
+                {{ t('imageStudio.history.prev') }}
+              </button>
+              <button
+                type="button"
+                class="btn btn-secondary btn-sm"
+                :disabled="historyPage * historyPageSize >= historyTotal"
+                @click="loadHistory(historyPage + 1)"
+              >
+                {{ t('imageStudio.history.next') }}
+              </button>
+            </div>
+          </div>
+        </template>
+      </div>
+    </BaseDialog>
     </div>
   </AppLayout>
 </template>
@@ -212,12 +323,20 @@ import TextArea from '@/components/common/TextArea.vue'
 import {
   extensionForBlob,
   generateImages,
+  imageToBase64Payload,
   imageToBlob,
   imageToDataUrl,
   listGatewayModels,
   type GatewayModel,
   type GeneratedImage,
 } from '@/api/imageStudio'
+import {
+  deleteImageStudioHistory,
+  getImageStudioHistoryImage,
+  listImageStudioHistory,
+  saveImageStudioHistory,
+  type ImageStudioHistoryItem,
+} from '@/api/imageStudioHistory'
 import { saveBlob } from '@/api/batchImage'
 import { creationGroupOf, useImageStudioAccess } from '@/composables/useImageStudioAccess'
 import { useAppStore } from '@/stores/app'
@@ -253,6 +372,19 @@ const generating = ref(false)
 const lastError = ref('')
 const results = ref<StudioResult[]>([])
 const lightboxIndex = ref<number | null>(null)
+
+// ── 历史记录 ──
+const savingHistory = ref(false)
+const historyOpen = ref(false)
+const historyLoading = ref(false)
+const historyError = ref('')
+const historyItems = ref<ImageStudioHistoryItem[]>([])
+const historyTotal = ref(0)
+const historyPage = ref(1)
+const historyPageSize = 10
+const historyDetail = ref<ImageStudioHistoryItem | null>(null)
+const historyDetailUrls = ref<string[]>([])
+const historyDetailLoading = ref(false)
 
 let modelsAbort: AbortController | null = null
 let generateAbort: AbortController | null = null
@@ -386,6 +518,122 @@ async function handleKeyChange() {
   await loadModels()
 }
 
+/** 生成成功后异步保存到历史（失败只提示，不影响本次生成体验）。 */
+async function persistGeneration(items: StudioResult[], promptText: string) {
+  const key = selectedKey.value
+  if (!key || items.length === 0) return
+  savingHistory.value = true
+  try {
+    const images: Array<{ mime_type?: string; data: string }> = []
+    for (const item of items) {
+      const encoded = await imageToBase64Payload(item.image)
+      if (encoded) images.push({ mime_type: encoded.mime_type, data: encoded.data })
+    }
+    if (images.length === 0) return
+    await saveImageStudioHistory({
+      model: items[0]?.model || selectedModel.value,
+      prompt: promptText,
+      revised_prompt: items[0]?.image.revised_prompt || '',
+      size: size.value,
+      api_key_id: key.id,
+      group_id: creationGroupOf(key)?.id ?? null,
+      images,
+    })
+  } catch (error) {
+    appStore.showError(t('imageStudio.history.saveFailed', { message: (error as Error).message }))
+  } finally {
+    savingHistory.value = false
+  }
+}
+
+function formatHistoryTime(value: string): string {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return date.toLocaleString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+}
+
+function releaseHistoryDetailUrls() {
+  for (const url of historyDetailUrls.value) URL.revokeObjectURL(url)
+  historyDetailUrls.value = []
+}
+
+async function loadHistory(page: number) {
+  historyLoading.value = true
+  historyError.value = ''
+  try {
+    const data = await listImageStudioHistory(page, historyPageSize)
+    historyItems.value = data.items || []
+    historyTotal.value = data.total || 0
+    historyPage.value = data.page || page
+  } catch (error) {
+    historyItems.value = []
+    historyTotal.value = 0
+    historyError.value = (error as Error).message
+  } finally {
+    historyLoading.value = false
+  }
+}
+
+async function openHistory() {
+  historyOpen.value = true
+  historyDetail.value = null
+  releaseHistoryDetailUrls()
+  await loadHistory(1)
+}
+
+function closeHistory() {
+  historyOpen.value = false
+  historyDetail.value = null
+  releaseHistoryDetailUrls()
+}
+
+function closeHistoryDetail() {
+  historyDetail.value = null
+  releaseHistoryDetailUrls()
+}
+
+async function openHistoryDetail(item: ImageStudioHistoryItem) {
+  historyDetail.value = item
+  releaseHistoryDetailUrls()
+  historyDetailLoading.value = true
+  try {
+    const urls: string[] = []
+    for (const image of item.images) {
+      try {
+        const blob = await getImageStudioHistoryImage(item.id, image.index)
+        urls.push(URL.createObjectURL(blob))
+      } catch {
+        // 单张图片丢失不影响其余图片展示
+      }
+    }
+    historyDetailUrls.value = urls
+  } finally {
+    historyDetailLoading.value = false
+  }
+}
+
+async function downloadHistoryImage(item: ImageStudioHistoryItem, index: number) {
+  try {
+    const blob = await getImageStudioHistoryImage(item.id, index)
+    const stamp = new Date(item.created_at).toISOString().replace(/[:.]/g, '-').slice(0, 19)
+    saveBlob(blob, `${item.model || 'image'}-${stamp}.${extensionForBlob(blob)}`)
+  } catch (error) {
+    appStore.showError(t('imageStudio.errors.downloadFailed', { message: (error as Error).message }))
+  }
+}
+
+async function removeHistoryItem(item: ImageStudioHistoryItem | null) {
+  if (!item) return
+  try {
+    await deleteImageStudioHistory(item.id)
+    appStore.showSuccess(t('imageStudio.history.deleted'))
+    closeHistoryDetail()
+    await loadHistory(1)
+  } catch (error) {
+    appStore.showError(t('imageStudio.history.deleteFailed', { message: (error as Error).message }))
+  }
+}
+
 async function generate() {
   const key = selectedKey.value
   if (!key) {
@@ -434,6 +682,7 @@ async function generate() {
     }))
     results.value = [...items, ...results.value]
     appStore.showSuccess(t('imageStudio.result.generated', { count: items.length }))
+    void persistGeneration(items, text)
   } catch (error) {
     if (controller.signal.aborted) return
     lastError.value = (error as Error).message
@@ -491,5 +740,6 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   modelsAbort?.abort()
   generateAbort?.abort()
+  releaseHistoryDetailUrls()
 })
 </script>

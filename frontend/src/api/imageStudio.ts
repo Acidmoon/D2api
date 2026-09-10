@@ -145,6 +145,30 @@ export async function imageToBlob(image: GeneratedImage): Promise<Blob> {
   return response.blob()
 }
 
+/** 把一张生成结果转成 base64（用于保存历史）；url 形态会先下载再编码。 */
+export async function imageToBase64Payload(
+  image: GeneratedImage
+): Promise<{ mime_type: string; data: string } | null> {
+  if (image.b64_json) {
+    return { mime_type: resolvedMime(image), data: image.b64_json }
+  }
+  if (!image.url) return null
+  try {
+    const blob = await imageToBlob(image)
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(String(reader.result || ''))
+      reader.onerror = () => reject(reader.error || new Error('read image failed'))
+      reader.readAsDataURL(blob)
+    })
+    const comma = dataUrl.indexOf(',')
+    if (comma < 0) return null
+    return { mime_type: blob.type || 'image/png', data: dataUrl.slice(comma + 1) }
+  } catch {
+    return null
+  }
+}
+
 /** 根据 MIME 推断扩展名，用于下载文件名。 */
 export function extensionForBlob(blob: Blob): string {
   const mime = (blob.type || '').toLowerCase()

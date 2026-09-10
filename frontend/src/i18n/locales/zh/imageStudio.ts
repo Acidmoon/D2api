@@ -42,6 +42,26 @@ export default {
     lightbox: {
       title: '预览'
     },
+    history: {
+      open: '查看历史',
+      title: '生成历史',
+      detailTitle: '历史详情',
+      emptyTitle: '还没有历史记录',
+      emptyDescription: '生成的图片会保留 7 天，且只有你自己能看到。',
+      prompt: '提示词',
+      revisedPrompt: '修订后的提示词',
+      expiresAt: '保留至 ',
+      imageCount: '{count} 张',
+      view: '查看',
+      back: '返回列表',
+      delete: '删除',
+      deleted: '已删除该条历史',
+      deleteFailed: '删除失败：{message}',
+      saveFailed: '保存历史失败：{message}',
+      prev: '上一页',
+      next: '下一页',
+      pageInfo: '第 {page} / {total} 页'
+    },
     errors: {
       keyRequired: '请先选择 API Key。',
       modelRequired: '请先选择模型。',

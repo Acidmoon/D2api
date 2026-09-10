@@ -42,6 +42,26 @@ export default {
     lightbox: {
       title: 'Preview'
     },
+    history: {
+      open: 'History',
+      title: 'Generation history',
+      detailTitle: 'History detail',
+      emptyTitle: 'No history yet',
+      emptyDescription: 'Generated images are kept for 7 days and only visible to you.',
+      prompt: 'Prompt',
+      revisedPrompt: 'Revised prompt',
+      expiresAt: 'Retained until ',
+      imageCount: '{count} image(s)',
+      view: 'View',
+      back: 'Back to list',
+      delete: 'Delete',
+      deleted: 'History deleted',
+      deleteFailed: 'Failed to delete: {message}',
+      saveFailed: 'Failed to save history: {message}',
+      prev: 'Previous',
+      next: 'Next',
+      pageInfo: 'Page {page} / {total}'
+    },
     errors: {
       keyRequired: 'Select an API key first.',
       modelRequired: 'Select a model first.',
