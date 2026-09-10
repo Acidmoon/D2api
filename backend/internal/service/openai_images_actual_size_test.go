@@ -39,6 +39,54 @@ func TestDetectOpenAIImageResultSize(t *testing.T) {
 	require.Empty(t, detectOpenAIImageResultSize("not-image-data"))
 }
 
+// 上游不回传 size 字段时（实测 wegoapi 的 gpt-image-2.5 只回 b64_json + revised_prompt），
+// 必须从图片字节里解出真实分辨率；否则 ImageOutputSizes 为空，计费会退回
+// 「按请求档位」，客户端写 size=4K 就能以 4K 单价买到实际 ~1.6MP 的图。
+func TestCollectOpenAIResponseImageOutputSizesDecodesDimensionsWhenSizeAbsent(t *testing.T) {
+	encoded := encodeOpenAIImageTestPNG(t, 1672, 941)
+	body := []byte(fmt.Sprintf(`{"data":[{"b64_json":%q},{"b64_json":%q}]}`, encoded, encoded))
+
+	require.Equal(t, 2, countOpenAIResponseImageOutputsFromJSONBytes(body))
+	require.Equal(t, []string{"1672x941", "1672x941"}, collectOpenAIResponseImageOutputSizesFromJSONBytes(body))
+}
+
+// 上游回显了 size 时仍以回显为准（保持既有行为，不改变已配置价格档语义）。
+func TestCollectOpenAIResponseImageOutputSizesPrefersEchoedSize(t *testing.T) {
+	encoded := encodeOpenAIImageTestPNG(t, 1672, 941)
+	body := []byte(fmt.Sprintf(`{"data":[{"b64_json":%q,"size":"2048x1152"}]}`, encoded))
+
+	require.Equal(t, []string{"2048x1152"}, collectOpenAIResponseImageOutputSizesFromJSONBytes(body))
+}
+
+// 端到端：请求 4K、实拿 1672x941 → 落 2K 档且 source=output。
+func TestApplyOpenAIImageBillingResolutionUsesDecodedSizeOverInflatedRequest(t *testing.T) {
+	resolve := func(size string) *OpenAIForwardResult {
+		result := &OpenAIForwardResult{
+			ImageCount:       1,
+			ImageSize:        size,
+			ImageInputSize:   size,
+			ImageOutputSizes: []string{"1672x941"},
+		}
+		ApplyOpenAIImageBillingResolution(result)
+		return result
+	}
+
+	for _, requested := range []string{"1K", "2K", "4K"} {
+		result := resolve(requested)
+		require.Equal(t, ImageBillingSize2K, result.ImageSize, "requested %s must bill by real output", requested)
+		require.Equal(t, ImageSizeSourceOutput, result.ImageSizeSource)
+		require.Equal(t, "1672x941", result.ImageOutputSize)
+	}
+}
+
+// 上游回显 size:"auto" 时不能当成尺寸，仍要解字节。
+func TestCollectOpenAIResponseImageOutputSizesIgnoresAutoEcho(t *testing.T) {
+	encoded := encodeOpenAIImageTestPNG(t, 1672, 941)
+	body := []byte(fmt.Sprintf(`{"data":[{"b64_json":%q,"size":"auto"}]}`, encoded))
+
+	require.Equal(t, []string{"1672x941"}, collectOpenAIResponseImageOutputSizesFromJSONBytes(body))
+}
+
 func TestOpenAIGatewayServiceForwardImages_OAuthUsesDecodedOutputDimensions(t *testing.T) {
 	run := runOpenAIOAuthImageActualSizeTest(t, false)
 

@@ -105,13 +105,22 @@ func (c *openAIImageOutputCounter) addDataArray(data gjson.Result) {
 		if !item.IsObject() {
 			continue
 		}
-		hasImageOutput := strings.TrimSpace(item.Get("url").String()) != "" ||
-			strings.TrimSpace(item.Get("b64_json").String()) != ""
+		encoded := strings.TrimSpace(item.Get("b64_json").String())
+		hasImageOutput := encoded != "" || strings.TrimSpace(item.Get("url").String()) != ""
 		if !hasImageOutput {
 			continue
 		}
 		imageCount++
-		if size := strings.TrimSpace(item.Get("size").String()); size != "" {
+		size := strings.TrimSpace(item.Get("size").String())
+		if (size == "" || strings.EqualFold(size, "auto")) && encoded != "" {
+			// 不少 OpenAI 兼容上游只回显请求里的 size（甚至回显 "auto"/非法值），真实分辨率
+			// 只在图片字节里。缺这一步时 ImageOutputSizes 为空，
+			// ApplyOpenAIImageBillingResolution 会退回按「请求档位」计费：客户端写 size=4K
+			// 就能以 4K 单价买到实际 ~1.6MP 的图。这里与 OAuth/responses 路径的
+			// reconcileOpenAIImageResultSizes 对齐，只读头部几十字节，不整图解码。
+			size = detectOpenAIImageResultSize(encoded)
+		}
+		if size != "" {
 			sizes = append(sizes, size)
 		}
 	}
