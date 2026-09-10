@@ -207,7 +207,7 @@ func (h *ImageStudioHandler) Image(c *gin.Context) {
 		response.ErrorFrom(c, err)
 		return
 	}
-	defer reader.Close()
+	defer func() { _ = reader.Close() }()
 
 	if mimeType == "" {
 		mimeType = "image/png"

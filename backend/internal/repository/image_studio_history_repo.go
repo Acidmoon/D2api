@@ -67,7 +67,7 @@ func (r *imageStudioHistoryRepository) ListByUser(ctx context.Context, userID in
 	if err != nil {
 		return nil, 0, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	records := make([]service.ImageStudioHistoryRecord, 0, limit)
 	for rows.Next() {
@@ -130,7 +130,7 @@ func (r *imageStudioHistoryRepository) ListOldestByUser(ctx context.Context, use
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	records := make([]service.ImageStudioHistoryRecord, 0, limit)
 	for rows.Next() {
@@ -156,7 +156,7 @@ func (r *imageStudioHistoryRepository) ListExpired(ctx context.Context, before t
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	records := make([]service.ImageStudioHistoryRecord, 0, limit)
 	for rows.Next() {
